@@ -12,6 +12,8 @@ var ColumnPositionTemplate = ": col=%02d"
 const (
 	// ErrType represents an error in the type part of the commit message.
 	ErrType = "illegal '%s' character in commit message type"
+	// ErrColon is the error message that communicate that the mandatory colon after the type part of the commit message is missing.
+	ErrColon = "missing colon (':') after '%s' character"
 	// ErrTypeIncomplete represents an error in the type part of the commit message.
 	ErrTypeIncomplete = "incomplete commit message type after '%s' character"
 	// ErrEmpty represents an error when the input is empty.
@@ -26,17 +28,15 @@ include common "common.rl";
 # unsigned alphabet
 alphtype uint8;
 
-action err_empty {
-	m.err = fmt.Errorf(ErrEmpty+ColumnPositionTemplate, m.p)
-	fhold;
-}
-
 action mark {
 	m.pb = m.p
 }
 
-action set_type {
-	output._type = string(m.text())
+# Error management
+
+action err_empty {
+	m.err = fmt.Errorf(ErrEmpty+ColumnPositionTemplate, m.p)
+	fhold;
 }
 
 action err_type {
@@ -45,7 +45,18 @@ action err_type {
 	} else {
 		m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
 	}
+}
+
+action err_colon {
+	m.err = m.emitErrorOnPreviousCharacter(ErrColon);
 	fhold;
+	fgoto fail;
+}
+
+# Setters
+
+action set_type {
+	output._type = string(m.text())
 }
 
 action set_scope {
@@ -60,24 +71,56 @@ action set_exclamation {
 	output.exclamation = true
 }
 
+# Moving actions
+
+action goto_scope {
+	fhold;
+	fgoto scope;
+}
+
+action goto_breaking {
+	fhold;
+	fgoto breaking;
+}
+
+action goto_separator {
+	fhold;
+	fgoto separator;
+}
+
+# Selection actions
+
+action select_types {
+	fhold;
+	fnext minimal_types;
+}
+
+# Machine definitions
+
 ## todo > how to configure these? ideally, at runtime...
-## todo > error management
-type = ('fix' | 'feat') >mark %set_type <err(err_type) >eof(err_empty);
+## type = ('fix' | 'feat') >mark %set_type <err(err_type) >eof(err_empty);
+
+minimal_types := ('fix' | 'feat') >mark %set_type <>err(err_type) %goto_scope;
 
 ## todo > option to exclude whitespaces and parentheses from valid scope corpus
 ## todo > error management
-scope = op any* >mark %set_scope cp;
+scope := (op any* >mark %set_scope cp)? %goto_breaking;
+
+breaking := (exclamation >mark %set_exclamation)? %goto_separator;
+
+separator := colon >err(err_colon);
 
 ## todo > error management
 ## todo > set description
 desc = any* >mark %set_description;
 
 # a machine that consumes the rest of the line when parsing fails
+## todo > remove if unneded
 fail := (any - [\n\r])*;
 
 ## todo > option to limit the total length
-## todo > err_generic is likely unneded
-main := type scope? (exclamation >mark %set_exclamation)? colon ws desc;
+## main := type scope? (exclamation >mark %set_exclamation)? colon ws desc;
+main := any >select_types >eof(err_empty);
 
 }%%
 

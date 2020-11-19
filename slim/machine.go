@@ -12,6 +12,8 @@ var ColumnPositionTemplate = ": col=%02d"
 const (
 	// ErrType represents an error in the type part of the commit message.
 	ErrType = "illegal '%s' character in commit message type"
+	// ErrColon is the error message that communicate that the mandatory colon after the type part of the commit message is missing.
+	ErrColon = "missing colon (':') after '%s' character"
 	// ErrTypeIncomplete represents an error in the type part of the commit message.
 	ErrTypeIncomplete = "incomplete commit message type after '%s' character"
 	// ErrEmpty represents an error when the input is empty.
@@ -19,9 +21,13 @@ const (
 )
 
 const start int = 1
-const firstFinal int = 14
+const firstFinal int = 10
 
-const enFail int = 21
+const enMinimalTypes int = 2
+const enScope int = 12
+const enBreaking int = 14
+const enSeparator int = 9
+const enFail int = 17
 const enMain int = 1
 
 type machine struct {
@@ -87,9 +93,57 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		if (m.p) == (m.pe) {
 			goto _testEof
 		}
+		goto _resume
+
+	_again:
+		switch m.cs {
+		case 1:
+			goto st1
+		case 10:
+			goto st10
+		case 0:
+			goto st0
+		case 2:
+			goto st2
+		case 3:
+			goto st3
+		case 4:
+			goto st4
+		case 5:
+			goto st5
+		case 11:
+			goto st11
+		case 6:
+			goto st6
+		case 9:
+			goto st9
+		case 16:
+			goto st16
+		case 12:
+			goto st12
+		case 7:
+			goto st7
+		case 8:
+			goto st8
+		case 13:
+			goto st13
+		case 14:
+			goto st14
+		case 15:
+			goto st15
+		case 17:
+			goto st17
+		}
+
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof
+		}
+	_resume:
 		switch m.cs {
 		case 1:
 			goto stCase1
+		case 10:
+			goto stCase10
 		case 0:
 			goto stCase0
 		case 2:
@@ -100,150 +154,200 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase4
 		case 5:
 			goto stCase5
+		case 11:
+			goto stCase11
 		case 6:
 			goto stCase6
+		case 9:
+			goto stCase9
+		case 16:
+			goto stCase16
+		case 12:
+			goto stCase12
 		case 7:
 			goto stCase7
+		case 8:
+			goto stCase8
+		case 13:
+			goto stCase13
 		case 14:
 			goto stCase14
 		case 15:
 			goto stCase15
-		case 8:
-			goto stCase8
-		case 9:
-			goto stCase9
-		case 10:
-			goto stCase10
-		case 11:
-			goto stCase11
-		case 12:
-			goto stCase12
-		case 16:
-			goto stCase16
 		case 17:
 			goto stCase17
-		case 18:
-			goto stCase18
-		case 19:
-			goto stCase19
-		case 20:
-			goto stCase20
-		case 13:
-			goto stCase13
-		case 21:
-			goto stCase21
 		}
 		goto stOut
-	stCase1:
-		if (m.data)[(m.p)] == 102 {
-			goto tr0
+	st1:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof1
 		}
+	stCase1:
+		goto tr0
+	tr0:
+		m.cs = 10
+
+		(m.p)--
+
+		m.cs = 2
+
+		goto _again
+	st10:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof10
+		}
+	stCase10:
 		goto st0
-	tr2:
+	tr3:
 
 		if m.p != m.pe {
 			m.err = m.emitErrorOnCurrentCharacter(ErrType)
 		} else {
 			m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
 		}
-		(m.p)--
 
 		goto st0
 	stCase0:
 	st0:
 		m.cs = 0
 		goto _out
-	tr0:
-
-		m.pb = m.p
-
-		goto st2
 	st2:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof2
 		}
 	stCase2:
-		switch (m.data)[(m.p)] {
-		case 101:
-			goto st3
-		case 105:
-			goto st13
+		if (m.data)[(m.p)] == 102 {
+			goto tr1
 		}
-		goto tr2
+		goto st0
+	tr1:
+
+		m.pb = m.p
+
+		goto st3
 	st3:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof3
 		}
 	stCase3:
-		if (m.data)[(m.p)] == 97 {
+		switch (m.data)[(m.p)] {
+		case 101:
 			goto st4
+		case 105:
+			goto st6
 		}
-		goto tr2
+		goto tr3
 	st4:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof4
 		}
 	stCase4:
-		if (m.data)[(m.p)] == 116 {
+		if (m.data)[(m.p)] == 97 {
 			goto st5
 		}
-		goto tr2
+		goto tr3
 	st5:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof5
 		}
 	stCase5:
-		switch (m.data)[(m.p)] {
-		case 33:
-			goto tr7
-		case 40:
-			goto tr8
-		case 58:
-			goto tr9
+		if (m.data)[(m.p)] == 116 {
+			goto st11
 		}
-		goto tr2
-	tr7:
-
-		output._type = string(m.text())
-
-		m.pb = m.p
-
-		goto st6
+		goto tr3
+	st11:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof11
+		}
+	stCase11:
+		goto st0
 	st6:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof6
 		}
 	stCase6:
+		if (m.data)[(m.p)] == 120 {
+			goto st11
+		}
+		goto tr3
+	st9:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof9
+		}
+	stCase9:
 		if (m.data)[(m.p)] == 58 {
-			goto tr10
+			goto st16
 		}
 		goto st0
-	tr9:
-
-		output._type = string(m.text())
-
-		goto st7
-	tr10:
-
-		output.exclamation = true
-
-		goto st7
+	st16:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof16
+		}
+	stCase16:
+		goto st0
+	st12:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof12
+		}
+	stCase12:
+		if (m.data)[(m.p)] == 40 {
+			goto st7
+		}
+		goto st0
 	st7:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof7
 		}
 	stCase7:
-		if (m.data)[(m.p)] == 32 {
-			goto st14
+		if (m.data)[(m.p)] == 41 {
+			goto tr9
 		}
-		goto st0
+		goto tr8
+	tr8:
+
+		m.pb = m.p
+
+		goto st8
+	st8:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof8
+		}
+	stCase8:
+		if (m.data)[(m.p)] == 41 {
+			goto tr11
+		}
+		goto st8
+	tr9:
+
+		m.pb = m.p
+
+		output.scope = string(m.text())
+
+		goto st13
+	tr11:
+
+		output.scope = string(m.text())
+
+		goto st13
+	st13:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof13
+		}
+	stCase13:
+		if (m.data)[(m.p)] == 41 {
+			goto tr11
+		}
+		goto st8
 	st14:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof14
 		}
 	stCase14:
-		goto tr20
-	tr20:
+		if (m.data)[(m.p)] == 33 {
+			goto tr14
+		}
+		goto st0
+	tr14:
 
 		m.pb = m.p
 
@@ -253,200 +357,26 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof15
 		}
 	stCase15:
-		goto st15
-	tr8:
-
-		output._type = string(m.text())
-
-		goto st8
-	st8:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof8
-		}
-	stCase8:
-		if (m.data)[(m.p)] == 41 {
-			goto tr13
-		}
-		goto tr12
-	tr12:
-
-		m.pb = m.p
-
-		goto st9
-	st9:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof9
-		}
-	stCase9:
-		if (m.data)[(m.p)] == 41 {
-			goto tr15
-		}
-		goto st9
-	tr13:
-
-		m.pb = m.p
-
-		output.scope = string(m.text())
-
-		goto st10
-	tr15:
-
-		output.scope = string(m.text())
-
-		goto st10
-	st10:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof10
-		}
-	stCase10:
-		switch (m.data)[(m.p)] {
-		case 33:
-			goto tr16
-		case 41:
-			goto tr15
-		case 58:
-			goto st12
-		}
-		goto st9
-	tr16:
-
-		m.pb = m.p
-
-		goto st11
-	st11:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof11
-		}
-	stCase11:
-		switch (m.data)[(m.p)] {
-		case 41:
-			goto tr15
-		case 58:
-			goto tr18
-		}
-		goto st9
-	tr18:
-
-		output.exclamation = true
-
-		goto st12
-	st12:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof12
-		}
-	stCase12:
-		switch (m.data)[(m.p)] {
-		case 32:
-			goto st16
-		case 41:
-			goto tr15
-		}
-		goto st9
-	st16:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof16
-		}
-	stCase16:
-		if (m.data)[(m.p)] == 41 {
-			goto tr23
-		}
-		goto tr22
-	tr22:
-
-		m.pb = m.p
-
-		goto st17
+		goto st0
 	st17:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof17
 		}
 	stCase17:
-		if (m.data)[(m.p)] == 41 {
-			goto tr25
-		}
-		goto st17
-	tr25:
-
-		output.scope = string(m.text())
-
-		goto st18
-	tr23:
-
-		output.scope = string(m.text())
-
-		m.pb = m.p
-
-		goto st18
-	st18:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof18
-		}
-	stCase18:
-		switch (m.data)[(m.p)] {
-		case 33:
-			goto tr26
-		case 41:
-			goto tr25
-		case 58:
-			goto st20
-		}
-		goto st17
-	tr26:
-
-		m.pb = m.p
-
-		goto st19
-	st19:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof19
-		}
-	stCase19:
-		switch (m.data)[(m.p)] {
-		case 41:
-			goto tr25
-		case 58:
-			goto tr28
-		}
-		goto st17
-	tr28:
-
-		output.exclamation = true
-
-		goto st20
-	st20:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof20
-		}
-	stCase20:
-		switch (m.data)[(m.p)] {
-		case 32:
-			goto st16
-		case 41:
-			goto tr25
-		}
-		goto st17
-	st13:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof13
-		}
-	stCase13:
-		if (m.data)[(m.p)] == 120 {
-			goto st5
-		}
-		goto tr2
-	st21:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof21
-		}
-	stCase21:
 		switch (m.data)[(m.p)] {
 		case 10:
 			goto st0
 		case 13:
 			goto st0
 		}
-		goto st21
+		goto st17
 	stOut:
+	_testEof1:
+		m.cs = 1
+		goto _testEof
+	_testEof10:
+		m.cs = 10
+		goto _testEof
 	_testEof2:
 		m.cs = 2
 		goto _testEof
@@ -459,11 +389,29 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof5:
 		m.cs = 5
 		goto _testEof
+	_testEof11:
+		m.cs = 11
+		goto _testEof
 	_testEof6:
 		m.cs = 6
 		goto _testEof
+	_testEof9:
+		m.cs = 9
+		goto _testEof
+	_testEof16:
+		m.cs = 16
+		goto _testEof
+	_testEof12:
+		m.cs = 12
+		goto _testEof
 	_testEof7:
 		m.cs = 7
+		goto _testEof
+	_testEof8:
+		m.cs = 8
+		goto _testEof
+	_testEof13:
+		m.cs = 13
 		goto _testEof
 	_testEof14:
 		m.cs = 14
@@ -471,41 +419,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof15:
 		m.cs = 15
 		goto _testEof
-	_testEof8:
-		m.cs = 8
-		goto _testEof
-	_testEof9:
-		m.cs = 9
-		goto _testEof
-	_testEof10:
-		m.cs = 10
-		goto _testEof
-	_testEof11:
-		m.cs = 11
-		goto _testEof
-	_testEof12:
-		m.cs = 12
-		goto _testEof
-	_testEof16:
-		m.cs = 16
-		goto _testEof
 	_testEof17:
 		m.cs = 17
-		goto _testEof
-	_testEof18:
-		m.cs = 18
-		goto _testEof
-	_testEof19:
-		m.cs = 19
-		goto _testEof
-	_testEof20:
-		m.cs = 20
-		goto _testEof
-	_testEof13:
-		m.cs = 13
-		goto _testEof
-	_testEof21:
-		m.cs = 21
 		goto _testEof
 
 	_testEof:
@@ -518,24 +433,58 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 				m.err = fmt.Errorf(ErrEmpty+ColumnPositionTemplate, m.p)
 				(m.p)--
 
-			case 2, 3, 4, 5, 13:
+			case 3, 4, 5, 6:
 
 				if m.p != m.pe {
 					m.err = m.emitErrorOnCurrentCharacter(ErrType)
 				} else {
 					m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
 				}
+
+			case 9, 16:
+
+				m.err = m.emitErrorOnPreviousCharacter(ErrColon)
 				(m.p)--
 
-			case 15, 17, 18, 19, 20:
+				{
+					goto st17
+				}
 
-				output.descr = string(m.text())
+			case 12, 13:
 
-			case 14, 16:
+				(m.p)--
 
-				m.pb = m.p
+				{
+					goto st14
+				}
 
-				output.descr = string(m.text())
+			case 14:
+
+				(m.p)--
+
+				{
+					goto st9
+				}
+
+			case 11:
+
+				output._type = string(m.text())
+
+				(m.p)--
+
+				{
+					goto st12
+				}
+
+			case 15:
+
+				output.exclamation = true
+
+				(m.p)--
+
+				{
+					goto st9
+				}
 
 			}
 		}
