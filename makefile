@@ -9,6 +9,14 @@ build: slim/machine.go
 clean: slim/machine.go
 	@$(RM) $?
 
+.PHONY: dots
+dots:
+	@mkdir -p slim/docs
+	$(MAKE) -s slim/docs/main.dot
+
+.PHONY: docs
+docs: dots slim/docs/main.png
+
 .PHONY: snake2camel
 snake2camel:
 	@awk -i inplace '{ \
@@ -16,6 +24,12 @@ snake2camel:
 	$$0 = cap[1] cap[2] toupper(cap[3]) cap[4]; \
 	print \
 	}' $(file)
+
+slim/docs/main.dot: slim/machine.go.rl common/common.rl
+	$(RAGEL) -Z -Vp $< -o $@
+
+slim/docs/main.png: slim/docs/main.dot
+	dot $< -Tpng -o $@
 
 slim/machine.go: slim/machine.go.rl common/common.rl
 
