@@ -63,6 +63,42 @@ var testCases = []testCase{
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "x", 3),
 	},
+	// INVALID / missing colon after type fix
+	{
+		"invalid-after-valid-type-fix",
+		[]byte("fix"),
+		false,
+		nil,
+		nil, // no partial result because it is not a minimal valid commit message
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "x", 3),
+	},
+	// INVALID / missing colon after type feat
+	{
+		"invalid-after-valid-type-feat",
+		[]byte("feat"),
+		false,
+		nil,
+		nil, // no partial result because it is not a minimal valid commit message
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "t", 4),
+	},
+	// INVALID / INVALID type (2 char) + colon
+	{
+		"invalid-type-2-char-colon",
+		[]byte("fi:"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrType+ColumnPositionTemplate, ":", 2),
+	},
+	// INVALID / INVALID type (3 char) + colon
+	{
+		"invalid-type-3-char-colon",
+		[]byte("fea:"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrType+ColumnPositionTemplate, ":", 3),
+	},
 }
 
 func TestMachineBestEffortOption(t *testing.T) {
