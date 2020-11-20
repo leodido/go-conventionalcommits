@@ -18,8 +18,10 @@ const (
 	ErrTypeIncomplete = "incomplete commit message type after '%s' character"
 	// ErrEmpty represents an error when the input is empty.
 	ErrEmpty = "empty input"
-	// ErrEarly ..
+	// ErrEarly represents an error when the input makes the machine exit too early.
 	ErrEarly = "early exit after '%s' character"
+	// ErrDescriptionInit tells the user that before of the description part a whitespace is mandatory.
+	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
 )
 
 %%{
@@ -50,6 +52,10 @@ action err_type {
 
 action err_colon {
 	m.err = m.emitErrorOnCurrentCharacter(ErrColon);
+}
+
+action err_description_init {
+	m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit);
 }
 
 action check_early_exit {
@@ -122,19 +128,12 @@ action select_types {
 
 # Machine definitions
 
-## todo > how to configure these? ideally, at runtime...
-## type = ('fix' | 'feat') >mark %set_type <err(err_type) >eof(err_empty);
+minimal_types := ('fix' | 'feat') >mark <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
 
-## %set_type is probably uneeded
+conventional_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'refactor' | 'revert' | 'style' | 'test') >mark <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
 
-minimal_types := ('fix' | 'feat') >mark %set_type <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
+falco_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'new' | 'revert' | 'update' | 'test' | 'rule' ) >mark <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
 
-conventional_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'refactor' | 'revert' | 'style' | 'test') >mark %set_type <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
-
-falco_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'new' | 'revert' | 'update' | 'test' | 'rule' ) >mark %set_type <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
-
-## todo > option to exclude whitespaces and parentheses from valid scope corpus
-## todo > error management
 fills_scope = lpar ((any* -- lpar) -- rpar) >mark %set_scope rpar;
 scope := fills_scope >err(goto_breaking) %from(goto_breaking);
 
@@ -145,7 +144,7 @@ separator := colon >err(err_colon) %from(goto_description);
 
 ## todo > error management
 ## todo > set description
-description := ws+ any* >mark %set_description >eof{fmt.Println("FINE")};
+description := ws+ >err(err_description_init) any+ >mark %set_description >eof{fmt.Println("FINE")};
 
 # a machine that consumes the rest of the line when parsing fails
 ## todo > remove if unneded
