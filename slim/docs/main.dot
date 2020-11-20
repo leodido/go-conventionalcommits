@@ -83,7 +83,6 @@ digraph conventionalcommits {
 	eof_75;
 	eof_76;
 	eof_77;
-	eof_78;
 	eof_86;
 	eof_87;
 	node [ shape = circle, height = 0.2 ];
@@ -430,7 +429,6 @@ digraph conventionalcommits {
 	75 -> eof_75 [ label = "EOF / goto_separator" ];
 	76 -> eof_76 [ label = "EOF / err_colon" ];
 	77 -> eof_77 [ label = "EOF / err_description_init" ];
-	78 -> eof_78 [ label = "EOF / 147:79" ];
 	86 -> eof_86 [ label = "EOF / set_description" ];
-	87 -> eof_87 [ label = "EOF / 147:79, set_description" ];
+	87 -> eof_87 [ label = "EOF / set_description" ];
 }

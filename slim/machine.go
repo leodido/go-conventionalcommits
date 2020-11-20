@@ -21,7 +21,7 @@ const (
 	// ErrEarly represents an error when the input makes the machine exit too early.
 	ErrEarly = "early exit after '%s' character"
 	// ErrDescriptionInit tells the user that before of the description part a whitespace is mandatory.
-	ErrDescriptionInit = "expecting at least one white-space character, got '%s' character"
+	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
 )
 
 const start int = 1
@@ -72,13 +72,6 @@ func NewMachine(options ...conventionalcommits.MachineOption) conventionalcommit
 	}
 
 	return m
-}
-
-// Err returns the last error occurred.
-//
-// If the result is nil, then the parsing was successfull.
-func (m *machine) Err() error {
-	return m.err
 }
 
 // Parse parses the input byte array as a Conventional Commit message with no body neither footer.
@@ -1853,7 +1846,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 				m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit)
 
-			case 86:
+			case 86, 87:
 
 				output.descr = string(m.text())
 
@@ -1874,13 +1867,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 				{
 					goto st76
 				}
-
-			case 78:
-				fmt.Println("FINE")
-			case 87:
-				fmt.Println("FINE")
-
-				output.descr = string(m.text())
 
 			}
 		}

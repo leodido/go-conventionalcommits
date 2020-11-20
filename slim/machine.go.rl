@@ -142,16 +142,12 @@ breaking := signals_breaking_change >err(goto_separator) %from(goto_separator);
 
 separator := colon >err(err_colon) %from(goto_description);
 
-## todo > error management
-## todo > set description
-description := ws+ >err(err_description_init) any+ >mark %set_description >eof{fmt.Println("FINE")};
+description := ws+ >err(err_description_init) any+ >mark %set_description;
 
 # a machine that consumes the rest of the line when parsing fails
-## todo > remove if unneded
 fail := (any - [\n\r])*;
 
 ## todo > option to limit the total length
-## main := type scope? (exclamation >mark %set_exclamation)? colon ws desc;
 main := any >select_types >eof(err_empty);
 
 }%%
@@ -199,13 +195,6 @@ func NewMachine(options ...conventionalcommits.MachineOption) conventionalcommit
 	%% variable data m.data;
 
 	return m
-}
-
-// Err returns the last error occurred.
-//
-// If the result is nil, then the parsing was successfull.
-func (m *machine) Err() error {
-	return m.err
 }
 
 // Parse parses the input byte array as a Conventional Commit message with no body neither footer.
