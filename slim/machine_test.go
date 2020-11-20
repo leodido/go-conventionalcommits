@@ -70,7 +70,7 @@ var testCases = []testCase{
 		false,
 		nil,
 		nil, // no partial result because it is not a minimal valid commit message
-		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "x", 3),
+		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "x", 2),
 	},
 	// INVALID / missing colon after type feat
 	{
@@ -79,9 +79,9 @@ var testCases = []testCase{
 		false,
 		nil,
 		nil, // no partial result because it is not a minimal valid commit message
-		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "t", 4),
+		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "t", 3),
 	},
-	// INVALID / INVALID type (2 char) + colon
+	// INVALID / invalid type (2 char) + colon
 	{
 		"invalid-type-2-char-colon",
 		[]byte("fi:"),
@@ -90,7 +90,7 @@ var testCases = []testCase{
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, ":", 2),
 	},
-	// INVALID / INVALID type (3 char) + colon
+	// INVALID / invalid type (3 char) + colon
 	{
 		"invalid-type-3-char-colon",
 		[]byte("fea:"),
@@ -98,6 +98,43 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, ":", 3),
+	},
+	// VALID / minimal commit message
+	{
+		"valid-minimal-commit-message",
+		[]byte("fix: x"),
+		true,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Description: "x",
+			},
+		},
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Description: "x",
+			},
+		},
+		"",
+	},
+	// INVALID / missing colon after valid commit message type
+	{
+		"missing-colon-after-type-3-chars",
+		[]byte("fix>"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ">", 3),
+	},
+	// INVALID / missing colon after valid commit message type
+	{
+		"missing-colon-after-type-4-chars",
+		[]byte("feat?"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 4),
 	},
 }
 
@@ -109,7 +146,23 @@ func TestMachineBestEffortOption(t *testing.T) {
 	assert.True(t, p2.HasBestEffort())
 }
 
+func TestMachineTypeConfigOption(t *testing.T) {
+	p := NewMachine(WithTypes(conventionalcommits.TypesFalco))
+	mes, err := p.Parse([]byte("new: ciao"))
+
+	res := &ConventionalCommit{
+		Minimal: conventionalcommits.Minimal{
+			Type:        "new",
+			Description: "ciao",
+		},
+	}
+
+	assert.NoError(t, err)
+	assert.Equal(t, res, mes)
+}
+
 func TestMachineParse(t *testing.T) {
+	fmt.Println("CIAONE")
 	runner(t, testCases)
 }
 
@@ -134,6 +187,7 @@ func runner(t *testing.T, cases []testCase, machineOpts ...conventionalcommits.M
 				assert.Nil(t, messageErr)
 				assert.NotEmpty(t, message)
 				assert.Equal(t, message, partial)
+				assert.Equal(t, tc.partialValue, partial)
 				assert.Equal(t, messageErr, partialErr)
 			}
 
