@@ -13,11 +13,13 @@ const (
 	// ErrType represents an error in the type part of the commit message.
 	ErrType = "illegal '%s' character in commit message type"
 	// ErrColon is the error message that communicate that the mandatory colon after the type part of the commit message is missing.
-	ErrColon = "missing colon (':') after '%s' character"
+	ErrColon = "expecting colon (':') character, got '%s' character"
 	// ErrTypeIncomplete represents an error in the type part of the commit message.
 	ErrTypeIncomplete = "incomplete commit message type after '%s' character"
 	// ErrEmpty represents an error when the input is empty.
 	ErrEmpty = "empty input"
+	// ErrEarly ..
+	ErrEarly = "early exit after '%s' character"
 )
 
 %%{
@@ -35,8 +37,7 @@ action mark {
 # Error management
 
 action err_empty {
-	m.err = fmt.Errorf(ErrEmpty+ColumnPositionTemplate, m.p)
-	fhold;
+	m.err = m.emitErrorWithoutCharacter(ErrEmpty)
 }
 
 action err_type {
@@ -48,9 +49,14 @@ action err_type {
 }
 
 action err_colon {
-	m.err = m.emitErrorOnPreviousCharacter(ErrColon);
-	fhold;
-	fgoto fail;
+	m.err = m.emitErrorOnCurrentCharacter(ErrColon);
+}
+
+action check_early_exit {
+	if (m.p + 1) == m.pe {
+		m.err = m.emitErrorOnCurrentCharacter(ErrEarly);
+		fgoto fail;
+	}
 }
 
 # Setters
@@ -74,25 +80,44 @@ action set_exclamation {
 # Moving actions
 
 action goto_scope {
+	fmt.Println("goto scope")
 	fhold;
 	fgoto scope;
 }
 
 action goto_breaking {
+	fmt.Println("goto breaking")
 	fhold;
 	fgoto breaking;
 }
 
 action goto_separator {
+	fmt.Println("goto separator")
 	fhold;
 	fgoto separator;
+}
+
+action goto_description {
+	fmt.Println("goto description")
+	fhold;
+	fgoto description;
 }
 
 # Selection actions
 
 action select_types {
 	fhold;
-	fnext minimal_types;
+	switch m.typeConfig {
+	case conventionalcommits.TypesMinimal:
+		fnext minimal_types;
+		break
+	case conventionalcommits.TypesConventional:
+		fnext conventional_types;
+		break
+	case conventionalcommits.TypesFalco:
+		fnext falco_types;
+		break
+	}
 }
 
 # Machine definitions
@@ -100,19 +125,25 @@ action select_types {
 ## todo > how to configure these? ideally, at runtime...
 ## type = ('fix' | 'feat') >mark %set_type <err(err_type) >eof(err_empty);
 
-minimal_types := ('fix' | 'feat') >mark %set_type <>err(err_type) %goto_scope;
+## %set_type is probably uneeded
+
+minimal_types := ('fix' | 'feat') >mark %set_type <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
+
+conventional_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'refactor' | 'revert' | 'style' | 'test') >mark %set_type <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
+
+falco_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'new' | 'revert' | 'update' | 'test' | 'rule' ) >mark %set_type <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
 
 ## todo > option to exclude whitespaces and parentheses from valid scope corpus
 ## todo > error management
-scope := (op any* >mark %set_scope cp)? %goto_breaking;
+scope := (lpar any* >mark %set_scope rpar)? %from(goto_breaking);
 
-breaking := (exclamation >mark %set_exclamation)? %goto_separator;
+breaking := (exclamation >mark %set_exclamation)? %from(goto_separator);
 
-separator := colon >err(err_colon);
+separator := colon >err(err_colon) %from(goto_description);
 
 ## todo > error management
 ## todo > set description
-desc = any* >mark %set_description;
+description := ws+ any* >mark %set_description >eof{fmt.Println("FINE")};
 
 # a machine that consumes the rest of the line when parsing fails
 ## todo > remove if unneded
@@ -133,10 +164,15 @@ type machine struct {
 	pb           int
 	err          error
 	bestEffort   bool
+	typeConfig   conventionalcommits.TypeConfig
 }
 
 func (m *machine) text() []byte {
 	return m.data[m.pb:m.p]
+}
+
+func (m *machine) emitErrorWithoutCharacter(messageTemplate string) error {
+	return fmt.Errorf(messageTemplate + ColumnPositionTemplate, m.p)
 }
 
 func (m *machine) emitErrorOnCurrentCharacter(messageTemplate string) error {
@@ -209,4 +245,9 @@ func (m *machine) WithBestEffort() {
 // HasBestEffort tells whether the receiving machine has best effort mode on or off.
 func (m *machine) HasBestEffort() bool {
 	return m.bestEffort
+}
+
+// WithTypes ...
+func (m *machine) WithTypes(t conventionalcommits.TypeConfig) {
+	m.typeConfig = t
 }
