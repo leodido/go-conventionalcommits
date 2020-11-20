@@ -137,7 +137,7 @@ var testCases = []testCase{
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 4),
 	},
-	// VALID // type + scope + description
+	// VALID / type + scope + description
 	{
 		"valid-with-scope",
 		[]byte("fix(aaa): bbb"),
@@ -158,7 +158,7 @@ var testCases = []testCase{
 		},
 		"",
 	},
-	// VALID // type + scope + breaking + description
+	// VALID / type + scope + breaking + description
 	{
 		"valid-breaking-with-scope",
 		[]byte("fix(aaa)!: bbb"),
@@ -175,6 +175,67 @@ var testCases = []testCase{
 			Minimal: conventionalcommits.Minimal{
 				Type:        "fix",
 				Scope:       cctesting.StringAddress("aaa"),
+				Description: "bbb",
+				Exclamation: true,
+			},
+		},
+		"",
+	},
+	// VALID / empty scope is ignored
+	{
+		"valid-empty-scope-is-ignored",
+		[]byte("fix(): bbb"),
+		true,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Description: "bbb",
+			},
+		},
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Description: "bbb",
+			},
+		},
+		"",
+	},
+	// VALID / type + empty scope + breaking + description
+	{
+		"valid-breaking-with-empty-scope",
+		[]byte("fix()!: bbb"),
+		true,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Description: "bbb",
+				Exclamation: true,
+			},
+		},
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Description: "bbb",
+				Exclamation: true,
+			},
+		},
+		"",
+	},
+	// VALID / type + breaking + description
+	{
+		"valid-breaking-without-scope",
+		[]byte("fix!: bbb"),
+		true,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Description: "bbb",
+				Exclamation: true,
+			},
+		},
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
 				Description: "bbb",
 				Exclamation: true,
 			},
