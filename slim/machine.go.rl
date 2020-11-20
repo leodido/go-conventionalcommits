@@ -135,7 +135,7 @@ falco_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'n
 
 ## todo > option to exclude whitespaces and parentheses from valid scope corpus
 ## todo > error management
-fills_scope = lpar ((any+ -- lpar) -- rpar) >mark %set_scope rpar;
+fills_scope = lpar ((any* -- lpar) -- rpar) >mark %set_scope rpar;
 scope := fills_scope >err(goto_breaking) %from(goto_breaking);
 
 signals_breaking_change = exclamation >set_exclamation;
