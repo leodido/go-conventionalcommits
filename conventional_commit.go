@@ -1,5 +1,24 @@
 package conventionalcommits
 
+// TypeConfig represent the set of types the parser should use.
+type TypeConfig int
+
+const (
+	// TypesMinimal is the minimal set of types.
+	TypesMinimal TypeConfig = iota
+	// TypesConventional represents the conventional set of types.
+	// See https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional
+	TypesConventional
+	// TypesFalco represents the set of types that Falco uses for its release notes.
+	// See https://github.com/falcosecurity/falco
+	TypesFalco
+)
+
+// TypeConfigurer ...
+type TypeConfigurer interface {
+	WithTypes(t TypeConfig)
+}
+
 // BestEfforter is an interface that wraps the HasBestEffort method.
 type BestEfforter interface {
 	WithBestEffort()
@@ -10,6 +29,7 @@ type BestEfforter interface {
 type Machine interface {
 	Parse(input []byte) (Message, error)
 	BestEfforter
+	TypeConfigurer
 }
 
 // MachineOption represents the type of option setters for Machine instances.
