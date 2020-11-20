@@ -158,6 +158,27 @@ var testCases = []testCase{
 		},
 		"",
 	},
+	// VALID / type + scope + multiple whitespaces + description
+	{
+		"valid-with-scope-multiple-whitespaces",
+		[]byte("fix(aaa):          bbb"),
+		true,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Scope:       cctesting.StringAddress("aaa"),
+				Description: "bbb",
+			},
+		},
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Scope:       cctesting.StringAddress("aaa"),
+				Description: "bbb",
+			},
+		},
+		"",
+	},
 	// VALID / type + scope + breaking + description
 	{
 		"valid-breaking-with-scope",
@@ -241,6 +262,42 @@ var testCases = []testCase{
 			},
 		},
 		"",
+	},
+	// INVALID / missing whitespace after colon (with breaking)
+	{
+		"invalid-missing-ws-after-colon-with-breaking",
+		[]byte("fix!:a"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 5),
+	},
+	// INVALID / missing whitespace after colon with scope
+	{
+		"invalid-missing-ws-after-colon-with-scope",
+		[]byte("fix(x):a"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 7),
+	},
+	// INVALID / missing whitespace after colon with empty scope
+	{
+		"invalid-missing-ws-after-colon-with-empty-scope",
+		[]byte("fix():a"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 6),
+	},
+	// INVALID / missing whitespace after colon
+	{
+		"invalid-missing-ws-after-colon",
+		[]byte("fix:a"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 4),
 	},
 }
 
