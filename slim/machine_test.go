@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/leodido/go-conventionalcommits"
+	cctesting "github.com/leodido/go-conventionalcommits/testing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -136,6 +137,93 @@ var testCases = []testCase{
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 4),
 	},
+	// VALID // type + scope + description
+	{
+		"valid-with-scope",
+		[]byte("fix(aaa): bbb"),
+		true,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Scope:       cctesting.StringAddress("aaa"),
+				Description: "bbb",
+			},
+		},
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Scope:       cctesting.StringAddress("aaa"),
+				Description: "bbb",
+			},
+		},
+		"",
+	},
+	// VALID // type + scope + breaking + description
+	{
+		"valid-breaking-with-scope",
+		[]byte("fix(aaa)!: bbb"),
+		true,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Scope:       cctesting.StringAddress("aaa"),
+				Description: "bbb",
+				Exclamation: true,
+			},
+		},
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "fix",
+				Scope:       cctesting.StringAddress("aaa"),
+				Description: "bbb",
+				Exclamation: true,
+			},
+		},
+		"",
+	},
+}
+
+func TestMachineParse(t *testing.T) {
+	fmt.Println("CIAONE")
+	runner(t, testCases)
+}
+
+func runner(t *testing.T, cases []testCase, machineOpts ...conventionalcommits.MachineOption) {
+	t.Helper()
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.title, func(t *testing.T) {
+			message, messageErr := NewMachine(machineOpts...).Parse(tc.input)
+			partial, partialErr := NewMachine(append(machineOpts, WithBestEffort())...).Parse(tc.input)
+
+			if !tc.ok {
+				// We expect the test case input to be an invalid commit message
+				assert.Nil(t, message)
+				assert.Error(t, messageErr)
+				assert.EqualError(t, messageErr, tc.errorString)
+
+				// In this case can happen that with best effort mode o
+				// the result is not nil rather it contains a minimal valid result
+				if partial != nil {
+					assert.True(t, partial.Ok())
+				}
+				assert.Equal(t, tc.partialValue, partial)
+				assert.EqualError(t, partialErr, tc.errorString)
+			} else {
+				// We expect the test case intput to be a valid commit message
+				assert.Nil(t, messageErr)
+				assert.NotEmpty(t, message)
+				assert.True(t, message.Ok())
+				assert.Equal(t, message, partial)
+				assert.Equal(t, tc.partialValue, partial)
+				assert.Equal(t, messageErr, partialErr)
+			}
+
+			assert.Equal(t, tc.value, message)
+		})
+	}
 }
 
 func TestMachineBestEffortOption(t *testing.T) {
@@ -159,39 +247,4 @@ func TestMachineTypeConfigOption(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, res, mes)
-}
-
-func TestMachineParse(t *testing.T) {
-	fmt.Println("CIAONE")
-	runner(t, testCases)
-}
-
-func runner(t *testing.T, cases []testCase, machineOpts ...conventionalcommits.MachineOption) {
-	t.Helper()
-
-	for _, tc := range cases {
-		tc := tc
-
-		t.Run(tc.title, func(t *testing.T) {
-			message, messageErr := NewMachine(machineOpts...).Parse(tc.input)
-			partial, partialErr := NewMachine(append(machineOpts, WithBestEffort())...).Parse(tc.input)
-
-			if !tc.ok {
-				assert.Nil(t, message)
-				assert.Error(t, messageErr)
-				assert.EqualError(t, messageErr, tc.errorString)
-
-				assert.Equal(t, tc.partialValue, partial)
-				assert.EqualError(t, partialErr, tc.errorString)
-			} else {
-				assert.Nil(t, messageErr)
-				assert.NotEmpty(t, message)
-				assert.Equal(t, message, partial)
-				assert.Equal(t, tc.partialValue, partial)
-				assert.Equal(t, messageErr, partialErr)
-			}
-
-			assert.Equal(t, tc.value, message)
-		})
-	}
 }
