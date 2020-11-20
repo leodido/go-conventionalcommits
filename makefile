@@ -6,8 +6,9 @@ build: slim/machine.go
 	@gofmt -w -s ./slim
 
 .PHONY: clean
-clean: slim/machine.go
-	@$(RM) $?
+clean:
+	@$(RM) slim/machine.go
+	@$(RM) -R slim/docs
 
 .PHONY: dots
 dots:
