@@ -333,6 +333,7 @@ digraph conventionalcommits {
 	72 -> 73 [ label = "'('" ];
 	72 -> err_72 [ label = "DEF / goto_breaking" ];
 	73 -> 74 [ label = "0..''', '*'..255 / mark" ];
+	73 -> 82 [ label = "')' / mark, set_scope" ];
 	74 -> 74 [ label = "0..''', '*'..255" ];
 	74 -> 82 [ label = "')' / set_scope" ];
 	75 -> 83 [ label = "'!' / set_exclamation" ];
