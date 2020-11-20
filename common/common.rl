@@ -3,9 +3,9 @@ machine common;
 
 ws = ' ';
 
-op = '(';
+lpar = '(';
 
-cp = ')';
+rpar = ')';
 
 colon = 0x3A;
 
