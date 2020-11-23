@@ -351,6 +351,24 @@ var testCases = []testCase{
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 11),
 	},
+	// INVALID / invalid after valid type, scope, breaking, colon, and white-space
+	{
+		"invalid-after-valid-type-scope-breaking-colon-and-space",
+		[]byte("fix(scope)!: "),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 13),
+	},
+	// INVALID / invalid after valid type, scope, breaking, colon, and white-spaces
+	{
+		"invalid-after-valid-type-scope-breaking-colon-and-spaces",
+		[]byte("fix(scope)!:  "),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 14),
+	},
 }
 
 var testCasesForFalcoTypes = []testCase{
@@ -747,5 +765,23 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 11),
+	},
+	// INVALID / invalid after valid type, scope, breaking, colon, and white-space
+	{
+		"invalid-after-valid-type-scope-breaking-colon-and-space",
+		[]byte("revert(scope)!: "),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 16),
+	},
+	// INVALID / invalid after valid type, scope, breaking, colon, and white-spaces
+	{
+		"invalid-after-valid-type-scope-breaking-colon-and-spaces",
+		[]byte("ci(scope)!:  "),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 13),
 	},
 }

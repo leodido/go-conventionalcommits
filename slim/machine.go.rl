@@ -22,6 +22,8 @@ const (
 	ErrEarly = "early exit after '%s' character"
 	// ErrDescriptionInit tells the user that before of the description part a whitespace is mandatory.
 	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
+	// ErrDescription tells the user that after the whitespace is mandatory a description.
+	ErrDescription = "expecting a description after '%s' character"
 )
 
 %%{
@@ -56,6 +58,10 @@ action err_colon {
 
 action err_description_init {
 	m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit);
+}
+
+action err_description {
+	m.err = m.emitErrorOnPreviousCharacter(ErrDescription);
 }
 
 action check_early_exit {
@@ -142,7 +148,8 @@ breaking := signals_breaking_change >err(goto_separator) %from(goto_separator) %
 
 separator := colon >err(err_colon) %from(goto_description) %to(check_early_exit);
 
-description := ws+ >err(err_description_init) any+ >mark %set_description;
+## todo > strict option to enforce a single whitespace?
+description := ws+ >err(err_description_init) <: any+ >mark >err(err_description) %set_description;
 
 # a machine that consumes the rest of the line when parsing fails
 fail := (any - [\n\r])*;

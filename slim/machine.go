@@ -22,6 +22,8 @@ const (
 	ErrEarly = "early exit after '%s' character"
 	// ErrDescriptionInit tells the user that before of the description part a whitespace is mandatory.
 	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
+	// ErrDescription tells the user that after the whitespace is mandatory a description.
+	ErrDescription = "expecting a description after '%s' character"
 )
 
 const start int = 1
@@ -34,7 +36,7 @@ const enScope int = 72
 const enBreaking int = 75
 const enSeparator int = 76
 const enDescription int = 77
-const enFail int = 88
+const enFail int = 87
 const enMain int = 1
 
 type machine struct {
@@ -278,8 +280,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto st86
 		case 87:
 			goto st87
-		case 88:
-			goto st88
 		}
 
 		if (m.p)++; (m.p) == (m.pe) {
@@ -463,8 +463,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase86
 		case 87:
 			goto stCase87
-		case 88:
-			goto stCase88
 		}
 		goto stOut
 	st1:
@@ -589,7 +587,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		if (m.p + 1) == m.pe {
 			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
 			{
-				goto st88
+				goto st87
 			}
 		}
 
@@ -687,7 +685,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		if (m.p + 1) == m.pe {
 			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
 			{
-				goto st88
+				goto st87
 			}
 		}
 
@@ -1074,7 +1072,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		if (m.p + 1) == m.pe {
 			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
 			{
-				goto st88
+				goto st87
 			}
 		}
 
@@ -1440,7 +1438,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		if (m.p + 1) == m.pe {
 			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
 			{
-				goto st88
+				goto st87
 			}
 		}
 
@@ -1476,7 +1474,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		if (m.p + 1) == m.pe {
 			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
 			{
-				goto st88
+				goto st87
 			}
 		}
 
@@ -1507,7 +1505,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		if (m.p + 1) == m.pe {
 			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
 			{
-				goto st88
+				goto st87
 			}
 		}
 
@@ -1539,7 +1537,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	stCase78:
 		if (m.data)[(m.p)] == 32 {
-			goto tr86
+			goto st78
 		}
 		goto tr85
 	tr85:
@@ -1553,32 +1551,18 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	stCase86:
 		goto st86
-	tr86:
-
-		m.pb = m.p
-
-		goto st87
 	st87:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof87
 		}
 	stCase87:
-		if (m.data)[(m.p)] == 32 {
-			goto tr86
-		}
-		goto tr85
-	st88:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof88
-		}
-	stCase88:
 		switch (m.data)[(m.p)] {
 		case 10:
 			goto st0
 		case 13:
 			goto st0
 		}
-		goto st88
+		goto st87
 	stOut:
 	_testEof1:
 		m.cs = 1
@@ -1841,9 +1825,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof87:
 		m.cs = 87
 		goto _testEof
-	_testEof88:
-		m.cs = 88
-		goto _testEof
 
 	_testEof:
 		{
@@ -1870,7 +1851,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 				m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit)
 
-			case 86, 87:
+			case 78:
+
+				m.err = m.emitErrorOnPreviousCharacter(ErrDescription)
+
+			case 86:
 
 				output.descr = string(m.text())
 
