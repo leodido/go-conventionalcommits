@@ -138,9 +138,9 @@ fills_scope = lpar ((any* -- lpar) -- rpar) >mark %set_scope rpar;
 scope := fills_scope >err(goto_breaking) %from(goto_breaking) %to(check_early_exit);
 
 signals_breaking_change = exclamation >set_exclamation;
-breaking := signals_breaking_change >err(goto_separator) %from(goto_separator);
+breaking := signals_breaking_change >err(goto_separator) %from(goto_separator) %to(check_early_exit);
 
-separator := colon >err(err_colon) %from(goto_description);
+separator := colon >err(err_colon) %from(goto_description) %to(check_early_exit);
 
 description := ws+ >err(err_description_init) any+ >mark %set_description;
 

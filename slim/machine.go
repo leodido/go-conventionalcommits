@@ -1472,6 +1472,14 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		goto st84
 	st84:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+			{
+				goto st88
+			}
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof84
 		}
@@ -1495,6 +1503,14 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 		goto tr81
 	st85:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+			{
+				goto st88
+			}
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof85
 		}
