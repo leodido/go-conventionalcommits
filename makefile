@@ -1,6 +1,8 @@
 SHELL := /bin/bash
 RAGEL := ragel -I common
 
+export GO_TEST=env GOTRACEBACK=all GO111MODULE=on go test $(GO_ARGS)
+
 .PHONY: build
 build: slim/machine.go
 	@gofmt -w -s ./slim
@@ -38,3 +40,7 @@ slim/machine.go:
 	$(RAGEL) -Z -G2 -e -o $@ $<
 	@sed -i '/^\/\/line/d' $@
 	$(MAKE) file=$@ snake2camel
+
+.PHONY: tests
+tests:
+	$(GO_TEST) ./...
