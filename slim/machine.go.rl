@@ -128,14 +128,14 @@ action select_types {
 
 # Machine definitions
 
-minimal_types := ('fix' | 'feat') >mark <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
+minimal_types := ('fix' | 'feat') >mark @err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
 
-conventional_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'refactor' | 'revert' | 'style' | 'test') >mark <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
+conventional_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'refactor' | 'revert' | 'style' | 'test') >mark @err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
 
-falco_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'new' | 'revert' | 'update' | 'test' | 'rule' ) >mark <>err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
+falco_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'new' | 'revert' | 'update' | 'test' | 'rule' ) >mark @err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
 
 fills_scope = lpar ((any* -- lpar) -- rpar) >mark %set_scope rpar;
-scope := fills_scope >err(goto_breaking) %from(goto_breaking);
+scope := fills_scope >err(goto_breaking) %from(goto_breaking) %to(check_early_exit);
 
 signals_breaking_change = exclamation >set_exclamation;
 breaking := signals_breaking_change >err(goto_separator) %from(goto_separator);
