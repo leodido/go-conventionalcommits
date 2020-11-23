@@ -324,6 +324,33 @@ var testCases = []testCase{
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, " ", 1),
 	},
+	// INVALID / invalid after valid type, scope, and breaking
+	{
+		"invalid-after-valid-type-scope-and-breaking",
+		[]byte("fix(scope)!"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "!", 10),
+	},
+	// INVALID / invalid after valid type, scope, and colon
+	{
+		"invalid-after-valid-type-scope-and-colon",
+		[]byte("fix(scope):"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 10),
+	},
+	// INVALID / invalid after valid type, scope, breaking, and colon
+	{
+		"invalid-after-valid-type-scope-breaking-and-colon",
+		[]byte("fix(scope)!:"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 11),
+	},
 }
 
 var testCasesForFalcoTypes = []testCase{
@@ -693,5 +720,32 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, " ", 1),
+	},
+	// INVALID / invalid after valid type, scope, and breaking
+	{
+		"invalid-after-valid-type-scope-and-breaking",
+		[]byte("new(scope)!"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "!", 10),
+	},
+	// INVALID / invalid after valid type, scope, and colon
+	{
+		"invalid-after-valid-type-scope-and-colon",
+		[]byte("fix(scope):"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 10),
+	},
+	// INVALID / invalid after valid type, scope, breaking, and colon
+	{
+		"invalid-after-valid-type-scope-breaking-and-colon",
+		[]byte("new(scope)!:"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 11),
 	},
 }
