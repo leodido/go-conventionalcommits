@@ -432,6 +432,33 @@ var testCases = []testCase{
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "(", 8),
 	},
+	// INVALID / newline rather than whitespace in description
+	{
+		"invalid-newline-rather-than-whitespace-description",
+		[]byte("feat(az):\x0A description on newline"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "\n", 9),
+	},
+	// INVALID / newline after whitespace in description
+	{
+		"invalid-newline-after-whitespace-description",
+		[]byte("feat(az): \x0Adescription on newline"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 10),
+	},
+	// INVALID / newline in the description
+	{
+		"invalid-newline-in-description",
+		[]byte("feat(az): new\x0Aline"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "w", 13),
+	},
 }
 
 var testCasesForFalcoTypes = []testCase{
@@ -918,5 +945,32 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "(", 7),
+	},
+	// INVALID / newline rather than whitespace in description
+	{
+		"invalid-newline-rather-than-whitespace-description",
+		[]byte("perf(ax):\x0A description on newline"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "\n", 9),
+	},
+	// INVALID / newline after whitespace in description
+	{
+		"invalid-newline-after-whitespace-description",
+		[]byte("feat(az): \x0Adescription on newline"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 10),
+	},
+	// INVALID / newline in the description
+	{
+		"invalid-newline-in-description",
+		[]byte("feat(az): new\x0Aline"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "w", 13),
 	},
 }
