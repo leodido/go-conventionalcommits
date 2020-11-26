@@ -44,6 +44,15 @@ var testCases = []testCase{
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "x", 1),
 	},
+	// INVALID / invalid type (2 char) with almost valid type
+	{
+		"invalid-type-2-char-feat",
+		[]byte("fe"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "e", 2),
+	},
 	// INVALID / invalid type (3 char)
 	{
 		"invalid-type-3-char",
@@ -52,6 +61,24 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "t", 2),
+	},
+	// INVALID / invalid type (3 char) again
+	{
+		"invalid-type-3-char-feat",
+		[]byte("fei"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrType+ColumnPositionTemplate, "i", 2),
+	},
+	// INVALID / invalid type (3 char) with almost valid type
+	{
+		"invalid-type-3-char-feat",
+		[]byte("fea"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "a", 3),
 	},
 	// INVALID / invalid type (4 char)
 	{
@@ -369,6 +396,42 @@ var testCases = []testCase{
 		nil,
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 14),
 	},
+	// INVALID / double left parentheses in scope
+	{
+		"invalid-double-left-parentheses-scope",
+		[]byte("fix(("),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 4),
+	},
+	// INVALID / double left parentheses in scope after valid character
+	{
+		"invalid-double-left-parentheses-scope-after-valid-character",
+		[]byte("fix(a("),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 5),
+	},
+	// INVALID / double right parentheses in place of an exclamation, or a colon
+	{
+		"invalid-double-right-parentheses-scope",
+		[]byte("fix(a))"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ")", 6),
+	},
+	// INVALID / new left parentheses after valid scope
+	{
+		"invalid-new-left-parentheses-after-valid-scope",
+		[]byte("feat(az)("),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "(", 8),
+	},
 }
 
 var testCasesForFalcoTypes = []testCase{
@@ -399,14 +462,50 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "x", 1),
 	},
-	// INVALID / invalid type (3 char)
+	// INVALID / invalid type (2 char) with almost valid type
 	{
-		"invalid-type-3-char",
-		[]byte("new"),
+		"invalid-type-2-char-feat",
+		[]byte("fe"),
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrType+ColumnPositionTemplate, "w", 2),
+		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "e", 2),
+	},
+	// INVALID / invalid type (2 char) with almost valid type
+	{
+		"invalid-type-2-char-revert",
+		[]byte("re"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "e", 2),
+	},
+	// INVALID / invalid type (3 char)
+	{
+		"invalid-type-3-char",
+		[]byte("net"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrType+ColumnPositionTemplate, "t", 2),
+	},
+	// INVALID / invalid type (3 char) again
+	{
+		"invalid-type-3-char-feat",
+		[]byte("fei"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrType+ColumnPositionTemplate, "i", 2),
+	},
+	// INVALID / invalid type (3 char) with almost valid type
+	{
+		"invalid-type-3-char-feat",
+		[]byte("bui"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "i", 3),
 	},
 	// INVALID / invalid type (4 char)
 	{
@@ -783,5 +882,41 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 13),
+	},
+	// INVALID / double left parentheses in scope
+	{
+		"invalid-double-left-parentheses-scope",
+		[]byte("chore(("),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 6),
+	},
+	// INVALID / double left parentheses in scope after valid character
+	{
+		"invalid-double-left-parentheses-scope-after-valid-character",
+		[]byte("perf(a("),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 6),
+	},
+	// INVALID / double right parentheses in place of an exclamation, or a colon
+	{
+		"invalid-double-right-parentheses-scope",
+		[]byte("fix(a))"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ")", 6),
+	},
+	// INVALID / new left parentheses after valid scope
+	{
+		"invalid-new-left-parentheses-after-valid-scope",
+		[]byte("new(az)("),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "(", 7),
 	},
 }

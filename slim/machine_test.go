@@ -13,8 +13,12 @@ func TestMachineParse(t *testing.T) {
 }
 
 func TestMachineParseWithFalcoTypes(t *testing.T) {
-	runner(t, "falcotypes", testCases, WithTypes(conventionalcommits.TypesFalco))
+	runner(t, "falcotypes", testCasesForFalcoTypes, WithTypes(conventionalcommits.TypesFalco))
 }
+
+// func TestMachineParseWithConventionalTypes(t *testing.T) {
+// 	runner(t, "conventionaltypes", testCasesForConventionalTypes, WithTypes(conventionalcommits.TypesConventional))
+// }
 
 func runner(t *testing.T, label string, cases []testCase, machineOpts ...conventionalcommits.MachineOption) {
 	t.Helper()
