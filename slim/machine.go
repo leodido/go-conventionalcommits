@@ -16,6 +16,8 @@ const (
 	ErrColon = "expecting colon (':') character, got '%s' character"
 	// ErrTypeIncomplete represents an error in the type part of the commit message.
 	ErrTypeIncomplete = "incomplete commit message type after '%s' character"
+	// ErrMalformedScope represents an error about illegal characters into the the scope part of the commit message.
+	ErrMalformedScope = "illegal '%s' character in scope"
 	// ErrEmpty represents an error when the input is empty.
 	ErrEmpty = "empty input"
 	// ErrEarly represents an error when the input makes the machine exit too early.
@@ -27,17 +29,11 @@ const (
 )
 
 const start int = 1
-const firstFinal int = 79
+const firstFinal int = 92
 
-const enMinimalTypes int = 2
-const enConventionalTypes int = 7
-const enFalcoTypes int = 40
-const enScope int = 72
-const enBreaking int = 75
-const enSeparator int = 76
-const enDescription int = 77
-const enFail int = 87
 const enMain int = 1
+const enConventionalTypesMain int = 13
+const enFalcoTypesMain int = 53
 
 type machine struct {
 	data       []byte
@@ -92,205 +88,31 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.err = nil
 	output := &conventionalCommit{}
 
-	{
-		m.cs = start
+	switch m.typeConfig {
+	case conventionalcommits.TypesConventional:
+		m.cs = enConventionalTypesMain
+		break
+	case conventionalcommits.TypesFalco:
+		m.cs = enFalcoTypesMain
+		break
+	case conventionalcommits.TypesMinimal:
+		fallthrough
+	default:
+
+		{
+			m.cs = start
+		}
+
+		break
 	}
 
 	{
 		if (m.p) == (m.pe) {
 			goto _testEof
 		}
-		goto _resume
-
-	_again:
-		switch m.cs {
-		case 1:
-			goto st1
-		case 79:
-			goto st79
-		case 0:
-			goto st0
-		case 2:
-			goto st2
-		case 3:
-			goto st3
-		case 4:
-			goto st4
-		case 5:
-			goto st5
-		case 80:
-			goto st80
-		case 6:
-			goto st6
-		case 7:
-			goto st7
-		case 8:
-			goto st8
-		case 9:
-			goto st9
-		case 10:
-			goto st10
-		case 11:
-			goto st11
-		case 81:
-			goto st81
-		case 12:
-			goto st12
-		case 13:
-			goto st13
-		case 14:
-			goto st14
-		case 15:
-			goto st15
-		case 16:
-			goto st16
-		case 17:
-			goto st17
-		case 18:
-			goto st18
-		case 19:
-			goto st19
-		case 20:
-			goto st20
-		case 21:
-			goto st21
-		case 22:
-			goto st22
-		case 23:
-			goto st23
-		case 24:
-			goto st24
-		case 25:
-			goto st25
-		case 26:
-			goto st26
-		case 27:
-			goto st27
-		case 28:
-			goto st28
-		case 29:
-			goto st29
-		case 30:
-			goto st30
-		case 31:
-			goto st31
-		case 32:
-			goto st32
-		case 33:
-			goto st33
-		case 34:
-			goto st34
-		case 35:
-			goto st35
-		case 36:
-			goto st36
-		case 37:
-			goto st37
-		case 38:
-			goto st38
-		case 39:
-			goto st39
-		case 40:
-			goto st40
-		case 41:
-			goto st41
-		case 42:
-			goto st42
-		case 43:
-			goto st43
-		case 44:
-			goto st44
-		case 82:
-			goto st82
-		case 45:
-			goto st45
-		case 46:
-			goto st46
-		case 47:
-			goto st47
-		case 48:
-			goto st48
-		case 49:
-			goto st49
-		case 50:
-			goto st50
-		case 51:
-			goto st51
-		case 52:
-			goto st52
-		case 53:
-			goto st53
-		case 54:
-			goto st54
-		case 55:
-			goto st55
-		case 56:
-			goto st56
-		case 57:
-			goto st57
-		case 58:
-			goto st58
-		case 59:
-			goto st59
-		case 60:
-			goto st60
-		case 61:
-			goto st61
-		case 62:
-			goto st62
-		case 63:
-			goto st63
-		case 64:
-			goto st64
-		case 65:
-			goto st65
-		case 66:
-			goto st66
-		case 67:
-			goto st67
-		case 68:
-			goto st68
-		case 69:
-			goto st69
-		case 70:
-			goto st70
-		case 71:
-			goto st71
-		case 72:
-			goto st72
-		case 73:
-			goto st73
-		case 74:
-			goto st74
-		case 83:
-			goto st83
-		case 75:
-			goto st75
-		case 84:
-			goto st84
-		case 76:
-			goto st76
-		case 85:
-			goto st85
-		case 77:
-			goto st77
-		case 78:
-			goto st78
-		case 86:
-			goto st86
-		case 87:
-			goto st87
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof
-		}
-	_resume:
 		switch m.cs {
 		case 1:
 			goto stCase1
-		case 79:
-			goto stCase79
 		case 0:
 			goto stCase0
 		case 2:
@@ -301,22 +123,20 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase4
 		case 5:
 			goto stCase5
-		case 80:
-			goto stCase80
 		case 6:
 			goto stCase6
 		case 7:
 			goto stCase7
 		case 8:
 			goto stCase8
+		case 92:
+			goto stCase92
 		case 9:
 			goto stCase9
 		case 10:
 			goto stCase10
 		case 11:
 			goto stCase11
-		case 81:
-			goto stCase81
 		case 12:
 			goto stCase12
 		case 13:
@@ -337,6 +157,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase20
 		case 21:
 			goto stCase21
+		case 93:
+			goto stCase93
 		case 22:
 			goto stCase22
 		case 23:
@@ -383,8 +205,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase43
 		case 44:
 			goto stCase44
-		case 82:
-			goto stCase82
 		case 45:
 			goto stCase45
 		case 46:
@@ -419,6 +239,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase60
 		case 61:
 			goto stCase61
+		case 94:
+			goto stCase94
 		case 62:
 			goto stCase62
 		case 63:
@@ -445,386 +267,407 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase73
 		case 74:
 			goto stCase74
-		case 83:
-			goto stCase83
 		case 75:
 			goto stCase75
-		case 84:
-			goto stCase84
 		case 76:
 			goto stCase76
-		case 85:
-			goto stCase85
 		case 77:
 			goto stCase77
 		case 78:
 			goto stCase78
+		case 79:
+			goto stCase79
+		case 80:
+			goto stCase80
+		case 81:
+			goto stCase81
+		case 82:
+			goto stCase82
+		case 83:
+			goto stCase83
+		case 84:
+			goto stCase84
+		case 85:
+			goto stCase85
 		case 86:
 			goto stCase86
 		case 87:
 			goto stCase87
+		case 88:
+			goto stCase88
+		case 89:
+			goto stCase89
+		case 90:
+			goto stCase90
+		case 91:
+			goto stCase91
 		}
 		goto stOut
-	st1:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof1
-		}
 	stCase1:
+		if (m.data)[(m.p)] == 102 {
+			goto tr1
+		}
 		goto tr0
 	tr0:
-		m.cs = 79
 
-		(m.p)--
-
-		switch m.typeConfig {
-		case conventionalcommits.TypesMinimal:
-			m.cs = 2
-			break
-		case conventionalcommits.TypesConventional:
-			m.cs = 7
-			break
-		case conventionalcommits.TypesFalco:
-			m.cs = 40
-			break
-		}
-
-		goto _again
-	st79:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof79
-		}
-	stCase79:
-		goto st0
-	tr1:
-
-		if m.p != m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrType)
-		} else {
-			m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
+		if m.pe > 0 {
+			if m.p != m.pe {
+				m.err = m.emitErrorOnCurrentCharacter(ErrType)
+			} else {
+				m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
+			}
 		}
 
 		goto st0
-	tr72:
+	tr6:
 
-		fmt.Println("goto breaking")
-		(m.p)--
-
-		{
-			goto st75
+		if m.err == nil {
+			m.err = m.emitErrorOnCurrentCharacter(ErrColon)
 		}
 
 		goto st0
-	tr79:
+	tr10:
 
-		fmt.Println("goto separator")
-		(m.p)--
-
-		{
-			goto st76
+		if m.err == nil {
+			m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit)
 		}
 
 		goto st0
-	tr81:
+	tr14:
 
-		m.err = m.emitErrorOnCurrentCharacter(ErrColon)
-
-		goto st0
-	tr83:
-
-		m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit)
+		m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
 
 		goto st0
 	stCase0:
 	st0:
 		m.cs = 0
 		goto _out
+	tr1:
+
+		m.pb = m.p
+
+		goto st2
 	st2:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof2
 		}
 	stCase2:
-		if (m.data)[(m.p)] == 102 {
-			goto tr2
+		switch (m.data)[(m.p)] {
+		case 101:
+			goto st3
+		case 105:
+			goto st12
 		}
-		goto tr1
-	tr2:
-
-		m.pb = m.p
-
-		goto st3
+		goto tr0
 	st3:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof3
 		}
 	stCase3:
-		switch (m.data)[(m.p)] {
-		case 101:
+		if (m.data)[(m.p)] == 97 {
 			goto st4
-		case 105:
-			goto st6
 		}
-		goto tr1
+		goto tr0
 	st4:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof4
 		}
 	stCase4:
-		if (m.data)[(m.p)] == 97 {
+		if (m.data)[(m.p)] == 116 {
 			goto st5
 		}
-		goto tr1
+		goto tr0
 	st5:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof5
 		}
 	stCase5:
-		if (m.data)[(m.p)] == 116 {
-			goto st80
-		}
-		goto tr1
-	st80:
-
-		if (m.p + 1) == m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
-			{
-				goto st87
-			}
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof80
-		}
-	stCase80:
 
 		output._type = string(m.text())
 
-		fmt.Println("goto scope")
-		(m.p)--
+		switch (m.data)[(m.p)] {
+		case 33:
+			goto tr7
+		case 40:
+			goto st9
+		case 58:
+			goto st7
+		}
+		goto tr6
+	tr7:
 
-		{
-			goto st72
+		output.exclamation = true
+
+		goto st6
+	st6:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
 		}
 
-		goto st0
-	st6:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof6
 		}
 	stCase6:
-		if (m.data)[(m.p)] == 120 {
-			goto st80
+		if (m.data)[(m.p)] == 58 {
+			goto st7
 		}
-		goto tr1
+		goto tr6
 	st7:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof7
 		}
 	stCase7:
-		switch (m.data)[(m.p)] {
-		case 98:
-			goto tr7
-		case 99:
-			goto tr8
-		case 100:
-			goto tr9
-		case 102:
-			goto tr10
-		case 112:
-			goto tr11
-		case 114:
-			goto tr12
-		case 115:
-			goto tr13
-		case 116:
-			goto tr14
+		if (m.data)[(m.p)] == 32 {
+			goto st8
 		}
-		goto tr1
-	tr7:
-
-		m.pb = m.p
-
-		goto st8
+		goto tr10
 	st8:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof8
 		}
 	stCase8:
-		if (m.data)[(m.p)] == 117 {
-			goto st9
+		if (m.data)[(m.p)] == 32 {
+			goto st8
 		}
-		goto tr1
+		goto tr12
+	tr12:
+
+		m.pb = m.p
+
+		goto st92
+	st92:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof92
+		}
+	stCase92:
+		goto st92
 	st9:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof9
 		}
 	stCase9:
-		if (m.data)[(m.p)] == 105 {
-			goto st10
+		switch (m.data)[(m.p)] {
+		case 40:
+			goto tr14
+		case 41:
+			goto tr15
 		}
-		goto tr1
+		goto tr13
+	tr13:
+
+		m.pb = m.p
+
+		goto st10
 	st10:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof10
 		}
 	stCase10:
-		if (m.data)[(m.p)] == 108 {
-			goto st11
+		switch (m.data)[(m.p)] {
+		case 40:
+			goto tr14
+		case 41:
+			goto tr17
 		}
-		goto tr1
+		goto st10
+	tr15:
+
+		m.pb = m.p
+
+		output.scope = string(m.text())
+
+		goto st11
+	tr17:
+
+		output.scope = string(m.text())
+
+		goto st11
 	st11:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof11
 		}
 	stCase11:
-		if (m.data)[(m.p)] == 100 {
-			goto st81
+		switch (m.data)[(m.p)] {
+		case 33:
+			goto tr7
+		case 58:
+			goto st7
 		}
-		goto tr1
-	st81:
-
-		if (m.p + 1) == m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
-			{
-				goto st87
-			}
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof81
-		}
-	stCase81:
-
-		output._type = string(m.text())
-
-		fmt.Println("goto scope")
-		(m.p)--
-
-		{
-			goto st72
-		}
-
-		goto st0
-	tr8:
-
-		m.pb = m.p
-
-		goto st12
+		goto tr6
 	st12:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof12
 		}
 	stCase12:
-		switch (m.data)[(m.p)] {
-		case 104:
-			goto st13
-		case 105:
-			goto st81
+		if (m.data)[(m.p)] == 120 {
+			goto st5
 		}
-		goto tr1
-	st13:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof13
-		}
+		goto tr0
 	stCase13:
-		if (m.data)[(m.p)] == 111 {
-			goto st14
+		switch (m.data)[(m.p)] {
+		case 98:
+			goto tr18
+		case 99:
+			goto tr19
+		case 100:
+			goto tr20
+		case 102:
+			goto tr21
+		case 112:
+			goto tr22
+		case 114:
+			goto tr23
+		case 115:
+			goto tr24
+		case 116:
+			goto tr25
 		}
-		goto tr1
+		goto tr0
+	tr18:
+
+		m.pb = m.p
+
+		goto st14
 	st14:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof14
 		}
 	stCase14:
-		if (m.data)[(m.p)] == 114 {
+		if (m.data)[(m.p)] == 117 {
 			goto st15
 		}
-		goto tr1
+		goto tr0
 	st15:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof15
 		}
 	stCase15:
-		if (m.data)[(m.p)] == 101 {
-			goto st81
+		if (m.data)[(m.p)] == 105 {
+			goto st16
 		}
-		goto tr1
-	tr9:
-
-		m.pb = m.p
-
-		goto st16
+		goto tr0
 	st16:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof16
 		}
 	stCase16:
-		if (m.data)[(m.p)] == 111 {
+		if (m.data)[(m.p)] == 108 {
 			goto st17
 		}
-		goto tr1
+		goto tr0
 	st17:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof17
 		}
 	stCase17:
-		if (m.data)[(m.p)] == 99 {
+		if (m.data)[(m.p)] == 100 {
 			goto st18
 		}
-		goto tr1
+		goto tr0
 	st18:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof18
 		}
 	stCase18:
-		if (m.data)[(m.p)] == 115 {
-			goto st81
-		}
-		goto tr1
-	tr10:
 
-		m.pb = m.p
+		output._type = string(m.text())
+
+		switch (m.data)[(m.p)] {
+		case 33:
+			goto tr30
+		case 40:
+			goto st22
+		case 58:
+			goto st20
+		}
+		goto tr6
+	tr30:
+
+		output.exclamation = true
 
 		goto st19
 	st19:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof19
 		}
 	stCase19:
-		switch (m.data)[(m.p)] {
-		case 101:
+		if (m.data)[(m.p)] == 58 {
 			goto st20
-		case 105:
-			goto st22
 		}
-		goto tr1
+		goto tr6
 	st20:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof20
 		}
 	stCase20:
-		if (m.data)[(m.p)] == 97 {
+		if (m.data)[(m.p)] == 32 {
 			goto st21
 		}
-		goto tr1
+		goto tr10
 	st21:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof21
 		}
 	stCase21:
-		if (m.data)[(m.p)] == 116 {
-			goto st81
+		if (m.data)[(m.p)] == 32 {
+			goto st21
 		}
-		goto tr1
+		goto tr34
+	tr34:
+
+		m.pb = m.p
+
+		goto st93
+	st93:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof93
+		}
+	stCase93:
+		goto st93
 	st22:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof22
 		}
 	stCase22:
-		if (m.data)[(m.p)] == 120 {
-			goto st81
+		switch (m.data)[(m.p)] {
+		case 40:
+			goto tr14
+		case 41:
+			goto tr36
 		}
-		goto tr1
-	tr11:
+		goto tr35
+	tr35:
 
 		m.pb = m.p
 
@@ -834,713 +677,763 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof23
 		}
 	stCase23:
-		if (m.data)[(m.p)] == 101 {
-			goto st24
+		switch (m.data)[(m.p)] {
+		case 40:
+			goto tr14
+		case 41:
+			goto tr38
 		}
-		goto tr1
+		goto st23
+	tr36:
+
+		m.pb = m.p
+
+		output.scope = string(m.text())
+
+		goto st24
+	tr38:
+
+		output.scope = string(m.text())
+
+		goto st24
 	st24:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof24
 		}
 	stCase24:
-		if (m.data)[(m.p)] == 114 {
-			goto st25
+		switch (m.data)[(m.p)] {
+		case 33:
+			goto tr30
+		case 58:
+			goto st20
 		}
-		goto tr1
+		goto tr6
+	tr19:
+
+		m.pb = m.p
+
+		goto st25
 	st25:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof25
 		}
 	stCase25:
-		if (m.data)[(m.p)] == 102 {
-			goto st81
+		switch (m.data)[(m.p)] {
+		case 104:
+			goto st26
+		case 105:
+			goto st18
 		}
-		goto tr1
-	tr12:
-
-		m.pb = m.p
-
-		goto st26
+		goto tr0
 	st26:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof26
 		}
 	stCase26:
-		if (m.data)[(m.p)] == 101 {
+		if (m.data)[(m.p)] == 111 {
 			goto st27
 		}
-		goto tr1
+		goto tr0
 	st27:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof27
 		}
 	stCase27:
-		switch (m.data)[(m.p)] {
-		case 102:
+		if (m.data)[(m.p)] == 114 {
 			goto st28
-		case 118:
-			goto st33
 		}
-		goto tr1
+		goto tr0
 	st28:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof28
 		}
 	stCase28:
-		if (m.data)[(m.p)] == 97 {
-			goto st29
+		if (m.data)[(m.p)] == 101 {
+			goto st18
 		}
-		goto tr1
+		goto tr0
+	tr20:
+
+		m.pb = m.p
+
+		goto st29
 	st29:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof29
 		}
 	stCase29:
-		if (m.data)[(m.p)] == 99 {
+		if (m.data)[(m.p)] == 111 {
 			goto st30
 		}
-		goto tr1
+		goto tr0
 	st30:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof30
 		}
 	stCase30:
-		if (m.data)[(m.p)] == 116 {
+		if (m.data)[(m.p)] == 99 {
 			goto st31
 		}
-		goto tr1
+		goto tr0
 	st31:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof31
 		}
 	stCase31:
-		if (m.data)[(m.p)] == 111 {
-			goto st32
+		if (m.data)[(m.p)] == 115 {
+			goto st18
 		}
-		goto tr1
+		goto tr0
+	tr21:
+
+		m.pb = m.p
+
+		goto st32
 	st32:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof32
 		}
 	stCase32:
-		if (m.data)[(m.p)] == 114 {
-			goto st81
+		switch (m.data)[(m.p)] {
+		case 101:
+			goto st33
+		case 105:
+			goto st35
 		}
-		goto tr1
+		goto tr0
 	st33:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof33
 		}
 	stCase33:
-		if (m.data)[(m.p)] == 101 {
+		if (m.data)[(m.p)] == 97 {
 			goto st34
 		}
-		goto tr1
+		goto tr0
 	st34:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof34
 		}
 	stCase34:
-		if (m.data)[(m.p)] == 114 {
-			goto st21
+		if (m.data)[(m.p)] == 116 {
+			goto st18
 		}
-		goto tr1
-	tr13:
-
-		m.pb = m.p
-
-		goto st35
+		goto tr0
 	st35:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof35
 		}
 	stCase35:
-		if (m.data)[(m.p)] == 116 {
-			goto st36
+		if (m.data)[(m.p)] == 120 {
+			goto st18
 		}
-		goto tr1
+		goto tr0
+	tr22:
+
+		m.pb = m.p
+
+		goto st36
 	st36:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof36
 		}
 	stCase36:
-		if (m.data)[(m.p)] == 121 {
+		if (m.data)[(m.p)] == 101 {
 			goto st37
 		}
-		goto tr1
+		goto tr0
 	st37:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof37
 		}
 	stCase37:
-		if (m.data)[(m.p)] == 108 {
-			goto st15
+		if (m.data)[(m.p)] == 114 {
+			goto st38
 		}
-		goto tr1
-	tr14:
-
-		m.pb = m.p
-
-		goto st38
+		goto tr0
 	st38:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof38
 		}
 	stCase38:
-		if (m.data)[(m.p)] == 101 {
-			goto st39
+		if (m.data)[(m.p)] == 102 {
+			goto st18
 		}
-		goto tr1
+		goto tr0
+	tr23:
+
+		m.pb = m.p
+
+		goto st39
 	st39:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof39
 		}
 	stCase39:
-		if (m.data)[(m.p)] == 115 {
-			goto st21
+		if (m.data)[(m.p)] == 101 {
+			goto st40
 		}
-		goto tr1
+		goto tr0
 	st40:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof40
 		}
 	stCase40:
 		switch (m.data)[(m.p)] {
-		case 98:
-			goto tr40
-		case 99:
-			goto tr41
-		case 100:
-			goto tr42
 		case 102:
-			goto tr43
-		case 110:
-			goto tr44
-		case 112:
-			goto tr45
-		case 114:
-			goto tr46
-		case 116:
-			goto tr47
-		case 117:
-			goto tr48
+			goto st41
+		case 118:
+			goto st46
 		}
-		goto tr1
-	tr40:
-
-		m.pb = m.p
-
-		goto st41
+		goto tr0
 	st41:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof41
 		}
 	stCase41:
-		if (m.data)[(m.p)] == 117 {
+		if (m.data)[(m.p)] == 97 {
 			goto st42
 		}
-		goto tr1
+		goto tr0
 	st42:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof42
 		}
 	stCase42:
-		if (m.data)[(m.p)] == 105 {
+		if (m.data)[(m.p)] == 99 {
 			goto st43
 		}
-		goto tr1
+		goto tr0
 	st43:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof43
 		}
 	stCase43:
-		if (m.data)[(m.p)] == 108 {
+		if (m.data)[(m.p)] == 116 {
 			goto st44
 		}
-		goto tr1
+		goto tr0
 	st44:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof44
 		}
 	stCase44:
-		if (m.data)[(m.p)] == 100 {
-			goto st82
+		if (m.data)[(m.p)] == 111 {
+			goto st45
 		}
-		goto tr1
-	st82:
-
-		if (m.p + 1) == m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
-			{
-				goto st87
-			}
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof82
-		}
-	stCase82:
-
-		output._type = string(m.text())
-
-		fmt.Println("goto scope")
-		(m.p)--
-
-		{
-			goto st72
-		}
-
-		goto st0
-	tr41:
-
-		m.pb = m.p
-
-		goto st45
+		goto tr0
 	st45:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof45
 		}
 	stCase45:
-		switch (m.data)[(m.p)] {
-		case 104:
-			goto st46
-		case 105:
-			goto st82
+		if (m.data)[(m.p)] == 114 {
+			goto st18
 		}
-		goto tr1
+		goto tr0
 	st46:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof46
 		}
 	stCase46:
-		if (m.data)[(m.p)] == 111 {
+		if (m.data)[(m.p)] == 101 {
 			goto st47
 		}
-		goto tr1
+		goto tr0
 	st47:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof47
 		}
 	stCase47:
 		if (m.data)[(m.p)] == 114 {
-			goto st48
+			goto st34
 		}
-		goto tr1
+		goto tr0
+	tr24:
+
+		m.pb = m.p
+
+		goto st48
 	st48:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof48
 		}
 	stCase48:
-		if (m.data)[(m.p)] == 101 {
-			goto st82
+		if (m.data)[(m.p)] == 116 {
+			goto st49
 		}
-		goto tr1
-	tr42:
-
-		m.pb = m.p
-
-		goto st49
+		goto tr0
 	st49:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof49
 		}
 	stCase49:
-		if (m.data)[(m.p)] == 111 {
+		if (m.data)[(m.p)] == 121 {
 			goto st50
 		}
-		goto tr1
+		goto tr0
 	st50:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof50
 		}
 	stCase50:
-		if (m.data)[(m.p)] == 99 {
-			goto st51
+		if (m.data)[(m.p)] == 108 {
+			goto st28
 		}
-		goto tr1
+		goto tr0
+	tr25:
+
+		m.pb = m.p
+
+		goto st51
 	st51:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof51
 		}
 	stCase51:
-		if (m.data)[(m.p)] == 115 {
-			goto st82
+		if (m.data)[(m.p)] == 101 {
+			goto st52
 		}
-		goto tr1
-	tr43:
-
-		m.pb = m.p
-
-		goto st52
+		goto tr0
 	st52:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof52
 		}
 	stCase52:
-		switch (m.data)[(m.p)] {
-		case 101:
-			goto st53
-		case 105:
-			goto st55
+		if (m.data)[(m.p)] == 115 {
+			goto st34
 		}
-		goto tr1
-	st53:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof53
-		}
+		goto tr0
 	stCase53:
-		if (m.data)[(m.p)] == 97 {
-			goto st54
+		switch (m.data)[(m.p)] {
+		case 98:
+			goto tr60
+		case 99:
+			goto tr61
+		case 100:
+			goto tr62
+		case 102:
+			goto tr63
+		case 110:
+			goto tr64
+		case 112:
+			goto tr65
+		case 114:
+			goto tr66
+		case 116:
+			goto tr67
+		case 117:
+			goto tr68
 		}
-		goto tr1
+		goto tr0
+	tr60:
+
+		m.pb = m.p
+
+		goto st54
 	st54:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof54
 		}
 	stCase54:
-		if (m.data)[(m.p)] == 116 {
-			goto st82
+		if (m.data)[(m.p)] == 117 {
+			goto st55
 		}
-		goto tr1
+		goto tr0
 	st55:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof55
 		}
 	stCase55:
-		if (m.data)[(m.p)] == 120 {
-			goto st82
+		if (m.data)[(m.p)] == 105 {
+			goto st56
 		}
-		goto tr1
-	tr44:
-
-		m.pb = m.p
-
-		goto st56
+		goto tr0
 	st56:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof56
 		}
 	stCase56:
-		if (m.data)[(m.p)] == 101 {
+		if (m.data)[(m.p)] == 108 {
 			goto st57
 		}
-		goto tr1
+		goto tr0
 	st57:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof57
 		}
 	stCase57:
-		if (m.data)[(m.p)] == 119 {
-			goto st82
+		if (m.data)[(m.p)] == 100 {
+			goto st58
 		}
-		goto tr1
-	tr45:
-
-		m.pb = m.p
-
-		goto st58
+		goto tr0
 	st58:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof58
 		}
 	stCase58:
-		if (m.data)[(m.p)] == 101 {
-			goto st59
+
+		output._type = string(m.text())
+
+		switch (m.data)[(m.p)] {
+		case 33:
+			goto tr73
+		case 40:
+			goto st62
+		case 58:
+			goto st60
 		}
-		goto tr1
+		goto tr6
+	tr73:
+
+		output.exclamation = true
+
+		goto st59
 	st59:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof59
 		}
 	stCase59:
-		if (m.data)[(m.p)] == 114 {
+		if (m.data)[(m.p)] == 58 {
 			goto st60
 		}
-		goto tr1
+		goto tr6
 	st60:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof60
 		}
 	stCase60:
-		if (m.data)[(m.p)] == 102 {
-			goto st82
+		if (m.data)[(m.p)] == 32 {
+			goto st61
 		}
-		goto tr1
-	tr46:
-
-		m.pb = m.p
-
-		goto st61
+		goto tr10
 	st61:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof61
 		}
 	stCase61:
-		switch (m.data)[(m.p)] {
-		case 101:
-			goto st62
-		case 117:
-			goto st65
+		if (m.data)[(m.p)] == 32 {
+			goto st61
 		}
-		goto tr1
+		goto tr77
+	tr77:
+
+		m.pb = m.p
+
+		goto st94
+	st94:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof94
+		}
+	stCase94:
+		goto st94
 	st62:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof62
 		}
 	stCase62:
-		if (m.data)[(m.p)] == 118 {
-			goto st63
+		switch (m.data)[(m.p)] {
+		case 40:
+			goto tr14
+		case 41:
+			goto tr79
 		}
-		goto tr1
+		goto tr78
+	tr78:
+
+		m.pb = m.p
+
+		goto st63
 	st63:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof63
 		}
 	stCase63:
-		if (m.data)[(m.p)] == 101 {
-			goto st64
+		switch (m.data)[(m.p)] {
+		case 40:
+			goto tr14
+		case 41:
+			goto tr81
 		}
-		goto tr1
+		goto st63
+	tr79:
+
+		m.pb = m.p
+
+		output.scope = string(m.text())
+
+		goto st64
+	tr81:
+
+		output.scope = string(m.text())
+
+		goto st64
 	st64:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof64
 		}
 	stCase64:
-		if (m.data)[(m.p)] == 114 {
-			goto st54
+		switch (m.data)[(m.p)] {
+		case 33:
+			goto tr73
+		case 58:
+			goto st60
 		}
-		goto tr1
+		goto tr6
+	tr61:
+
+		m.pb = m.p
+
+		goto st65
 	st65:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof65
 		}
 	stCase65:
-		if (m.data)[(m.p)] == 108 {
-			goto st48
+		switch (m.data)[(m.p)] {
+		case 104:
+			goto st66
+		case 105:
+			goto st58
 		}
-		goto tr1
-	tr47:
-
-		m.pb = m.p
-
-		goto st66
+		goto tr0
 	st66:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof66
 		}
 	stCase66:
-		if (m.data)[(m.p)] == 101 {
+		if (m.data)[(m.p)] == 111 {
 			goto st67
 		}
-		goto tr1
+		goto tr0
 	st67:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof67
 		}
 	stCase67:
-		if (m.data)[(m.p)] == 115 {
-			goto st54
+		if (m.data)[(m.p)] == 114 {
+			goto st68
 		}
-		goto tr1
-	tr48:
-
-		m.pb = m.p
-
-		goto st68
+		goto tr0
 	st68:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof68
 		}
 	stCase68:
-		if (m.data)[(m.p)] == 112 {
-			goto st69
+		if (m.data)[(m.p)] == 101 {
+			goto st58
 		}
-		goto tr1
+		goto tr0
+	tr62:
+
+		m.pb = m.p
+
+		goto st69
 	st69:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof69
 		}
 	stCase69:
-		if (m.data)[(m.p)] == 100 {
+		if (m.data)[(m.p)] == 111 {
 			goto st70
 		}
-		goto tr1
+		goto tr0
 	st70:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof70
 		}
 	stCase70:
-		if (m.data)[(m.p)] == 97 {
+		if (m.data)[(m.p)] == 99 {
 			goto st71
 		}
-		goto tr1
+		goto tr0
 	st71:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof71
 		}
 	stCase71:
-		if (m.data)[(m.p)] == 116 {
-			goto st48
+		if (m.data)[(m.p)] == 115 {
+			goto st58
 		}
-		goto tr1
+		goto tr0
+	tr63:
+
+		m.pb = m.p
+
+		goto st72
 	st72:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof72
 		}
 	stCase72:
-		if (m.data)[(m.p)] == 40 {
+		switch (m.data)[(m.p)] {
+		case 101:
 			goto st73
+		case 105:
+			goto st75
 		}
-		goto tr72
+		goto tr0
 	st73:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof73
 		}
 	stCase73:
-		switch (m.data)[(m.p)] {
-		case 40:
-			goto st0
-		case 41:
-			goto tr75
+		if (m.data)[(m.p)] == 97 {
+			goto st74
 		}
-		goto tr74
-	tr74:
-
-		m.pb = m.p
-
-		goto st74
+		goto tr0
 	st74:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof74
 		}
 	stCase74:
-		switch (m.data)[(m.p)] {
-		case 40:
-			goto st0
-		case 41:
-			goto tr78
+		if (m.data)[(m.p)] == 116 {
+			goto st58
 		}
-		goto st74
-	tr75:
-
-		m.pb = m.p
-
-		output.scope = string(m.text())
-
-		goto st83
-	tr78:
-
-		output.scope = string(m.text())
-
-		goto st83
-	st83:
-
-		if (m.p + 1) == m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
-			{
-				goto st87
-			}
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof83
-		}
-	stCase83:
-
-		fmt.Println("goto breaking")
-		(m.p)--
-
-		{
-			goto st75
-		}
-
-		goto st0
+		goto tr0
 	st75:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof75
 		}
 	stCase75:
-		if (m.data)[(m.p)] == 33 {
-			goto tr80
+		if (m.data)[(m.p)] == 120 {
+			goto st58
 		}
-		goto tr79
-	tr80:
+		goto tr0
+	tr64:
 
-		output.exclamation = true
+		m.pb = m.p
 
-		goto st84
-	st84:
-
-		if (m.p + 1) == m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
-			{
-				goto st87
-			}
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof84
-		}
-	stCase84:
-
-		fmt.Println("goto separator")
-		(m.p)--
-
-		{
-			goto st76
-		}
-
-		goto st0
+		goto st76
 	st76:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof76
 		}
 	stCase76:
-		if (m.data)[(m.p)] == 58 {
-			goto st85
-		}
-		goto tr81
-	st85:
-
-		if (m.p + 1) == m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
-			{
-				goto st87
-			}
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof85
-		}
-	stCase85:
-
-		fmt.Println("goto description")
-		(m.p)--
-
-		{
+		if (m.data)[(m.p)] == 101 {
 			goto st77
 		}
-
-		goto st0
+		goto tr0
 	st77:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof77
 		}
 	stCase77:
-		if (m.data)[(m.p)] == 32 {
-			goto st78
+		if (m.data)[(m.p)] == 119 {
+			goto st58
 		}
-		goto tr83
+		goto tr0
+	tr65:
+
+		m.pb = m.p
+
+		goto st78
 	st78:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof78
 		}
 	stCase78:
-		if (m.data)[(m.p)] == 32 {
-			goto st78
+		if (m.data)[(m.p)] == 101 {
+			goto st79
 		}
-		goto tr85
-	tr85:
+		goto tr0
+	st79:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof79
+		}
+	stCase79:
+		if (m.data)[(m.p)] == 114 {
+			goto st80
+		}
+		goto tr0
+	st80:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof80
+		}
+	stCase80:
+		if (m.data)[(m.p)] == 102 {
+			goto st58
+		}
+		goto tr0
+	tr66:
+
+		m.pb = m.p
+
+		goto st81
+	st81:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof81
+		}
+	stCase81:
+		switch (m.data)[(m.p)] {
+		case 101:
+			goto st82
+		case 117:
+			goto st85
+		}
+		goto tr0
+	st82:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof82
+		}
+	stCase82:
+		if (m.data)[(m.p)] == 118 {
+			goto st83
+		}
+		goto tr0
+	st83:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof83
+		}
+	stCase83:
+		if (m.data)[(m.p)] == 101 {
+			goto st84
+		}
+		goto tr0
+	st84:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof84
+		}
+	stCase84:
+		if (m.data)[(m.p)] == 114 {
+			goto st74
+		}
+		goto tr0
+	st85:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof85
+		}
+	stCase85:
+		if (m.data)[(m.p)] == 108 {
+			goto st68
+		}
+		goto tr0
+	tr67:
 
 		m.pb = m.p
 
@@ -1550,26 +1443,61 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof86
 		}
 	stCase86:
-		goto st86
+		if (m.data)[(m.p)] == 101 {
+			goto st87
+		}
+		goto tr0
 	st87:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof87
 		}
 	stCase87:
-		switch (m.data)[(m.p)] {
-		case 10:
-			goto st0
-		case 13:
-			goto st0
+		if (m.data)[(m.p)] == 115 {
+			goto st74
 		}
-		goto st87
+		goto tr0
+	tr68:
+
+		m.pb = m.p
+
+		goto st88
+	st88:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof88
+		}
+	stCase88:
+		if (m.data)[(m.p)] == 112 {
+			goto st89
+		}
+		goto tr0
+	st89:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof89
+		}
+	stCase89:
+		if (m.data)[(m.p)] == 100 {
+			goto st90
+		}
+		goto tr0
+	st90:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof90
+		}
+	stCase90:
+		if (m.data)[(m.p)] == 97 {
+			goto st91
+		}
+		goto tr0
+	st91:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof91
+		}
+	stCase91:
+		if (m.data)[(m.p)] == 116 {
+			goto st68
+		}
+		goto tr0
 	stOut:
-	_testEof1:
-		m.cs = 1
-		goto _testEof
-	_testEof79:
-		m.cs = 79
-		goto _testEof
 	_testEof2:
 		m.cs = 2
 		goto _testEof
@@ -1582,9 +1510,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof5:
 		m.cs = 5
 		goto _testEof
-	_testEof80:
-		m.cs = 80
-		goto _testEof
 	_testEof6:
 		m.cs = 6
 		goto _testEof
@@ -1593,6 +1518,9 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		goto _testEof
 	_testEof8:
 		m.cs = 8
+		goto _testEof
+	_testEof92:
+		m.cs = 92
 		goto _testEof
 	_testEof9:
 		m.cs = 9
@@ -1603,14 +1531,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof11:
 		m.cs = 11
 		goto _testEof
-	_testEof81:
-		m.cs = 81
-		goto _testEof
 	_testEof12:
 		m.cs = 12
-		goto _testEof
-	_testEof13:
-		m.cs = 13
 		goto _testEof
 	_testEof14:
 		m.cs = 14
@@ -1635,6 +1557,9 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		goto _testEof
 	_testEof21:
 		m.cs = 21
+		goto _testEof
+	_testEof93:
+		m.cs = 93
 		goto _testEof
 	_testEof22:
 		m.cs = 22
@@ -1705,9 +1630,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof44:
 		m.cs = 44
 		goto _testEof
-	_testEof82:
-		m.cs = 82
-		goto _testEof
 	_testEof45:
 		m.cs = 45
 		goto _testEof
@@ -1732,9 +1654,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof52:
 		m.cs = 52
 		goto _testEof
-	_testEof53:
-		m.cs = 53
-		goto _testEof
 	_testEof54:
 		m.cs = 54
 		goto _testEof
@@ -1758,6 +1677,9 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		goto _testEof
 	_testEof61:
 		m.cs = 61
+		goto _testEof
+	_testEof94:
+		m.cs = 94
 		goto _testEof
 	_testEof62:
 		m.cs = 62
@@ -1798,20 +1720,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof74:
 		m.cs = 74
 		goto _testEof
-	_testEof83:
-		m.cs = 83
-		goto _testEof
 	_testEof75:
 		m.cs = 75
 		goto _testEof
-	_testEof84:
-		m.cs = 84
-		goto _testEof
 	_testEof76:
 		m.cs = 76
-		goto _testEof
-	_testEof85:
-		m.cs = 85
 		goto _testEof
 	_testEof77:
 		m.cs = 77
@@ -1819,11 +1732,44 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof78:
 		m.cs = 78
 		goto _testEof
+	_testEof79:
+		m.cs = 79
+		goto _testEof
+	_testEof80:
+		m.cs = 80
+		goto _testEof
+	_testEof81:
+		m.cs = 81
+		goto _testEof
+	_testEof82:
+		m.cs = 82
+		goto _testEof
+	_testEof83:
+		m.cs = 83
+		goto _testEof
+	_testEof84:
+		m.cs = 84
+		goto _testEof
+	_testEof85:
+		m.cs = 85
+		goto _testEof
 	_testEof86:
 		m.cs = 86
 		goto _testEof
 	_testEof87:
 		m.cs = 87
+		goto _testEof
+	_testEof88:
+		m.cs = 88
+		goto _testEof
+	_testEof89:
+		m.cs = 89
+		goto _testEof
+	_testEof90:
+		m.cs = 90
+		goto _testEof
+	_testEof91:
+		m.cs = 91
 		goto _testEof
 
 	_testEof:
@@ -1831,50 +1777,50 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 		if (m.p) == (m.eof) {
 			switch m.cs {
-			case 1:
+			case 2, 3, 4, 12, 14, 15, 16, 17, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 54, 55, 56, 57, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91:
 
-				m.err = m.emitErrorWithoutCharacter(ErrEmpty)
-
-			case 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71:
-
-				if m.p != m.pe {
-					m.err = m.emitErrorOnCurrentCharacter(ErrType)
-				} else {
-					m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
+				if m.pe > 0 {
+					if m.p != m.pe {
+						m.err = m.emitErrorOnCurrentCharacter(ErrType)
+					} else {
+						m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
+					}
 				}
 
-			case 76:
+			case 9, 10, 22, 23, 62, 63:
 
-				m.err = m.emitErrorOnCurrentCharacter(ErrColon)
+				m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
 
-			case 77:
+			case 5, 6, 11, 18, 19, 24, 58, 59, 64:
 
-				m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit)
+				if m.err == nil {
+					m.err = m.emitErrorOnCurrentCharacter(ErrColon)
+				}
 
-			case 78:
+			case 7, 20, 60:
+
+				if m.err == nil {
+					m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit)
+				}
+
+			case 8, 21, 61:
 
 				m.err = m.emitErrorOnPreviousCharacter(ErrDescription)
 
-			case 86:
+			case 92, 93, 94:
 
 				output.descr = string(m.text())
 
-			case 72:
+			case 1, 13, 53:
 
-				fmt.Println("goto breaking")
-				(m.p)--
+				m.err = m.emitErrorWithoutCharacter(ErrEmpty)
 
-				{
-					goto st75
-				}
-
-			case 75:
-
-				fmt.Println("goto separator")
-				(m.p)--
-
-				{
-					goto st76
+				if m.pe > 0 {
+					if m.p != m.pe {
+						m.err = m.emitErrorOnCurrentCharacter(ErrType)
+					} else {
+						m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
+					}
 				}
 
 			}
@@ -1885,7 +1831,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	}
 
-	if m.cs < firstFinal || m.cs == enFail {
+	if m.cs < firstFinal {
 		if m.bestEffort && output.minimal() {
 			// An error occurred but partial parsing is on and partial message is minimally valid
 			return output.export(), m.err
