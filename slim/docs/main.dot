@@ -107,6 +107,7 @@ digraph conventionalcommits {
 	err_5 [ label=""];
 	err_6 [ label=""];
 	err_7 [ label=""];
+	err_8 [ label=""];
 	err_9 [ label=""];
 	err_10 [ label=""];
 	err_11 [ label=""];
@@ -119,6 +120,7 @@ digraph conventionalcommits {
 	err_18 [ label=""];
 	err_19 [ label=""];
 	err_20 [ label=""];
+	err_21 [ label=""];
 	err_22 [ label=""];
 	err_23 [ label=""];
 	err_24 [ label=""];
@@ -158,6 +160,7 @@ digraph conventionalcommits {
 	err_58 [ label=""];
 	err_59 [ label=""];
 	err_60 [ label=""];
+	err_61 [ label=""];
 	err_62 [ label=""];
 	err_63 [ label=""];
 	err_64 [ label=""];
@@ -188,6 +191,9 @@ digraph conventionalcommits {
 	err_89 [ label=""];
 	err_90 [ label=""];
 	err_91 [ label=""];
+	err_92 [ label=""];
+	err_93 [ label=""];
+	err_94 [ label=""];
 	node [ fixedsize = true, height = 0.65, shape = doublecircle ];
 	92;
 	93;
@@ -210,6 +216,7 @@ digraph conventionalcommits {
 	6 -> err_6 [ label = "DEF / err_colon" ];
 	7 -> 8 [ label = "SP" ];
 	7 -> err_7 [ label = "DEF / err_description_init" ];
+	8 -> err_8 [ label = "'\\n'..'\\r' / err_description" ];
 	8 -> 8 [ label = "SP" ];
 	8 -> 92 [ label = "DEF / mark" ];
 	9 -> err_9 [ label = "'(' / err_malformed_scope" ];
@@ -248,6 +255,7 @@ digraph conventionalcommits {
 	19 -> err_19 [ label = "DEF / err_colon" ];
 	20 -> 21 [ label = "SP" ];
 	20 -> err_20 [ label = "DEF / err_description_init" ];
+	21 -> err_21 [ label = "'\\n'..'\\r' / err_description" ];
 	21 -> 21 [ label = "SP" ];
 	21 -> 93 [ label = "DEF / mark" ];
 	22 -> err_22 [ label = "'(' / err_malformed_scope" ];
@@ -344,6 +352,7 @@ digraph conventionalcommits {
 	59 -> err_59 [ label = "DEF / err_colon" ];
 	60 -> 61 [ label = "SP" ];
 	60 -> err_60 [ label = "DEF / err_description_init" ];
+	61 -> err_61 [ label = "'\\n'..'\\r' / err_description" ];
 	61 -> 61 [ label = "SP" ];
 	61 -> 94 [ label = "DEF / mark" ];
 	62 -> err_62 [ label = "'(' / err_malformed_scope" ];
@@ -412,8 +421,11 @@ digraph conventionalcommits {
 	90 -> err_90 [ label = "DEF / err_type" ];
 	91 -> 68 [ label = "'t'" ];
 	91 -> err_91 [ label = "DEF / err_type" ];
+	92 -> err_92 [ label = "'\\n'..'\\r' / err_description" ];
 	92 -> 92 [ label = "DEF" ];
+	93 -> err_93 [ label = "'\\n'..'\\r' / err_description" ];
 	93 -> 93 [ label = "DEF" ];
+	94 -> err_94 [ label = "'\\n'..'\\r' / err_description" ];
 	94 -> 94 [ label = "DEF" ];
 	ENTRY -> 1 [ label = "IN" ];
 	en_1 -> 1 [ label = "main" ];
