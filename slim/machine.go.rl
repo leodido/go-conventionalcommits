@@ -16,6 +16,8 @@ const (
 	ErrColon = "expecting colon (':') character, got '%s' character"
 	// ErrTypeIncomplete represents an error in the type part of the commit message.
 	ErrTypeIncomplete = "incomplete commit message type after '%s' character"
+	// ErrMalformedScope represents an error about illegal characters into the the scope part of the commit message.
+	ErrMalformedScope = "illegal '%s' character in scope"
 	// ErrEmpty represents an error when the input is empty.
 	ErrEmpty = "empty input"
 	// ErrEarly represents an error when the input makes the machine exit too early.
@@ -45,19 +47,29 @@ action err_empty {
 }
 
 action err_type {
-	if m.p != m.pe {
-		m.err = m.emitErrorOnCurrentCharacter(ErrType)
-	} else {
-		m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
+	if m.pe > 0 {
+		if m.p != m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrType)
+		} else {
+			m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
+		}
 	}
 }
 
+action err_malformed_scope {
+	m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
+}
+
 action err_colon {
-	m.err = m.emitErrorOnCurrentCharacter(ErrColon);
+	if m.err == nil {
+		m.err = m.emitErrorOnCurrentCharacter(ErrColon);
+	}
 }
 
 action err_description_init {
-	m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit);
+	if m.err == nil {
+		m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit);
+	}
 }
 
 action err_description {
@@ -67,7 +79,6 @@ action err_description {
 action check_early_exit {
 	if (m.p + 1) == m.pe {
 		m.err = m.emitErrorOnCurrentCharacter(ErrEarly);
-		fgoto fail;
 	}
 }
 
@@ -89,73 +100,39 @@ action set_exclamation {
 	output.exclamation = true
 }
 
-# Moving actions
-
-action goto_scope {
-	fmt.Println("goto scope")
-	fhold;
-	fgoto scope;
-}
-
-action goto_breaking {
-	fmt.Println("goto breaking")
-	fhold;
-	fgoto breaking;
-}
-
-action goto_separator {
-	fmt.Println("goto separator")
-	fhold;
-	fgoto separator;
-}
-
-action goto_description {
-	fmt.Println("goto description")
-	fhold;
-	fgoto description;
-}
-
-# Selection actions
-
-action select_types {
-	fhold;
-	switch m.typeConfig {
-	case conventionalcommits.TypesMinimal:
-		fnext minimal_types;
-		break
-	case conventionalcommits.TypesConventional:
-		fnext conventional_types;
-		break
-	case conventionalcommits.TypesFalco:
-		fnext falco_types;
-		break
-	}
-}
-
 # Machine definitions
 
-minimal_types := ('fix' | 'feat') >mark @err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
+minimal_types = ('fix' | 'feat');
 
-conventional_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'refactor' | 'revert' | 'style' | 'test') >mark @err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
+conventional_types = ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'refactor' | 'revert' | 'style' | 'test');
 
-falco_types := ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'new' | 'revert' | 'update' | 'test' | 'rule' ) >mark @err(err_type) %from(set_type) %from(goto_scope) %to(check_early_exit);
+falco_types = ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'new' | 'revert' | 'update' | 'test' | 'rule' );
 
-fills_scope = lpar ((any* -- lpar) -- rpar) >mark %set_scope rpar;
-scope := fills_scope >err(goto_breaking) %from(goto_breaking) %to(check_early_exit);
+scope = lpar ((any* -- lpar) -- rpar) >mark %err(err_malformed_scope) %set_scope rpar;
 
-signals_breaking_change = exclamation >set_exclamation;
-breaking := signals_breaking_change >err(goto_separator) %from(goto_separator) %to(check_early_exit);
-
-separator := colon >err(err_colon) %from(goto_description) %to(check_early_exit);
+breaking = exclamation >set_exclamation;
 
 ## todo > strict option to enforce a single whitespace?
-description := ws+ >err(err_description_init) <: any+ >mark >err(err_description) %set_description;
-
-# a machine that consumes the rest of the line when parsing fails
-fail := (any - [\n\r])*;
+description = ws+ >err(err_description_init) <: any+ >mark >err(err_description) %set_description;
 
 ## todo > option to limit the total length
-main := any >select_types >eof(err_empty);
+main := minimal_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
+	scope? %to(check_early_exit)
+	breaking? %to(check_early_exit)
+	colon >err(err_colon) %to(check_early_exit)
+	description;
+
+conventional_types_main := conventional_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
+	scope? %to(check_early_exit)
+	breaking? %to(check_early_exit)
+	colon >err(err_colon) %to(check_early_exit)
+	description;
+
+falco_types_main := falco_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
+	scope? %to(check_early_exit)
+	breaking? %to(check_early_exit)
+	colon >err(err_colon) %to(check_early_exit)
+	description;
 
 }%%
 
@@ -220,10 +197,22 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.err = nil
 	output := &conventionalCommit{}
 
-	%% write init;
+	switch m.typeConfig {
+	case conventionalcommits.TypesConventional:
+		m.cs = en_conventional_types_main
+		break
+	case conventionalcommits.TypesFalco:
+		m.cs = en_falco_types_main
+		break
+	case conventionalcommits.TypesMinimal:
+		fallthrough
+	default:
+		%% write init;
+		break
+	}
 	%% write exec;
 
-	if m.cs < first_final || m.cs == en_fail {
+	if m.cs < first_final {
 		if m.bestEffort && output.minimal() {
 			// An error occurred but partial parsing is on and partial message is minimally valid
 			return output.export(), m.err
