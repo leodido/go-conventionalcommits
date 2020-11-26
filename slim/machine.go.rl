@@ -25,7 +25,7 @@ const (
 	// ErrDescriptionInit tells the user that before of the description part a whitespace is mandatory.
 	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
 	// ErrDescription tells the user that after the whitespace is mandatory a description.
-	ErrDescription = "expecting a description after '%s' character"
+	ErrDescription = "expecting a description text (without newlines) after '%s' character"
 )
 
 %%{
@@ -113,7 +113,7 @@ scope = lpar ((any* -- lpar) -- rpar) >mark %err(err_malformed_scope) %set_scope
 breaking = exclamation >set_exclamation;
 
 ## todo > strict option to enforce a single whitespace?
-description = ws+ >err(err_description_init) <: any+ >mark >err(err_description) %set_description;
+description = ws+ >err(err_description_init) <: (any - [\v\f\n\r])+ >mark $err(err_description) %set_description;
 
 ## todo > option to limit the total length
 main := minimal_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
