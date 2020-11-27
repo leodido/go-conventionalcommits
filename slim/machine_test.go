@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/leodido/go-conventionalcommits"
+	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -80,4 +82,41 @@ func TestMachineTypeConfigOption(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, res, mes)
+}
+
+func TestParseLoggingErrorsOnly(t *testing.T) {
+	l, hook := logrustest.NewNullLogger()
+	l.SetLevel(logrus.ErrorLevel)
+
+	p := NewMachine(WithLogger(l))
+	p.Parse([]byte("fix: a wonderful logger\x0Aaaa"))
+
+	assert.Equal(t, 1, len(hook.Entries))
+	assert.Equal(t, logrus.ErrorLevel, hook.LastEntry().Level)
+	assert.Equal(t, "illegal newline: col=24", hook.LastEntry().Message)
+
+	hook.Reset()
+	assert.Nil(t, hook.LastEntry())
+}
+
+func TestParseLoggingEverything(t *testing.T) {
+	l := logrus.New()
+	hook := logrustest.NewLocal(l)
+
+	p := NewMachine(WithLogger(l))
+	p.Parse([]byte("fix: a wonderful logger\x0Aaaa"))
+
+	var logEntries = hook.AllEntries()
+	assert.Equal(t, 3, len(logEntries))
+	assert.Equal(t, logrus.InfoLevel, logEntries[0].Level)
+	assert.Equal(t, logrus.InfoLevel, logEntries[1].Level)
+	assert.Equal(t, logrus.ErrorLevel, logEntries[2].Level)
+	assert.Equal(t, "fix", logEntries[0].Data["type"])
+	assert.Equal(t, "valid commit message type", logEntries[0].Message)
+	assert.Equal(t, "a wonderful logger", logEntries[1].Data["description"])
+	assert.Equal(t, "valid commit message description", logEntries[1].Message)
+	assert.Equal(t, "illegal newline: col=24", logEntries[2].Message)
+
+	hook.Reset()
+	assert.Nil(t, hook.LastEntry())
 }

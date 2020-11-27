@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/leodido/go-conventionalcommits"
+	"github.com/sirupsen/logrus"
 )
 
 // ColumnPositionTemplate is the template used to communicate the column where errors occur.
@@ -26,6 +27,8 @@ const (
 	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
 	// ErrDescription tells the user that after the whitespace is mandatory a description.
 	ErrDescription = "expecting a description text (without newlines) after '%s' character"
+	// ErrNewline tells the user that after the whitespace is mandatory a description.
+	ErrNewline = "illegal newline"
 )
 
 const start int = 1
@@ -42,23 +45,43 @@ type machine struct {
 	pb         int
 	err        error
 	bestEffort bool
+	newline    bool
 	typeConfig conventionalcommits.TypeConfig
+	logger     *logrus.Logger
 }
 
 func (m *machine) text() []byte {
 	return m.data[m.pb:m.p]
 }
 
+func (m *machine) emitInfo(s string, args ...interface{}) {
+	if m.logger != nil {
+		var logEntry *logrus.Entry
+		for i := 0; i < len(args); i = i + 2 {
+			logEntry = m.logger.WithField(args[0].(string), args[1])
+		}
+		logEntry.Infoln(s)
+	}
+}
+
+func (m *machine) emitError(s string, args ...interface{}) error {
+	e := fmt.Errorf(s+ColumnPositionTemplate, args...)
+	if m.logger != nil {
+		m.logger.Errorln(e)
+	}
+	return e
+}
+
 func (m *machine) emitErrorWithoutCharacter(messageTemplate string) error {
-	return fmt.Errorf(messageTemplate+ColumnPositionTemplate, m.p)
+	return m.emitError(messageTemplate, m.p)
 }
 
 func (m *machine) emitErrorOnCurrentCharacter(messageTemplate string) error {
-	return fmt.Errorf(messageTemplate+ColumnPositionTemplate, string(m.data[m.p]), m.p)
+	return m.emitError(messageTemplate, string(m.data[m.p]), m.p)
 }
 
 func (m *machine) emitErrorOnPreviousCharacter(messageTemplate string) error {
-	return fmt.Errorf(messageTemplate+ColumnPositionTemplate, string(m.data[m.p-1]), m.p)
+	return m.emitError(messageTemplate, string(m.data[m.p-1]), m.p)
 }
 
 // NewMachine creates a new FSM able to parse Conventional Commits.
@@ -131,6 +154,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase8
 		case 92:
 			goto stCase92
+		case 93:
+			goto stCase93
 		case 9:
 			goto stCase9
 		case 10:
@@ -157,8 +182,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase20
 		case 21:
 			goto stCase21
-		case 93:
-			goto stCase93
+		case 94:
+			goto stCase94
+		case 95:
+			goto stCase95
 		case 22:
 			goto stCase22
 		case 23:
@@ -239,8 +266,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase60
 		case 61:
 			goto stCase61
-		case 94:
-			goto stCase94
+		case 96:
+			goto stCase96
+		case 97:
+			goto stCase97
 		case 62:
 			goto stCase62
 		case 63:
@@ -335,7 +364,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		goto st0
 	tr13:
 
-		m.err = m.emitErrorOnPreviousCharacter(ErrDescription)
+		if m.p < m.pe && m.data[m.p] == 10 {
+			m.err = m.emitError(ErrNewline, m.p+1)
+		} else {
+			m.err = m.emitErrorOnPreviousCharacter(ErrDescription)
+		}
 
 		goto st0
 	tr15:
@@ -394,6 +427,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	stCase5:
 
 		output._type = string(m.text())
+		m.emitInfo("valid commit message type", "type", output._type)
 
 		switch (m.data)[(m.p)] {
 		case 33:
@@ -407,6 +441,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	tr7:
 
 		output.exclamation = true
+		m.emitInfo("commit message communicates a breaking change")
 
 		goto st6
 	st6:
@@ -460,12 +495,27 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	stCase92:
 
-		output.descr = string(m.text())
+		m.newline = true
 
 		if (m.data)[(m.p)] == 10 {
-			goto tr13
+			goto tr103
 		}
 		goto st92
+	tr103:
+
+		output.descr = string(m.text())
+		m.emitInfo("valid commit message description", "description", output.descr)
+
+		goto st93
+	st93:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof93
+		}
+	stCase93:
+
+		m.newline = true
+
+		goto st0
 	st9:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof9
@@ -500,11 +550,13 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		m.pb = m.p
 
 		output.scope = string(m.text())
+		m.emitInfo("valid commit message scope", "scope", output.scope)
 
 		goto st11
 	tr18:
 
 		output.scope = string(m.text())
+		m.emitInfo("valid commit message scope", "scope", output.scope)
 
 		goto st11
 	st11:
@@ -606,6 +658,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	stCase18:
 
 		output._type = string(m.text())
+		m.emitInfo("valid commit message type", "type", output._type)
 
 		switch (m.data)[(m.p)] {
 		case 33:
@@ -619,6 +672,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	tr31:
 
 		output.exclamation = true
+		m.emitInfo("commit message communicates a breaking change")
 
 		goto st19
 	st19:
@@ -665,19 +719,34 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		m.pb = m.p
 
-		goto st93
-	st93:
+		goto st94
+	st94:
 		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof93
+			goto _testEof94
 		}
-	stCase93:
+	stCase94:
 
-		output.descr = string(m.text())
+		m.newline = true
 
 		if (m.data)[(m.p)] == 10 {
-			goto tr13
+			goto tr106
 		}
-		goto st93
+		goto st94
+	tr106:
+
+		output.descr = string(m.text())
+		m.emitInfo("valid commit message description", "description", output.descr)
+
+		goto st95
+	st95:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof95
+		}
+	stCase95:
+
+		m.newline = true
+
+		goto st0
 	st22:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof22
@@ -712,11 +781,13 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		m.pb = m.p
 
 		output.scope = string(m.text())
+		m.emitInfo("valid commit message scope", "scope", output.scope)
 
 		goto st24
 	tr39:
 
 		output.scope = string(m.text())
+		m.emitInfo("valid commit message scope", "scope", output.scope)
 
 		goto st24
 	st24:
@@ -1107,6 +1178,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	stCase58:
 
 		output._type = string(m.text())
+		m.emitInfo("valid commit message type", "type", output._type)
 
 		switch (m.data)[(m.p)] {
 		case 33:
@@ -1120,6 +1192,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	tr74:
 
 		output.exclamation = true
+		m.emitInfo("commit message communicates a breaking change")
 
 		goto st59
 	st59:
@@ -1166,19 +1239,34 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		m.pb = m.p
 
-		goto st94
-	st94:
+		goto st96
+	st96:
 		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof94
+			goto _testEof96
 		}
-	stCase94:
+	stCase96:
 
-		output.descr = string(m.text())
+		m.newline = true
 
 		if (m.data)[(m.p)] == 10 {
-			goto tr13
+			goto tr108
 		}
-		goto st94
+		goto st96
+	tr108:
+
+		output.descr = string(m.text())
+		m.emitInfo("valid commit message description", "description", output.descr)
+
+		goto st97
+	st97:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof97
+		}
+	stCase97:
+
+		m.newline = true
+
+		goto st0
 	st62:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof62
@@ -1213,11 +1301,13 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		m.pb = m.p
 
 		output.scope = string(m.text())
+		m.emitInfo("valid commit message scope", "scope", output.scope)
 
 		goto st64
 	tr82:
 
 		output.scope = string(m.text())
+		m.emitInfo("valid commit message scope", "scope", output.scope)
 
 		goto st64
 	st64:
@@ -1554,6 +1644,9 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof92:
 		m.cs = 92
 		goto _testEof
+	_testEof93:
+		m.cs = 93
+		goto _testEof
 	_testEof9:
 		m.cs = 9
 		goto _testEof
@@ -1590,8 +1683,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof21:
 		m.cs = 21
 		goto _testEof
-	_testEof93:
-		m.cs = 93
+	_testEof94:
+		m.cs = 94
+		goto _testEof
+	_testEof95:
+		m.cs = 95
 		goto _testEof
 	_testEof22:
 		m.cs = 22
@@ -1710,8 +1806,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof61:
 		m.cs = 61
 		goto _testEof
-	_testEof94:
-		m.cs = 94
+	_testEof96:
+		m.cs = 96
+		goto _testEof
+	_testEof97:
+		m.cs = 97
 		goto _testEof
 	_testEof62:
 		m.cs = 62
@@ -1837,11 +1936,16 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 			case 8, 21, 61:
 
-				m.err = m.emitErrorOnPreviousCharacter(ErrDescription)
+				if m.p < m.pe && m.data[m.p] == 10 {
+					m.err = m.emitError(ErrNewline, m.p+1)
+				} else {
+					m.err = m.emitErrorOnPreviousCharacter(ErrDescription)
+				}
 
-			case 92, 93, 94:
+			case 92, 94, 96:
 
 				output.descr = string(m.text())
+				m.emitInfo("valid commit message description", "description", output.descr)
 
 			case 1, 13, 53:
 
@@ -1861,6 +1965,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_out:
 		{
 		}
+	}
+
+	if m.newline {
+		m.err = m.emitErrorWithoutCharacter(ErrNewline)
 	}
 
 	if m.cs < firstFinal {
@@ -1884,7 +1992,12 @@ func (m *machine) HasBestEffort() bool {
 	return m.bestEffort
 }
 
-// WithTypes ...
+// WithTypes tells the parser which commit message types to consider.
 func (m *machine) WithTypes(t conventionalcommits.TypeConfig) {
 	m.typeConfig = t
+}
+
+// WithLogger tells the parser which logger to use.
+func (m *machine) WithLogger(l *logrus.Logger) {
+	m.logger = l
 }

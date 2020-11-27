@@ -448,7 +448,7 @@ var testCases = []testCase{
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 10),
+		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 11),
 	},
 	// INVALID / newline in the description
 	// VALID / newline in description ignored in best effort mode
@@ -464,7 +464,7 @@ var testCases = []testCase{
 				Description: "new",
 			},
 		},
-		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "w", 13),
+		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 14),
 	},
 	// INVALID / newline in the description
 	// VALID / newline in description ignored in best effort mode
@@ -481,7 +481,7 @@ var testCases = []testCase{
 				Description: "bla",
 			},
 		},
-		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "a", 14),
+		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 15),
 	},
 }
 
@@ -986,7 +986,7 @@ var testCasesForFalcoTypes = []testCase{
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 10),
+		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 11),
 	},
 	// INVALID / newline in the description
 	// VALID / newline in description ignored in best effort mode
@@ -1002,7 +1002,7 @@ var testCasesForFalcoTypes = []testCase{
 				Description: "new",
 			},
 		},
-		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "w", 13),
+		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 14),
 	},
 	// INVALID / newline in the description
 	// VALID / newline in description ignored in best effort mode
@@ -1019,7 +1019,7 @@ var testCasesForFalcoTypes = []testCase{
 				Description: "bla",
 			},
 		},
-		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "a", 14),
+		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 15),
 	},
 }
 
@@ -1560,7 +1560,7 @@ var testCasesForConventionalTypes = []testCase{
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 10),
+		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 11),
 	},
 	// INVALID / newline in the description
 	// VALID / newline in description ignored in best effort mode
@@ -1576,7 +1576,7 @@ var testCasesForConventionalTypes = []testCase{
 				Description: "new",
 			},
 		},
-		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "w", 13),
+		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 14),
 	},
 	// INVALID / newline in the description
 	// VALID / newline in description ignored in best effort mode
@@ -1593,6 +1593,6 @@ var testCasesForConventionalTypes = []testCase{
 				Description: "rrr",
 			},
 		},
-		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "r", 14),
+		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 15),
 	},
 }
