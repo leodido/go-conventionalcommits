@@ -1,5 +1,7 @@
 package conventionalcommits
 
+import "github.com/sirupsen/logrus"
+
 // TypeConfig represent the set of types the parser should use.
 type TypeConfig int
 
@@ -14,15 +16,20 @@ const (
 	TypesFalco
 )
 
-// TypeConfigurer ...
+// TypeConfigurer represents parsers with the option to enable different commit message types.
 type TypeConfigurer interface {
 	WithTypes(t TypeConfig)
 }
 
-// BestEfforter is an interface that wraps the HasBestEffort method.
+// BestEfforter is an interface that wraps the methods about the best effort mode.
 type BestEfforter interface {
 	WithBestEffort()
 	HasBestEffort() bool
+}
+
+// Logger represents parser able to log.
+type Logger interface {
+	WithLogger(l *logrus.Logger)
 }
 
 // Machine represent a FSM able to parse a conventional commit and return it in an structured way.
@@ -30,6 +37,7 @@ type Machine interface {
 	Parse(input []byte) (Message, error)
 	BestEfforter
 	TypeConfigurer
+	Logger
 }
 
 // MachineOption represents the type of option setters for Machine instances.
