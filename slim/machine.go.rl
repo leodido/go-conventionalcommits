@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/leodido/go-conventionalcommits"
+	"github.com/sirupsen/logrus"
 )
 
 // ColumnPositionTemplate is the template used to communicate the column where errors occur.
@@ -26,6 +27,8 @@ const (
 	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
 	// ErrDescription tells the user that after the whitespace is mandatory a description.
 	ErrDescription = "expecting a description text (without newlines) after '%s' character"
+	// ErrNewline tells the user that after the whitespace is mandatory a description.
+	ErrNewline = "illegal newline"
 )
 
 %%{
@@ -62,18 +65,22 @@ action err_malformed_scope {
 
 action err_colon {
 	if m.err == nil {
-		m.err = m.emitErrorOnCurrentCharacter(ErrColon);
+		m.err = m.emitErrorOnCurrentCharacter(ErrColon)
 	}
 }
 
 action err_description_init {
 	if m.err == nil {
-		m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit);
+		m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit)
 	}
 }
 
 action err_description {
-	m.err = m.emitErrorOnPreviousCharacter(ErrDescription);
+	if m.p < m.pe && m.data[m.p] == 10 {
+		m.err = m.emitError(ErrNewline, m.p + 1)
+	} else {
+		m.err = m.emitErrorOnPreviousCharacter(ErrDescription)
+	}
 }
 
 action check_early_exit {
@@ -86,18 +93,26 @@ action check_early_exit {
 
 action set_type {
 	output._type = string(m.text())
+	m.emitInfo("valid commit message type", "type", output._type)
 }
 
 action set_scope {
 	output.scope = string(m.text())
+	m.emitInfo("valid commit message scope", "scope", output.scope)
 }
 
 action set_description {
 	output.descr = string(m.text())
+	m.emitInfo("valid commit message description", "description", output.descr)
 }
 
 action set_exclamation {
 	output.exclamation = true
+	m.emitInfo("commit message communicates a breaking change")
+}
+
+action set_newline {
+	m.newline = true
 }
 
 # Machine definitions
@@ -113,7 +128,7 @@ scope = lpar ((any* -- lpar) -- rpar) >mark %err(err_malformed_scope) %set_scope
 breaking = exclamation >set_exclamation;
 
 ## todo > strict option to enforce a single whitespace?
-description = ws+ >err(err_description_init) <: (any - [\n])+ >mark %from(set_description) %set_description $err(err_description);
+description = ws+ >err(err_description_init) <: (any - [\n])+ >mark >err(err_description) %set_description '\n'? %from(set_newline);
 
 ## todo > option to limit the total length
 main := minimal_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
@@ -145,23 +160,43 @@ type machine struct {
 	pb           int
 	err          error
 	bestEffort   bool
+	newline      bool
 	typeConfig   conventionalcommits.TypeConfig
+	logger       *logrus.Logger
 }
 
 func (m *machine) text() []byte {
 	return m.data[m.pb:m.p]
 }
 
+func (m *machine) emitInfo(s string, args... interface{}) {
+	if m.logger != nil {
+		var logEntry *logrus.Entry
+		for i := 0; i < len(args); i = i + 2 {
+			logEntry = m.logger.WithField(args[0].(string), args[1])
+		}
+		logEntry.Infoln(s)
+	}
+}
+
+func (m *machine) emitError(s string, args... interface{}) error {
+	e := fmt.Errorf(s + ColumnPositionTemplate, args...)
+	if m.logger != nil {
+		m.logger.Errorln(e)
+	}
+	return e
+}
+
 func (m *machine) emitErrorWithoutCharacter(messageTemplate string) error {
-	return fmt.Errorf(messageTemplate + ColumnPositionTemplate, m.p)
+	return m.emitError(messageTemplate, m.p)
 }
 
 func (m *machine) emitErrorOnCurrentCharacter(messageTemplate string) error {
-	return fmt.Errorf(messageTemplate + ColumnPositionTemplate, string(m.data[m.p]), m.p)
+	return m.emitError(messageTemplate, string(m.data[m.p]), m.p)
 }
 
 func (m *machine) emitErrorOnPreviousCharacter(messageTemplate string) error {
-	return fmt.Errorf(messageTemplate + ColumnPositionTemplate, string(m.data[m.p - 1]), m.p)
+	return m.emitError(messageTemplate, string(m.data[m.p - 1]), m.p)
 }
 
 // NewMachine creates a new FSM able to parse Conventional Commits.
@@ -212,6 +247,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	}
 	%% write exec;
 
+	if m.newline {
+		m.err = m.emitErrorWithoutCharacter(ErrNewline);
+	}
+
 	if m.cs < first_final {
 		if m.bestEffort && output.minimal() {
 			// An error occurred but partial parsing is on and partial message is minimally valid
@@ -233,7 +272,12 @@ func (m *machine) HasBestEffort() bool {
 	return m.bestEffort
 }
 
-// WithTypes ...
+// WithTypes tells the parser which commit message types to consider.
 func (m *machine) WithTypes(t conventionalcommits.TypeConfig) {
 	m.typeConfig = t
+}
+
+// WithLogger tells the parser which logger to use.
+func (m *machine) WithLogger(l *logrus.Logger) {
+	m.logger = l
 }
