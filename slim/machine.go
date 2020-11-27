@@ -442,11 +442,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof8
 		}
 	stCase8:
-		if (m.data)[(m.p)] == 32 {
-			goto st8
-		}
-		if 10 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 13 {
+		switch (m.data)[(m.p)] {
+		case 10:
 			goto tr13
+		case 32:
+			goto st8
 		}
 		goto tr12
 	tr12:
@@ -459,7 +459,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof92
 		}
 	stCase92:
-		if 10 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 13 {
+
+		output.descr = string(m.text())
+
+		if (m.data)[(m.p)] == 10 {
 			goto tr13
 		}
 		goto st92
@@ -651,11 +654,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof21
 		}
 	stCase21:
-		if (m.data)[(m.p)] == 32 {
-			goto st21
-		}
-		if 10 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 13 {
+		switch (m.data)[(m.p)] {
+		case 10:
 			goto tr13
+		case 32:
+			goto st21
 		}
 		goto tr35
 	tr35:
@@ -668,7 +671,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof93
 		}
 	stCase93:
-		if 10 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 13 {
+
+		output.descr = string(m.text())
+
+		if (m.data)[(m.p)] == 10 {
 			goto tr13
 		}
 		goto st93
@@ -1149,11 +1155,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof61
 		}
 	stCase61:
-		if (m.data)[(m.p)] == 32 {
-			goto st61
-		}
-		if 10 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 13 {
+		switch (m.data)[(m.p)] {
+		case 10:
 			goto tr13
+		case 32:
+			goto st61
 		}
 		goto tr78
 	tr78:
@@ -1166,7 +1172,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof94
 		}
 	stCase94:
-		if 10 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 13 {
+
+		output.descr = string(m.text())
+
+		if (m.data)[(m.p)] == 10 {
 			goto tr13
 		}
 		goto st94

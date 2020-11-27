@@ -113,7 +113,7 @@ scope = lpar ((any* -- lpar) -- rpar) >mark %err(err_malformed_scope) %set_scope
 breaking = exclamation >set_exclamation;
 
 ## todo > strict option to enforce a single whitespace?
-description = ws+ >err(err_description_init) <: (any - [\v\f\n\r])+ >mark $err(err_description) %set_description;
+description = ws+ >err(err_description_init) <: (any - [\n])+ >mark %from(set_description) %set_description $err(err_description);
 
 ## todo > option to limit the total length
 main := minimal_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)

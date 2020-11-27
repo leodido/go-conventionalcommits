@@ -451,13 +451,37 @@ var testCases = []testCase{
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 10),
 	},
 	// INVALID / newline in the description
+	// VALID / newline in description ignored in best effort mode
 	{
 		"invalid-newline-in-description",
 		[]byte("feat(az): new\x0Aline"),
 		false,
 		nil,
-		nil,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "feat",
+				Scope:       cctesting.StringAddress("az"),
+				Description: "new",
+			},
+		},
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "w", 13),
+	},
+	// INVALID / newline in the description
+	// VALID / newline in description ignored in best effort mode
+	{
+		"invalid-newline-in-description-2",
+		[]byte("feat(az)!: bla\x0Al"),
+		false,
+		nil,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "feat",
+				Scope:       cctesting.StringAddress("az"),
+				Exclamation: true,
+				Description: "bla",
+			},
+		},
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "a", 14),
 	},
 }
 
@@ -965,16 +989,39 @@ var testCasesForFalcoTypes = []testCase{
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 10),
 	},
 	// INVALID / newline in the description
+	// VALID / newline in description ignored in best effort mode
 	{
 		"invalid-newline-in-description",
-		[]byte("feat(az): new\x0Aline"),
+		[]byte("feat(ae): new\x0Aline"),
 		false,
 		nil,
-		nil,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "feat",
+				Scope:       cctesting.StringAddress("ae"),
+				Description: "new",
+			},
+		},
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "w", 13),
 	},
+	// INVALID / newline in the description
+	// VALID / newline in description ignored in best effort mode
+	{
+		"invalid-newline-in-description-2",
+		[]byte("docs(az)!: bla\x0Al"),
+		false,
+		nil,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "docs",
+				Scope:       cctesting.StringAddress("az"),
+				Exclamation: true,
+				Description: "bla",
+			},
+		},
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "a", 14),
+	},
 }
-
 
 var testCasesForConventionalTypes = []testCase{
 	// INVALID / empty
@@ -1516,12 +1563,36 @@ var testCasesForConventionalTypes = []testCase{
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 10),
 	},
 	// INVALID / newline in the description
+	// VALID / newline in description ignored in best effort mode
 	{
 		"invalid-newline-in-description",
-		[]byte("feat(az): new\x0Aline"),
+		[]byte("feat(ap): new\x0Aline"),
 		false,
 		nil,
-		nil,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "feat",
+				Scope:       cctesting.StringAddress("ap"),
+				Description: "new",
+			},
+		},
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "w", 13),
+	},
+	// INVALID / newline in the description
+	// VALID / newline in description ignored in best effort mode
+	{
+		"invalid-newline-in-description-2",
+		[]byte("perf(at)!: rrr\x0Al"),
+		false,
+		nil,
+		&ConventionalCommit{
+			Minimal: conventionalcommits.Minimal{
+				Type:        "perf",
+				Scope:       cctesting.StringAddress("at"),
+				Exclamation: true,
+				Description: "rrr",
+			},
+		},
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, "r", 14),
 	},
 }
