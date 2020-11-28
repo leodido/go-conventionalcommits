@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 RAGEL := ragel -I common
 
-export GO_TEST=env GOTRACEBACK=all GO111MODULE=on go test $(GO_ARGS)
+export GO_TEST=env GOTRACEBACK=all go test $(GO_ARGS)
 
 .PHONY: build
 build: slim/machine.go
@@ -44,3 +44,7 @@ slim/machine.go:
 .PHONY: tests
 tests:
 	$(GO_TEST) ./...
+
+.PHONY: bench
+bench: slim/machine.go slim/perf_test.go
+	go test -bench=. -run=Bench -benchmem -benchtime=5s ./slim
