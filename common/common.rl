@@ -1,7 +1,10 @@
 %%{
+
 machine common;
 
 ws = ' ';
+
+nl = [\r\n];
 
 lpar = '(';
 
