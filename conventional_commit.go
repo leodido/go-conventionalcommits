@@ -50,6 +50,8 @@ type Message interface {
 }
 
 // Minimal represent a base struct for Conventional Commit messages.
+//
+// It has nothing to do with the types in use by the parser.
 type Minimal struct {
 	Type        string
 	Description string

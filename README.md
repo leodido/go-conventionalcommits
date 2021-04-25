@@ -28,11 +28,69 @@ TBD.
 
 ## Usage
 
-TBD.
+### Types
+
+This library provides support for different types:
+
+- minimal => fix, feat
+- conventional => build, ci, chore, docs, feat, fix, perf, refactor, revert, style, test
+- falco => build, ci, chore, docs, feat, fix, perf, new, revert, update, test, rule
+
+At the moment, those types are static and cannot be configured.
 
 ### Options
 
-TBD.
+Every parser has its own options.
+
+You can set them calling a function on the parser machine. Or you can provide options to `NewMachine(...)` directly.
+
+### Parse only the first line
+
+Your code base uses only single line commit messages like this one?
+
+```console
+feat: awesomeness
+```
+
+It's the perfect case for the **slim** parser:
+
+```go
+m, _ := slim.NewMachine().Parse([]byte(`feat: awesomeness`))
+```
+
+### Parse only the first line ignoring the commit message body
+
+Imagine you have a commit message like this:
+
+```console
+fix: correct minor typos in code
+
+see the issue for details
+
+on typos fixed.
+
+Reviewed-by: Z
+Refs #133
+```
+
+And you want to parse only the first line of your commits ignoring its body for some reason...
+
+Go with this:
+
+```go
+opts := []conventionalcommits.MachineOption{
+    WithBestEffort(),
+    WithTypes(conventionalcommits.TypesConventional),
+}
+res, err := slim.NewMachine(opts...).Parse(i)
+```
+
+The best effort mode will make the parser return what it found until the point it errored out (ie., the first newline in this case),
+if it found (at least) a valid type and a description (eg., `fix: description`).
+
+The parser will still return the error (with the position information), so that you can eventually use it.
+
+You can see this in action [here](slim/example_test.go).
 
 ## Performances
 

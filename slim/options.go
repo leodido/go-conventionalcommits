@@ -6,6 +6,9 @@ import (
 )
 
 // WithBestEffort enables the best effort mode.
+//
+// Best effort mode tells the parser to return what it found,
+// if the input was a minimally well-formed commit message (type and description part).
 func WithBestEffort() conventionalcommits.MachineOption {
 	return func(m conventionalcommits.Machine) conventionalcommits.Machine {
 		m.WithBestEffort()

@@ -247,6 +247,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	}
 	%% write exec;
 
+	// Not checking m.bestEffort too because I want to emit ErrNewline in best effort mode
 	if m.newline {
 		m.err = m.emitErrorWithoutCharacter(ErrNewline);
 	}
