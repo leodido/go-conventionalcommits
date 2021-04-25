@@ -480,6 +480,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		switch (m.data)[(m.p)] {
 		case 10:
 			goto tr13
+		case 13:
+			goto tr13
 		case 32:
 			goto st8
 		}
@@ -497,7 +499,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		m.newline = true
 
-		if (m.data)[(m.p)] == 10 {
+		switch (m.data)[(m.p)] {
+		case 10:
+			goto tr103
+		case 13:
 			goto tr103
 		}
 		goto st92
@@ -711,6 +716,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		switch (m.data)[(m.p)] {
 		case 10:
 			goto tr13
+		case 13:
+			goto tr13
 		case 32:
 			goto st21
 		}
@@ -728,7 +735,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		m.newline = true
 
-		if (m.data)[(m.p)] == 10 {
+		switch (m.data)[(m.p)] {
+		case 10:
+			goto tr106
+		case 13:
 			goto tr106
 		}
 		goto st94
@@ -1231,6 +1241,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		switch (m.data)[(m.p)] {
 		case 10:
 			goto tr13
+		case 13:
+			goto tr13
 		case 32:
 			goto st61
 		}
@@ -1248,7 +1260,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		m.newline = true
 
-		if (m.data)[(m.p)] == 10 {
+		switch (m.data)[(m.p)] {
+		case 10:
+			goto tr108
+		case 13:
 			goto tr108
 		}
 		goto st96
@@ -1967,6 +1982,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	}
 
+	// Not checking m.bestEffort too because I want to emit ErrNewline in best effort mode
 	if m.newline {
 		m.err = m.emitErrorWithoutCharacter(ErrNewline)
 	}
