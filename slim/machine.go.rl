@@ -27,8 +27,10 @@ const (
 	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
 	// ErrDescription tells the user that after the whitespace is mandatory a description.
 	ErrDescription = "expecting a description text (without newlines) after '%s' character"
-	// ErrNewline tells the user that after the whitespace is mandatory a description.
+	// ErrNewline communicates an illegal newline to the user.
 	ErrNewline = "illegal newline"
+	// ErrMissingBlankLineAtBodyBegin ...
+	ErrMissingBlankLineAtBodyBegin = "body must begin with a blank line"
 )
 
 %%{
@@ -83,6 +85,10 @@ action err_description {
 	}
 }
 
+action err_blank_line {
+	m.err = m.emitErrorWithoutCharacter(ErrMissingBlankLineAtBodyBegin)
+}
+
 action check_early_exit {
 	if (m.p + 1) == m.pe {
 		m.err = m.emitErrorOnCurrentCharacter(ErrEarly);
@@ -128,26 +134,32 @@ scope = lpar ((any* -- lpar) -- rpar) >mark %err(err_malformed_scope) %set_scope
 breaking = exclamation >set_exclamation;
 
 ## todo > strict option to enforce a single whitespace?
-description = ws+ >err(err_description_init) <: (any - nl)+ >mark >err(err_description) %set_description nl? %from(set_newline);
+description = ws+ >err(err_description_init) <: (any - nl)+ >mark >err(err_description) %set_description;
 
+body = nl nl >err(err_blank_line) any+ :>> nl;
+
+## todo > option to allow free-form types
 ## todo > option to limit the total length
 main := minimal_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
-	description;
+	description
+	body?;
 
 conventional_types_main := conventional_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
-	description;
+	description
+	body?;
 
 falco_types_main := falco_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
-	description;
+	description
+	body?;
 
 }%%
 
@@ -246,11 +258,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		break
 	}
 	%% write exec;
-
-	// Not checking m.bestEffort too because I want to emit ErrNewline in best effort mode
-	if m.newline {
-		m.err = m.emitErrorWithoutCharacter(ErrNewline);
-	}
 
 	if m.cs < first_final {
 		if m.bestEffort && output.minimal() {
