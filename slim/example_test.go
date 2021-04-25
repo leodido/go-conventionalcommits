@@ -52,11 +52,11 @@ Refs #133`)
 	errstr := e.Error()
 	fmt.Println(errstr)
 	pos := strings.LastIndex(errstr, "=")
-	num, _ := strconv.Atoi(errstr[pos+1 : len(errstr)])
+	num, _ := strconv.Atoi(errstr[pos+1:])
 	// Not checking pos and num because ain't time for bs
 	fmt.Printf("parsing ok until position %d\n", num)
 	fmt.Println("ignored body:")
-	fmt.Println(string(i[num:len(i)]))
+	fmt.Println(string(i[num:]))
 
 	// Output:
 	// (*slim.ConventionalCommit)({
