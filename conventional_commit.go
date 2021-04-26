@@ -49,25 +49,23 @@ type Message interface {
 	IsBreakingChange() bool
 }
 
-// Minimal represent a base struct for Conventional Commit messages.
-//
-// It has nothing to do with the types in use by the parser.
-type Minimal struct {
+// ConventionalCommit represents a commit message as per Conventional Commits specification.
+type ConventionalCommit struct {
 	Type        string
 	Description string
-	Scope       *string // can be nil
+	Scope       *string // optional
 	Exclamation bool
+	Body        *string // optional
 }
 
 // Ok tells whether the receiving commit message is well-formed or not.
 //
 // A minimally well-formed commit message has at least a valid type and a non empty description.
-func (m *Minimal) Ok() bool {
-	// todo > constraint type to a set of values
-	return m.Type != "" && m.Description != ""
+func (c *ConventionalCommit) Ok() bool {
+	return c.Type != "" && c.Description != ""
 }
 
 // IsBreakingChange tells whether the receiving commit message represents a breaking change or not.
-func (m *Minimal) IsBreakingChange() bool {
-	return m.Exclamation
+func (c *ConventionalCommit) IsBreakingChange() bool {
+	return c.Exclamation
 }
