@@ -130,17 +130,13 @@ var testCases = []testCase{
 		"valid-minimal-commit-message",
 		[]byte("fix: x"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "x",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "x",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
 		},
 		"",
 	},
@@ -176,19 +172,15 @@ var testCases = []testCase{
 		"valid-with-scope",
 		[]byte("fix(aaa): bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
 		},
 		"",
 	},
@@ -197,19 +189,15 @@ var testCases = []testCase{
 		"valid-with-scope-multiple-whitespaces",
 		[]byte("fix(aaa):          bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
 		},
 		"",
 	},
@@ -218,21 +206,17 @@ var testCases = []testCase{
 		"valid-breaking-with-scope",
 		[]byte("fix(aaa)!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -241,17 +225,13 @@ var testCases = []testCase{
 		"valid-empty-scope-is-ignored",
 		[]byte("fix(): bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
 		},
 		"",
 	},
@@ -260,19 +240,15 @@ var testCases = []testCase{
 		"valid-breaking-with-empty-scope",
 		[]byte("fix()!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -281,19 +257,15 @@ var testCases = []testCase{
 		"valid-breaking-without-scope",
 		[]byte("fix!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -457,12 +429,10 @@ var testCases = []testCase{
 		[]byte("feat(az): new\x0Aline"),
 		false,
 		nil,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "feat",
-				Scope:       cctesting.StringAddress("az"),
-				Description: "new",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("az"),
+			Description: "new",
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 14),
 	},
@@ -473,13 +443,11 @@ var testCases = []testCase{
 		[]byte("feat(az)!: bla\x0Al"),
 		false,
 		nil,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "feat",
-				Scope:       cctesting.StringAddress("az"),
-				Exclamation: true,
-				Description: "bla",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("az"),
+			Exclamation: true,
+			Description: "bla",
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
 	},
@@ -490,15 +458,91 @@ var testCases = []testCase{
 		[]byte("feat(az)!: bla\x0A"),
 		false,
 		nil,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "feat",
-				Scope:       cctesting.StringAddress("az"),
-				Exclamation: true,
-				Description: "bla",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("az"),
+			Exclamation: true,
+			Description: "bla",
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
+	},
+	// VALID
+	{
+		"valid-with-multiline-body",
+		[]byte(`fix: correct minor typos in code
+
+see the issue for details
+
+on typos fixed.`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+		},
+		"",
+	},
+	// VALID
+	{
+		"valid-with-singleline-body",
+		[]byte(`fix: correct minor typos in code
+
+see the issue for details.`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details."),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details."),
+		},
+		"",
+	},
+	// VALID
+	{
+		"valid-with-empty-body",
+		[]byte(`fix: correct something
+
+`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+		},
+		"",
+	},
+	// VALID
+	{
+		"valid-with-multiple-blank-lines-body",
+		[]byte(`fix: correct something
+
+
+
+`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+			Body:        cctesting.StringAddress("\n\n"),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+			Body:        cctesting.StringAddress("\n\n"),
+		},
+		"",
 	},
 }
 
@@ -634,17 +678,13 @@ var testCasesForFalcoTypes = []testCase{
 		"valid-minimal-commit-message",
 		[]byte("fix: w"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "w",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "w",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "w",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "w",
 		},
 		"",
 	},
@@ -653,17 +693,13 @@ var testCasesForFalcoTypes = []testCase{
 		"valid-minimal-commit-message-rule",
 		[]byte("rule: super secure rule"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "rule",
-				Description: "super secure rule",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "rule",
+			Description: "super secure rule",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "rule",
-				Description: "super secure rule",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "rule",
+			Description: "super secure rule",
 		},
 		"",
 	},
@@ -699,19 +735,15 @@ var testCasesForFalcoTypes = []testCase{
 		"valid-with-scope",
 		[]byte("new(xyz): ccc"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "new",
-				Scope:       cctesting.StringAddress("xyz"),
-				Description: "ccc",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "new",
+			Scope:       cctesting.StringAddress("xyz"),
+			Description: "ccc",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "new",
-				Scope:       cctesting.StringAddress("xyz"),
-				Description: "ccc",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "new",
+			Scope:       cctesting.StringAddress("xyz"),
+			Description: "ccc",
 		},
 		"",
 	},
@@ -720,19 +752,15 @@ var testCasesForFalcoTypes = []testCase{
 		"valid-with-scope-multiple-whitespaces",
 		[]byte("fix(aaa):          bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
 		},
 		"",
 	},
@@ -741,21 +769,17 @@ var testCasesForFalcoTypes = []testCase{
 		"valid-breaking-with-scope",
 		[]byte("fix(aaa)!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -764,21 +788,17 @@ var testCasesForFalcoTypes = []testCase{
 		"valid-breaking-with-scope-feat",
 		[]byte("feat(aaa)!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "feat",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "feat",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -787,17 +807,13 @@ var testCasesForFalcoTypes = []testCase{
 		"valid-empty-scope-is-ignored",
 		[]byte("fix(): bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
 		},
 		"",
 	},
@@ -806,19 +822,15 @@ var testCasesForFalcoTypes = []testCase{
 		"valid-breaking-with-empty-scope",
 		[]byte("fix()!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -827,19 +839,15 @@ var testCasesForFalcoTypes = []testCase{
 		"valid-breaking-without-scope",
 		[]byte("fix!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -1012,12 +1020,10 @@ var testCasesForFalcoTypes = []testCase{
 		[]byte("feat(ae): new\x0Aline"),
 		false,
 		nil,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "feat",
-				Scope:       cctesting.StringAddress("ae"),
-				Description: "new",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("ae"),
+			Description: "new",
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 14),
 	},
@@ -1028,13 +1034,11 @@ var testCasesForFalcoTypes = []testCase{
 		[]byte("docs(az)!: bla\x0Al"),
 		false,
 		nil,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "docs",
-				Scope:       cctesting.StringAddress("az"),
-				Exclamation: true,
-				Description: "bla",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "docs",
+			Scope:       cctesting.StringAddress("az"),
+			Exclamation: true,
+			Description: "bla",
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
 	},
@@ -1045,15 +1049,91 @@ var testCasesForFalcoTypes = []testCase{
 		[]byte("docs(az)!: bla\x0A"),
 		false,
 		nil,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "docs",
-				Scope:       cctesting.StringAddress("az"),
-				Exclamation: true,
-				Description: "bla",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "docs",
+			Scope:       cctesting.StringAddress("az"),
+			Exclamation: true,
+			Description: "bla",
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
+	},
+	// VALID
+	{
+		"valid-with-multiline-body",
+		[]byte(`fix: correct minor typos in code
+
+see the issue for details
+
+on typos fixed.`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+		},
+		"",
+	},
+	// VALID
+	{
+		"valid-with-singleline-body",
+		[]byte(`fix: correct minor typos in code
+
+see the issue for details.`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details."),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details."),
+		},
+		"",
+	},
+	// VALID
+	{
+		"valid-with-empty-body",
+		[]byte(`fix: correct something
+
+`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+		},
+		"",
+	},
+	// VALID
+	{
+		"valid-with-multiple-blank-lines-body",
+		[]byte(`fix: correct something
+
+
+
+`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+			Body:        cctesting.StringAddress("\n\n"),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+			Body:        cctesting.StringAddress("\n\n"),
+		},
+		"",
 	},
 }
 
@@ -1225,17 +1305,13 @@ var testCasesForConventionalTypes = []testCase{
 		"valid-minimal-commit-message",
 		[]byte("fix: w"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "w",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "w",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "w",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "w",
 		},
 		"",
 	},
@@ -1244,17 +1320,13 @@ var testCasesForConventionalTypes = []testCase{
 		"valid-minimal-commit-message-style",
 		[]byte("style: CSS skillz"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "style",
-				Description: "CSS skillz",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "style",
+			Description: "CSS skillz",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "style",
-				Description: "CSS skillz",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "style",
+			Description: "CSS skillz",
 		},
 		"",
 	},
@@ -1290,19 +1362,15 @@ var testCasesForConventionalTypes = []testCase{
 		"valid-with-scope",
 		[]byte("refactor(xyz): ccc"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "refactor",
-				Scope:       cctesting.StringAddress("xyz"),
-				Description: "ccc",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "refactor",
+			Scope:       cctesting.StringAddress("xyz"),
+			Description: "ccc",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "refactor",
-				Scope:       cctesting.StringAddress("xyz"),
-				Description: "ccc",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "refactor",
+			Scope:       cctesting.StringAddress("xyz"),
+			Description: "ccc",
 		},
 		"",
 	},
@@ -1311,19 +1379,15 @@ var testCasesForConventionalTypes = []testCase{
 		"valid-with-scope-multiple-whitespaces",
 		[]byte("fix(aaa):          bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
 		},
 		"",
 	},
@@ -1332,21 +1396,17 @@ var testCasesForConventionalTypes = []testCase{
 		"valid-breaking-with-scope",
 		[]byte("fix(aaa)!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -1355,21 +1415,17 @@ var testCasesForConventionalTypes = []testCase{
 		"valid-breaking-with-scope-feat",
 		[]byte("feat(aaa)!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "feat",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "feat",
-				Scope:       cctesting.StringAddress("aaa"),
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -1378,17 +1434,13 @@ var testCasesForConventionalTypes = []testCase{
 		"valid-empty-scope-is-ignored",
 		[]byte("fix(): bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
 		},
 		"",
 	},
@@ -1397,19 +1449,15 @@ var testCasesForConventionalTypes = []testCase{
 		"valid-breaking-with-empty-scope",
 		[]byte("fix()!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -1418,19 +1466,15 @@ var testCasesForConventionalTypes = []testCase{
 		"valid-breaking-without-scope",
 		[]byte("fix!: bbb"),
 		true,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "fix",
-				Description: "bbb",
-				Exclamation: true,
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+			Exclamation: true,
 		},
 		"",
 	},
@@ -1603,12 +1647,10 @@ var testCasesForConventionalTypes = []testCase{
 		[]byte("feat(ap): new\x0Aline"),
 		false,
 		nil,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "feat",
-				Scope:       cctesting.StringAddress("ap"),
-				Description: "new",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("ap"),
+			Description: "new",
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 14),
 	},
@@ -1619,13 +1661,11 @@ var testCasesForConventionalTypes = []testCase{
 		[]byte("perf(at)!: rrr\x0Al"),
 		false,
 		nil,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "perf",
-				Scope:       cctesting.StringAddress("at"),
-				Exclamation: true,
-				Description: "rrr",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "perf",
+			Scope:       cctesting.StringAddress("at"),
+			Exclamation: true,
+			Description: "rrr",
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
 	},
@@ -1636,14 +1676,90 @@ var testCasesForConventionalTypes = []testCase{
 		[]byte("perf(at)!: rrr\x0A"),
 		false,
 		nil,
-		&ConventionalCommit{
-			Minimal: conventionalcommits.Minimal{
-				Type:        "perf",
-				Scope:       cctesting.StringAddress("at"),
-				Exclamation: true,
-				Description: "rrr",
-			},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "perf",
+			Scope:       cctesting.StringAddress("at"),
+			Exclamation: true,
+			Description: "rrr",
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
+	},
+	// VALID
+	{
+		"valid-with-multiline-body",
+		[]byte(`fix: correct minor typos in code
+
+see the issue for details
+
+on typos fixed.`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+		},
+		"",
+	},
+	// VALID
+	{
+		"valid-with-singleline-body",
+		[]byte(`fix: correct minor typos in code
+
+see the issue for details.`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details."),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct minor typos in code",
+			Body:        cctesting.StringAddress("see the issue for details."),
+		},
+		"",
+	},
+	// VALID
+	{
+		"valid-with-empty-body",
+		[]byte(`fix: correct something
+
+`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+		},
+		"",
+	},
+	// VALID
+	{
+		"valid-with-multiple-blank-lines-body",
+		[]byte(`fix: correct something
+
+
+
+`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+			Body:        cctesting.StringAddress("\n\n"),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "correct something",
+			Body:        cctesting.StringAddress("\n\n"),
+		},
+		"",
 	},
 }

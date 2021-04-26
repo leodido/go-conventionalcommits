@@ -73,11 +73,9 @@ func TestMachineTypeConfigOption(t *testing.T) {
 	p := NewMachine(WithTypes(conventionalcommits.TypesFalco))
 	mes, err := p.Parse([]byte("new: ciao"))
 
-	res := &ConventionalCommit{
-		Minimal: conventionalcommits.Minimal{
-			Type:        "new",
-			Description: "ciao",
-		},
+	res := &conventionalcommits.ConventionalCommit{
+		Type:        "new",
+		Description: "ciao",
 	}
 
 	assert.NoError(t, err)
