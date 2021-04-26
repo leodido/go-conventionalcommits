@@ -29,8 +29,10 @@ const (
 	ErrDescription = "expecting a description text (without newlines) after '%s' character"
 	// ErrNewline communicates an illegal newline to the user.
 	ErrNewline = "illegal newline"
-	// ErrMissingBlankLineAtBodyBegin ...
+	// ErrMissingBlankLineAtBodyBegin tells the user that the body must start with a blank line.
 	ErrMissingBlankLineAtBodyBegin = "body must begin with a blank line"
+	// ErrMissingBlankLineAtFooterBegin tells the user that the footer must start with a blank line.
+	ErrMissingBlankLineAtFooterBegin = "footer must begin with a blank line"
 )
 
 %%{
@@ -85,8 +87,12 @@ action err_description {
 	}
 }
 
-action err_blank_line {
+action err_body_begin_blank_line {
 	m.err = m.emitErrorWithoutCharacter(ErrMissingBlankLineAtBodyBegin)
+}
+
+action err_footer_begin_blank_line {
+	m.err = m.emitErrorWithoutCharacter(ErrMissingBlankLineAtFooterBegin)
 }
 
 action check_early_exit {
@@ -117,8 +123,9 @@ action set_exclamation {
 	m.emitInfo("commit message communicates a breaking change")
 }
 
-action set_newline {
-	m.newline = true
+action set_body {
+	output.body = string(m.text())
+	m.emitInfo("valid commit message body", "body", output.body)
 }
 
 # Machine definitions
@@ -136,7 +143,17 @@ breaking = exclamation >set_exclamation;
 ## todo > strict option to enforce a single whitespace?
 description = ws+ >err(err_description_init) <: (any - nl)+ >mark >err(err_description) %set_description;
 
-body = nl nl >err(err_blank_line) any+ :>> nl;
+body = nl nl >err(err_body_begin_blank_line) <: any* >mark %set_body;
+
+# trailer_tok = alnum+ (dash alnum+)*;
+
+# trailer_sep = (colon ws) | (ws '#');
+
+# trailer_val = graph+;
+
+# trailer = trailer_tok trailer_sep trailer_val;
+
+# footer = (nl >err(err_footer_begin_blank_line) trailer nl)*;
 
 ## todo > option to allow free-form types
 ## todo > option to limit the total length
@@ -172,7 +189,6 @@ type machine struct {
 	pb           int
 	err          error
 	bestEffort   bool
-	newline      bool
 	typeConfig   conventionalcommits.TypeConfig
 	logger       *logrus.Logger
 }
