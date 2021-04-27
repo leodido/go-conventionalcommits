@@ -2,6 +2,7 @@ package slim
 
 import (
 	"fmt"
+	"bytes"
 
 	"github.com/leodido/go-conventionalcommits"
 	"github.com/sirupsen/logrus"
@@ -45,6 +46,22 @@ alphtype uint8;
 
 action mark {
 	m.pb = m.p
+}
+
+action backtrack {
+	fexec m.pb;
+}
+
+action break {
+	fbreak;
+}
+
+action hold {
+	fhold;
+}
+
+action lookahead {
+	m.lookahead()
 }
 
 # Error management
@@ -124,11 +141,22 @@ action set_exclamation {
 }
 
 action set_body {
-	output.body = string(m.text())
+	for ; m.countNewlines > 0; {
+		output.body += "\n"
+		m.countNewlines--
+	}
+	fmt.Println(">", string(m.text()))
+	if output.body != "" && output.body[len(output.body)-1:] == "\n" {
+		output.body += string(m.text())
+	} else {
+		output.body = string(m.text())
+	}
 	m.emitInfo("valid commit message body", "body", output.body)
 }
 
 # Machine definitions
+
+# todo: make types case-insensitive
 
 minimal_types = ('fix' | 'feat');
 
@@ -143,17 +171,72 @@ breaking = exclamation >set_exclamation;
 ## todo > strict option to enforce a single whitespace?
 description = ws+ >err(err_description_init) <: (any - nl)+ >mark >err(err_description) %set_description;
 
-body = nl nl >err(err_body_begin_blank_line) <: any* >mark %set_body;
+action store_blank_line {
+	fmt.Println("blankline")
+	if m.inBody {
+		output.body += "\n\n"
+		m.inBody = false
+	}
+}
 
-# trailer_tok = alnum+ (dash alnum+)*;
+blank_line = nl nl >store_blank_line >err(err_body_begin_blank_line);
 
-# trailer_sep = (colon ws) | (ws '#');
+trailer_tok = alnum+ (dash alnum+)*;
 
-# trailer_val = graph+;
+trailer_sep = (colon ws) | (ws '#');
 
-# trailer = trailer_tok trailer_sep trailer_val;
+trailer_val = graph+;
 
-# footer = (nl >err(err_footer_begin_blank_line) trailer nl)*;
+trailer = trailer_tok trailer_sep trailer_val;
+
+action start_trailer_parsing {
+	fmt.Println("goto trailerbeg");
+	m.inBody = false;
+	fgoto trailer_beg;
+}
+
+action complete_trailer_parsing {
+	fmt.Println("goto trailerend");
+	fgoto trailer_end;
+}
+
+action set_current_footer_key {
+	m.currentFooterKey = string(bytes.ToLower(m.text()))
+}
+
+action set_footer {
+	if m.currentFooterKey == "" {
+		fmt.Println("SHOULD NEVER HAPPEN")
+	}
+	fmt.Printf("setting %s => %s\n", m.currentFooterKey, string(m.text()))
+	output.footers[m.currentFooterKey] = append(output.footers[m.currentFooterKey], string(m.text()))
+}
+
+action err_prova {
+	if len(output.footers) == 0 {
+		fmt.Println("goto body")
+		m.inBody = true
+		fexec m.pb; // backtrack to the last marker
+		fgoto body;
+	} else {
+		// Continue parsing footer trailers
+		fmt.Println("ERR", m.pb, m.p, string(m.text()));
+	}
+}
+
+action count_nl {
+	fmt.Println("NL")
+	// Increment number of newlines to use in case we're still in the body
+	m.countNewlines++
+}
+
+trailer_beg := nl* $count_nl (trailer_tok >mark %err(err_prova) trailer_sep >set_current_footer_key  @complete_trailer_parsing)?;
+
+trailer_end := trailer_val >mark %set_footer nl* $count_nl @start_trailer_parsing;
+
+remainder = blank_line @start_trailer_parsing;
+
+body := any+ >mark %set_body :>> (blank_line? @start_trailer_parsing);
 
 ## todo > option to allow free-form types
 ## todo > option to limit the total length
@@ -162,35 +245,42 @@ main := minimal_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(c
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
 	description
-	body?;
+	remainder?;
 
 conventional_types_main := conventional_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
 	description
-	body?;
+	remainder?;
 
 falco_types_main := falco_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
 	description
-	body?;
+	remainder?;
 
 }%%
 
 %% write data noerror noprefix;
 
 type machine struct {
-	data         []byte
-	cs           int
-	p, pe, eof   int
-	pb           int
-	err          error
-	bestEffort   bool
-	typeConfig   conventionalcommits.TypeConfig
-	logger       *logrus.Logger
+	data             []byte
+	cs               int
+	p, pe, eof       int
+	pb               int
+	err              error
+	bestEffort       bool
+	typeConfig       conventionalcommits.TypeConfig
+	logger           *logrus.Logger
+	currentFooterKey string
+	inBody           bool
+	countNewlines    int
+}
+
+func (m *machine) blankLineLookAhead() bool {
+	return m.p + 2 < m.pe && m.data[m.p + 1] == 10 && m.data[m.p + 2] == 10
 }
 
 func (m *machine) text() []byte {
@@ -258,7 +348,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.pe = len(input)
 	m.eof = len(input)
 	m.err = nil
+	m.currentFooterKey = ""
+	m.inBody = false
+	m.countNewlines = 0
 	output := &conventionalCommit{}
+	output.footers = make(map[string][]string)
 
 	switch m.typeConfig {
 	case conventionalcommits.TypesConventional:
