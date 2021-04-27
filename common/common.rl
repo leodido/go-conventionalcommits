@@ -4,7 +4,9 @@ machine common;
 
 ws = ' ';
 
-nl = [\r\n];
+nl = [\n];
+
+dash = '-';
 
 lpar = '(';
 
