@@ -30,10 +30,8 @@ const (
 	ErrDescription = "expecting a description text (without newlines) after '%s' character"
 	// ErrNewline communicates an illegal newline to the user.
 	ErrNewline = "illegal newline"
-	// ErrMissingBlankLineAtBodyBegin tells the user that the body must start with a blank line.
-	ErrMissingBlankLineAtBodyBegin = "body must begin with a blank line"
-	// ErrMissingBlankLineAtFooterBegin tells the user that the footer must start with a blank line.
-	ErrMissingBlankLineAtFooterBegin = "footer must begin with a blank line"
+	// ErrMissingBlankLineAtBeginning tells the user that the a blank line is missing after the description or after the body.
+	ErrMissingBlankLineAtBeginning = "missing a blank line"
 )
 
 %%{
@@ -46,22 +44,6 @@ alphtype uint8;
 
 action mark {
 	m.pb = m.p
-}
-
-action backtrack {
-	fexec m.pb;
-}
-
-action break {
-	fbreak;
-}
-
-action hold {
-	fhold;
-}
-
-action lookahead {
-	m.lookahead()
 }
 
 # Error management
@@ -104,18 +86,14 @@ action err_description {
 	}
 }
 
-action err_body_begin_blank_line {
-	m.err = m.emitErrorWithoutCharacter(ErrMissingBlankLineAtBodyBegin)
-}
-
-action err_footer_begin_blank_line {
-	m.err = m.emitErrorWithoutCharacter(ErrMissingBlankLineAtFooterBegin)
-}
-
 action check_early_exit {
 	if (m.p + 1) == m.pe {
 		m.err = m.emitErrorOnCurrentCharacter(ErrEarly);
 	}
+}
+
+action err_begin_blank_line {
+	m.err = m.emitErrorWithoutCharacter(ErrMissingBlankLineAtBeginning)
 }
 
 # Setters
@@ -141,22 +119,67 @@ action set_exclamation {
 }
 
 action set_body {
+	// Append newlines
 	for ; m.countNewlines > 0; {
 		output.body += "\n"
 		m.countNewlines--
 	}
-	fmt.Println(">", string(m.text()))
-	if output.body != "" && output.body[len(output.body)-1:] == "\n" {
-		output.body += string(m.text())
-	} else {
-		output.body = string(m.text())
+	// Append body content
+	output.body += string(m.text())
+	m.emitInfo("valid commit message body content", "body", output.body)
+}
+
+action set_body_blank_line {
+	m.emitDebug("found a blank line", "pos", m.p)
+	if m.inBody {
+		output.body += "\n\n"
+		m.inBody = false
 	}
-	m.emitInfo("valid commit message body", "body", output.body)
+}
+
+action set_current_footer_key {
+	m.currentFooterKey = string(bytes.ToLower(m.text()))
+	m.emitDebug("possibly valid footer token", "token", m.currentFooterKey, "pos", m.p)
+}
+
+action set_footer {
+	output.footers[m.currentFooterKey] = append(output.footers[m.currentFooterKey], string(m.text()))
+	m.emitInfo("valid commit message footer trailer", m.currentFooterKey, string(m.text()))
+}
+
+action count_nl {
+	// Increment number of newlines to use in case we're still in the body
+	m.countNewlines++
+	m.emitDebug("found a newline", "pos", m.p)
+}
+
+# Navigation
+
+action start_trailer_parsing {
+	m.emitDebug("try to parse a footer trailer token", "pos", m.p)
+	m.inBody = false;
+	fgoto trailer_beg;
+}
+
+action complete_trailer_parsing {
+	m.emitDebug("try to parse a footer trailer value", "pos", m.p)
+	fgoto trailer_end;
+}
+
+action rewind {
+	if len(output.footers) == 0 {
+		m.emitDebug("try to parse body content", "pos", m.p)
+		m.inBody = true
+		// Backtrack to the last marker
+		// Ie., the text possibly a trailer token that is instead part of the body content
+		fexec m.pb;
+		fgoto body;
+	} else {
+		fmt.Println("todo > rewind/continue to parse footer trailers", m.pb, m.p, string(m.text()));
+	}
 }
 
 # Machine definitions
-
-# todo: make types case-insensitive
 
 minimal_types = ('fix' | 'feat');
 
@@ -171,15 +194,7 @@ breaking = exclamation >set_exclamation;
 ## todo > strict option to enforce a single whitespace?
 description = ws+ >err(err_description_init) <: (any - nl)+ >mark >err(err_description) %set_description;
 
-action store_blank_line {
-	fmt.Println("blankline")
-	if m.inBody {
-		output.body += "\n\n"
-		m.inBody = false
-	}
-}
-
-blank_line = nl nl >store_blank_line >err(err_body_begin_blank_line);
+blank_line = nl nl >set_body_blank_line >err(err_begin_blank_line);
 
 trailer_tok = alnum+ (dash alnum+)*;
 
@@ -189,57 +204,27 @@ trailer_val = graph+;
 
 trailer = trailer_tok trailer_sep trailer_val;
 
-action start_trailer_parsing {
-	fmt.Println("goto trailerbeg");
-	m.inBody = false;
-	fgoto trailer_beg;
-}
+# Count newlines that can be part of the body or just trailer separators.
+# Optionally match a trailer token followed by a trailer separator.
+# In such case, continue looking for a trailer value.
+# Otherwise, assume machine is in the body part.
+trailer_beg := nl* $count_nl (trailer_tok >mark %err(rewind) trailer_sep >set_current_footer_key @complete_trailer_parsing)?;
 
-action complete_trailer_parsing {
-	fmt.Println("goto trailerend");
-	fgoto trailer_end;
-}
-
-action set_current_footer_key {
-	m.currentFooterKey = string(bytes.ToLower(m.text()))
-}
-
-action set_footer {
-	if m.currentFooterKey == "" {
-		fmt.Println("SHOULD NEVER HAPPEN")
-	}
-	fmt.Printf("setting %s => %s\n", m.currentFooterKey, string(m.text()))
-	output.footers[m.currentFooterKey] = append(output.footers[m.currentFooterKey], string(m.text()))
-}
-
-action err_prova {
-	if len(output.footers) == 0 {
-		fmt.Println("goto body")
-		m.inBody = true
-		fexec m.pb; // backtrack to the last marker
-		fgoto body;
-	} else {
-		// Continue parsing footer trailers
-		fmt.Println("ERR", m.pb, m.p, string(m.text()));
-	}
-}
-
-action count_nl {
-	fmt.Println("NL")
-	// Increment number of newlines to use in case we're still in the body
-	m.countNewlines++
-}
-
-trailer_beg := nl* $count_nl (trailer_tok >mark %err(err_prova) trailer_sep >set_current_footer_key  @complete_trailer_parsing)?;
-
+# Match a trailer value.
+# Then, ignoring newlines, continue trying to detect other trailers.
 trailer_end := trailer_val >mark %set_footer nl* $count_nl @start_trailer_parsing;
 
-remainder = blank_line @start_trailer_parsing;
-
+# Match anything until two newlines (ie., a blank line).
+# Then, try detect a footer looking for a trailer token.
 body := any+ >mark %set_body :>> (blank_line? @start_trailer_parsing);
 
+# Expect a blank line after the description.
+# Try detect a footer looking for a trailer token.
+remainder = blank_line @start_trailer_parsing;
+
+## todo > make types case-insensitive
 ## todo > option to allow free-form types
-## todo > option to limit the total length
+## todo > option to limit the total length (of the first line or of the description)
 main := minimal_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
@@ -279,10 +264,6 @@ type machine struct {
 	countNewlines    int
 }
 
-func (m *machine) blankLineLookAhead() bool {
-	return m.p + 2 < m.pe && m.data[m.p + 1] == 10 && m.data[m.p + 2] == 10
-}
-
 func (m *machine) text() []byte {
 	return m.data[m.pb:m.p]
 }
@@ -294,6 +275,16 @@ func (m *machine) emitInfo(s string, args... interface{}) {
 			logEntry = m.logger.WithField(args[0].(string), args[1])
 		}
 		logEntry.Infoln(s)
+	}
+}
+
+func (m *machine) emitDebug(s string, args... interface{}) {
+	if m.logger != nil {
+		logEntry := logrus.NewEntry(m.logger)
+		for i := 0; i < len(args); i = i + 2 {
+			logEntry = m.logger.WithField(args[0].(string), args[1])
+		}
+		logEntry.Debugln(s)
 	}
 }
 
