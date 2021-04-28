@@ -200,7 +200,7 @@ trailer_tok = alnum+ (dash alnum+)*;
 
 trailer_sep = (colon ws) | (ws '#');
 
-trailer_val = graph+;
+trailer_val = print+;
 
 # Count newlines that can be part of the body or just trailer separators.
 # Optionally match a trailer token followed by a trailer separator.
