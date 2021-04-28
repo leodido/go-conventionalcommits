@@ -126,7 +126,7 @@ action set_body {
 	}
 	// Append body content
 	output.body += string(m.text())
-	m.emitInfo("valid commit message body content", "body", output.body)
+	m.emitInfo("valid commit message body content", "body", string(m.text()))
 }
 
 action set_body_blank_line {
@@ -202,13 +202,11 @@ trailer_sep = (colon ws) | (ws '#');
 
 trailer_val = graph+;
 
-trailer = trailer_tok trailer_sep trailer_val;
-
 # Count newlines that can be part of the body or just trailer separators.
 # Optionally match a trailer token followed by a trailer separator.
 # In such case, continue looking for a trailer value.
 # Otherwise, assume machine is in the body part.
-trailer_beg := nl* $count_nl (trailer_tok >mark %err(rewind) trailer_sep >set_current_footer_key @complete_trailer_parsing)?;
+trailer_beg := nl* $count_nl (trailer_tok >mark %err(rewind) trailer_sep @err(rewind) >set_current_footer_key @complete_trailer_parsing)?;
 
 # Match a trailer value.
 # Then, ignoring newlines, continue trying to detect other trailers.
