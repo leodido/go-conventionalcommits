@@ -270,7 +270,7 @@ func (m *machine) text() []byte {
 
 func (m *machine) emitInfo(s string, args... interface{}) {
 	if m.logger != nil {
-		var logEntry *logrus.Entry
+		logEntry := logrus.NewEntry(m.logger)
 		for i := 0; i < len(args); i = i + 2 {
 			logEntry = m.logger.WithField(args[0].(string), args[1])
 		}
