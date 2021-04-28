@@ -55,7 +55,8 @@ type ConventionalCommit struct {
 	Description string
 	Scope       *string // optional
 	Exclamation bool
-	Body        *string // optional
+	Body        *string             // optional
+	Footers     map[string][]string // optional
 }
 
 // Ok tells whether the receiving commit message is well-formed or not.
@@ -68,4 +69,8 @@ func (c *ConventionalCommit) Ok() bool {
 // IsBreakingChange tells whether the receiving commit message represents a breaking change or not.
 func (c *ConventionalCommit) IsBreakingChange() bool {
 	return c.Exclamation
+}
+
+func (c *ConventionalCommit) HasFooter() bool {
+	return len(c.Footers) > 0
 }
