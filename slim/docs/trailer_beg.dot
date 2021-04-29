@@ -1,0 +1,32 @@
+digraph conventionalcommits {
+	rankdir=LR;
+	node [ shape = point ];
+	ENTRY;
+	eof_1;
+	eof_2;
+	eof_4;
+	node [ shape = circle, height = 0.2 ];
+	err_1 [ label=""];
+	err_2 [ label=""];
+	err_4 [ label=""];
+	node [ fixedsize = true, height = 0.65, shape = doublecircle ];
+	5;
+	6;
+	node [ shape = circle ];
+	1 -> 2 [ label = "SP / set_current_footer_key" ];
+	1 -> 3 [ label = "'-'" ];
+	1 -> 1 [ label = "'0'..'9', 'A'..'Z', 'a'..'z'" ];
+	1 -> 4 [ label = "':' / set_current_footer_key" ];
+	1 -> err_1 [ label = "DEF / rewind" ];
+	2 -> 6 [ label = "'#' / complete_trailer_parsing" ];
+	2 -> err_2 [ label = "DEF / rewind" ];
+	3 -> 1 [ label = "'0'..'9', 'A'..'Z', 'a'..'z'" ];
+	4 -> 6 [ label = "SP / complete_trailer_parsing" ];
+	4 -> err_4 [ label = "DEF / rewind" ];
+	5 -> 5 [ label = "'\\n' / count_nl" ];
+	5 -> 1 [ label = "'0'..'9', 'A'..'Z', 'a'..'z' / mark" ];
+	ENTRY -> 5 [ label = "IN" ];
+	1 -> eof_1 [ label = "EOF / rewind" ];
+	2 -> eof_2 [ label = "EOF / rewind" ];
+	4 -> eof_4 [ label = "EOF / rewind" ];
+}

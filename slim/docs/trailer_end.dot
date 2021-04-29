@@ -1,0 +1,17 @@
+digraph conventionalcommits {
+	rankdir=LR;
+	node [ shape = point ];
+	ENTRY;
+	eof_2;
+	node [ shape = circle, height = 0.2 ];
+	node [ fixedsize = true, height = 0.65, shape = doublecircle ];
+	2;
+	3;
+	node [ shape = circle ];
+	1 -> 2 [ label = "SP..'~' / mark" ];
+	2 -> 3 [ label = "'\\n' / set_footer, count_nl, start_trailer_parsing" ];
+	2 -> 2 [ label = "SP..'~'" ];
+	3 -> 3 [ label = "'\\n' / count_nl, start_trailer_parsing" ];
+	ENTRY -> 1 [ label = "IN" ];
+	2 -> eof_2 [ label = "EOF / set_footer" ];
+}
