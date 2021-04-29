@@ -18,7 +18,7 @@ dots:
 	$(MAKE) -s slim/docs/main.dot
 
 .PHONY: docs
-docs: dots slim/docs/main.png
+docs: dots slim/docs/main.png slim/docs/body.png
 
 .PHONY: snake2camel
 snake2camel:
@@ -32,6 +32,12 @@ slim/docs/main.dot: slim/machine.go.rl common/common.rl
 	$(RAGEL) -Z -Vp $< -o $@
 
 slim/docs/main.png: slim/docs/main.dot
+	dot $< -Tpng -o $@
+
+slim/docs/body.dot: slim/machine.go.rl common/common.rl
+	$(RAGEL) -Z -Vp -M body $< -o $@
+
+slim/docs/body.png: slim/docs/body.dot
 	dot $< -Tpng -o $@
 
 slim/machine.go: slim/machine.go.rl common/common.rl
