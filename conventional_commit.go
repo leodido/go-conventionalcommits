@@ -1,6 +1,8 @@
 package conventionalcommits
 
-import "github.com/sirupsen/logrus"
+import (
+	"github.com/sirupsen/logrus"
+)
 
 // TypeConfig represent the set of types the parser should use.
 type TypeConfig int
@@ -47,6 +49,7 @@ type MachineOption func(m Machine) Machine
 type Message interface {
 	Ok() bool
 	IsBreakingChange() bool
+	HasFooter() bool
 }
 
 // ConventionalCommit represents a commit message as per Conventional Commits specification.
@@ -68,7 +71,8 @@ func (c *ConventionalCommit) Ok() bool {
 
 // IsBreakingChange tells whether the receiving commit message represents a breaking change or not.
 func (c *ConventionalCommit) IsBreakingChange() bool {
-	return c.Exclamation
+	_, hasBreakingChangeTrailer := c.Footers["breaking-change"]
+	return c.Exclamation || hasBreakingChangeTrailer
 }
 
 func (c *ConventionalCommit) HasFooter() bool {
