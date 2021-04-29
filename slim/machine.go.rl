@@ -118,23 +118,12 @@ action set_exclamation {
 	m.emitInfo("commit message communicates a breaking change")
 }
 
-action set_body {
-	// Append newlines
-	for ; m.countNewlines > 0; {
-		output.body += "\n"
-		m.countNewlines--
-	}
-	// Append body content
-	output.body += string(m.text())
-	m.emitInfo("valid commit message body content", "body", string(m.text()))
-}
-
 action set_body_blank_line {
 	m.emitDebug("found a blank line", "pos", m.p)
-	if m.inBody {
-		output.body += "\n\n"
-		m.inBody = false
-	}
+	// if m.inBody {
+	// 	output.body += "\n\n"
+	// 	m.inBody = false
+	// }
 }
 
 action set_current_footer_key {
@@ -153,11 +142,57 @@ action count_nl {
 	m.emitDebug("found a newline", "pos", m.p)
 }
 
+action append_body {
+	// Append newlines
+	for ; m.countNewlines > 0; {
+		output.body += "\n"
+		m.countNewlines--
+		m.emitInfo("valid commit message body content", "body", "\n")
+	}
+	// Append body content
+	output.body += string(m.text())
+	m.emitInfo("valid commit message body content", "body", string(m.text()))
+}
+
+action append_body_all_states {
+	// Append newlines
+	for ; m.countNewlines > 0; {
+		output.body += "\n"
+		m.countNewlines--
+		m.emitInfo("valid commit message body content", "body", "\n")
+	}
+	// Append content to body
+	if m.p > m.pb {
+		output.body += string(m.text())
+		m.emitInfo("valid commit message body content", "body", string(m.text()))
+	} else {
+		// assert(m.p == m.pb)
+		output.body += string(m.data[m.pb:m.pb + 1])
+		m.emitInfo("valid commit message body content", "body", string(m.data[m.pb:m.pb + 1]))
+	}
+}
+
+action append_body_before_blank_line {
+	// Append newlines
+	for ; m.countNewlines > 0; {
+		output.body += "\n"
+		m.countNewlines--
+		m.emitInfo("valid commit message body content", "body", "\n")
+	}
+	// Append content to body
+	m.pb++
+	m.p++
+	output.body += string(m.text())
+	m.emitInfo("valid commit message body content", "body", string(m.text()))
+	// Do not advance over the current char
+	fhold;
+}
+
 # Navigation
 
 action start_trailer_parsing {
 	m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-	m.inBody = false;
+	// m.inBody = false;
 	fgoto trailer_beg;
 }
 
@@ -168,16 +203,18 @@ action complete_trailer_parsing {
 
 action rewind {
 	if len(output.footers) == 0 {
-		m.emitDebug("try to parse body content", "pos", m.p)
-		m.inBody = true
+		// m.inBody = true
 		// Backtrack to the last marker
 		// Ie., the text possibly a trailer token that is instead part of the body content
 		fexec m.pb;
+		m.emitDebug("try to parse body content", "pos", m.p)
 		fgoto body;
 	} else {
 		fmt.Println("todo > rewind/continue to parse footer trailers", m.pb, m.p, string(m.text()));
 	}
 }
+
+action blank_line_ahead { m.p + 2 < m.pe && m.data[m.p + 1] == 10 && m.data[m.p + 2] == 10 }
 
 # Machine definitions
 
@@ -194,7 +231,7 @@ breaking = exclamation >set_exclamation;
 ## todo > strict option to enforce a single whitespace?
 description = ws+ >err(err_description_init) <: (any - nl)+ >mark >err(err_description) %set_description;
 
-blank_line = nl nl >set_body_blank_line >err(err_begin_blank_line);
+blank_line = nl nl >err(err_begin_blank_line) >set_body_blank_line;
 
 trailer_tok = alnum+ (dash alnum+)*;
 
@@ -214,7 +251,7 @@ trailer_end := trailer_val >mark %set_footer nl* $count_nl @start_trailer_parsin
 
 # Match anything until two newlines (ie., a blank line).
 # Then, try detect a footer looking for a trailer token.
-body := any+ >mark %set_body :>> (blank_line? @start_trailer_parsing);
+body := (any >mark $err(append_body_all_states) %append_body %err(append_body_before_blank_line) when !blank_line_ahead)+ $err(start_trailer_parsing);
 
 # Expect a blank line after the description.
 # Try detect a footer looking for a trailer token.
@@ -258,7 +295,7 @@ type machine struct {
 	typeConfig       conventionalcommits.TypeConfig
 	logger           *logrus.Logger
 	currentFooterKey string
-	inBody           bool
+	// inBody           bool
 	countNewlines    int
 }
 
@@ -338,7 +375,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.eof = len(input)
 	m.err = nil
 	m.currentFooterKey = ""
-	m.inBody = false
+	// m.inBody = false
 	m.countNewlines = 0
 	output := &conventionalCommit{}
 	output.footers = make(map[string][]string)
