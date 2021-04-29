@@ -33,6 +33,38 @@ var benchCases = []benchCase{
 		input: []byte("fix(s)!: abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwx"),
 	},
 	{
+		label: "[ok] with body and footer",
+		input: []byte(`fix: correct minor typos in code
+
+see the issue for details
+
+on typos fixed.
+
+Reviewed-by: Z
+Refs #133`),
+	},
+	{
+		label: "[ok] with body",
+		input: []byte(`fix: correct minor typos in code
+
+see the issue for details on typos fixed`),
+	},
+	{
+		label: "[ok] with footer containing one trailer",
+		input: []byte(`fix: correct minor typos in code
+
+Acked-by: leodido`),
+	},
+	{
+		label: "[ok] with footer containing many trailers",
+		input: []byte(`fix: correct minor typos in code
+
+Acked-by: leodido
+Co-authored-by: X
+Co-authored-by: Y
+Signed-off-by: Leonardo Di Donato <some@email.com>`),
+	},
+	{
 		label: "[no] empty",
 		input: []byte(""),
 	},

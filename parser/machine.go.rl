@@ -120,10 +120,6 @@ action set_exclamation {
 
 action set_body_blank_line {
 	m.emitDebug("found a blank line", "pos", m.p)
-	// if m.inBody {
-	// 	output.body += "\n\n"
-	// 	m.inBody = false
-	// }
 }
 
 action set_current_footer_key {
@@ -192,7 +188,6 @@ action append_body_before_blank_line {
 
 action start_trailer_parsing {
 	m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-	// m.inBody = false;
 	fgoto trailer_beg;
 }
 
@@ -203,7 +198,6 @@ action complete_trailer_parsing {
 
 action rewind {
 	if len(output.footers) == 0 {
-		// m.inBody = true
 		// Backtrack to the last marker
 		// Ie., the text possibly a trailer token that is instead part of the body content
 		fexec m.pb;
@@ -295,7 +289,6 @@ type machine struct {
 	typeConfig       conventionalcommits.TypeConfig
 	logger           *logrus.Logger
 	currentFooterKey string
-	// inBody           bool
 	countNewlines    int
 }
 
@@ -375,7 +368,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.eof = len(input)
 	m.err = nil
 	m.currentFooterKey = ""
-	// m.inBody = false
 	m.countNewlines = 0
 	output := &conventionalCommit{}
 	output.footers = make(map[string][]string)

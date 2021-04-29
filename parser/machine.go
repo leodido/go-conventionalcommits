@@ -54,8 +54,7 @@ type machine struct {
 	typeConfig       conventionalcommits.TypeConfig
 	logger           *logrus.Logger
 	currentFooterKey string
-	// inBody           bool
-	countNewlines int
+	countNewlines    int
 }
 
 func (m *machine) text() []byte {
@@ -128,7 +127,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.eof = len(input)
 	m.err = nil
 	m.currentFooterKey = ""
-	// m.inBody = false
 	m.countNewlines = 0
 	output := &conventionalCommit{}
 	output.footers = make(map[string][]string)
@@ -435,7 +433,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	tr21:
 
 		if len(output.footers) == 0 {
-			// m.inBody = true
 			// Backtrack to the last marker
 			// Ie., the text possibly a trailer token that is instead part of the body content
 			(m.p) = (m.pb) - 1
@@ -468,7 +465,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-		// m.inBody = false;
 		{
 			goto st103
 		}
@@ -507,7 +503,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		(m.p)--
 
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-		// m.inBody = false;
 		{
 			goto st103
 		}
@@ -653,13 +648,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	tr15:
 
 		m.emitDebug("found a blank line", "pos", m.p)
-		// if m.inBody {
-		// 	output.body += "\n\n"
-		// 	m.inBody = false
-		// }
 
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-		// m.inBody = false;
 		{
 			goto st103
 		}
@@ -776,7 +766,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		m.emitDebug("found a newline", "pos", m.p)
 
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-		// m.inBody = false;
 		{
 			goto st103
 		}
@@ -789,7 +778,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		m.emitDebug("found a newline", "pos", m.p)
 
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-		// m.inBody = false;
 		{
 			goto st103
 		}
@@ -1014,13 +1002,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	tr48:
 
 		m.emitDebug("found a blank line", "pos", m.p)
-		// if m.inBody {
-		// 	output.body += "\n\n"
-		// 	m.inBody = false
-		// }
 
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-		// m.inBody = false;
 		{
 			goto st103
 		}
@@ -1552,13 +1535,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	tr92:
 
 		m.emitDebug("found a blank line", "pos", m.p)
-		// if m.inBody {
-		// 	output.body += "\n\n"
-		// 	m.inBody = false
-		// }
 
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-		// m.inBody = false;
 		{
 			goto st103
 		}
@@ -2437,7 +2415,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			case 14, 15, 17:
 
 				if len(output.footers) == 0 {
-					// m.inBody = true
 					// Backtrack to the last marker
 					// Ie., the text possibly a trailer token that is instead part of the body content
 					(m.p) = (m.pb) - 1
@@ -2481,7 +2458,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 				}
 
 				m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-				// m.inBody = false;
 				{
 					goto st103
 				}
