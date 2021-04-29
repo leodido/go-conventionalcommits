@@ -2,11 +2,10 @@ package slim
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/leodido/go-conventionalcommits"
+	"github.com/sirupsen/logrus"
 )
 
 func output(out interface{}) {
@@ -21,18 +20,45 @@ func Example_minimal_withoutbody() {
 	output(m)
 	fmt.Println("there are breaking changes?", m.IsBreakingChange())
 	// Output:
-	// (*slim.ConventionalCommit)({
-	//  Minimal: (conventionalcommits.Minimal) {
-	//   Type: (string) (len=3) "fix",
-	//   Description: (string) (len=9) "something",
-	//   Scope: (*string)(<nil>),
-	//   Exclamation: (bool) true
-	//  }
+	// (*conventionalcommits.ConventionalCommit)({
+	//  Type: (string) (len=3) "fix",
+	//  Description: (string) (len=9) "something",
+	//  Scope: (*string)(<nil>),
+	//  Exclamation: (bool) true,
+	//  Body: (*string)(<nil>),
+	//  Footers: (map[string][]string) <nil>
 	// })
 	// there are breaking changes? true
 }
 
-func Example_conventional_ignoringbody() {
+func Example_multiline_body() {
+	l := logrus.New()
+	l.SetLevel(logrus.DebugLevel)
+	l.SetFormatter(&logrus.TextFormatter{
+		DisableTimestamp: true,
+	})
+	i := []byte(`fix: x
+
+see the issue for details
+
+but first a newline
+and then two blank lines:
+
+typos fixed.`)
+	m, _ := NewMachine(WithLogger(l)).Parse(i)
+	output(m)
+	// Output:
+	// (*conventionalcommits.ConventionalCommit)({
+	//  Type: (string) (len=3) "fix",
+	//  Description: (string) (len=1) "x",
+	//  Scope: (*string)(<nil>),
+	//  Exclamation: (bool) false,
+	//  Body: (*string)((len=86) "see the issue for details\n\nbut first a newline\nand then two blank lines:\n\ntypos fixed."),
+	//  Footers: (map[string][]string) <nil>
+	// })
+}
+
+func Example_full() {
 	i := []byte(`fix: correct minor typos in code
 
 see the issue for details
@@ -42,39 +68,24 @@ Reviewed-by: Z
 Refs #133`)
 
 	opts := []conventionalcommits.MachineOption{
-		WithBestEffort(),
 		WithTypes(conventionalcommits.TypesConventional),
 	}
-	m, e := NewMachine(opts...).Parse(i)
+	m, _ := NewMachine(opts...).Parse(i)
 	output(m)
-	fmt.Println("is result ok?", m.Ok())
-
-	errstr := e.Error()
-	fmt.Println(errstr)
-	pos := strings.LastIndex(errstr, "=")
-	num, _ := strconv.Atoi(errstr[pos+1:])
-	// Not checking pos and num because ain't time for bs
-	fmt.Printf("parsing ok until position %d\n", num)
-	fmt.Println("ignored body:")
-	fmt.Println(string(i[num:]))
-
 	// Output:
-	// (*slim.ConventionalCommit)({
-	//  Minimal: (conventionalcommits.Minimal) {
-	//   Type: (string) (len=3) "fix",
-	//   Description: (string) (len=27) "correct minor typos in code",
-	//   Scope: (*string)(<nil>),
-	//   Exclamation: (bool) false
+	// (*conventionalcommits.ConventionalCommit)({
+	//  Type: (string) (len=3) "fix",
+	//  Description: (string) (len=27) "correct minor typos in code",
+	//  Scope: (*string)(<nil>),
+	//  Exclamation: (bool) false,
+	//  Body: (*string)((len=41) "see the issue for details\non typos fixed."),
+	//  Footers: (map[string][]string) (len=2) {
+	//   (string) (len=11) "reviewed-by": ([]string) (len=1) {
+	//    (string) (len=1) "Z"
+	//   },
+	//   (string) (len=4) "refs": ([]string) (len=1) {
+	//    (string) (len=3) "133"
+	//   }
 	//  }
 	// })
-	// is result ok? true
-	// illegal newline: col=33
-	// parsing ok until position 33
-	// ignored body:
-	//
-	// see the issue for details
-	// on typos fixed.
-	//
-	// Reviewed-by: Z
-	// Refs #133
 }

@@ -91,7 +91,7 @@ func TestParseLoggingErrorsOnly(t *testing.T) {
 
 	assert.Equal(t, 1, len(hook.Entries))
 	assert.Equal(t, logrus.ErrorLevel, hook.LastEntry().Level)
-	assert.Equal(t, "body must begin with a blank line: col=24", hook.LastEntry().Message)
+	assert.Equal(t, "missing a blank line: col=24", hook.LastEntry().Message)
 
 	hook.Reset()
 	assert.Nil(t, hook.LastEntry())
@@ -113,7 +113,7 @@ func TestParseLoggingEverything(t *testing.T) {
 	assert.Equal(t, "valid commit message type", logEntries[0].Message)
 	assert.Equal(t, "a wonderful logger", logEntries[1].Data["description"])
 	assert.Equal(t, "valid commit message description", logEntries[1].Message)
-	assert.Equal(t, "body must begin with a blank line: col=24", logEntries[2].Message)
+	assert.Equal(t, "missing a blank line: col=24", logEntries[2].Message)
 
 	hook.Reset()
 	assert.Nil(t, hook.LastEntry())
