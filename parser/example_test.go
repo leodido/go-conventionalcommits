@@ -1,11 +1,10 @@
-package slim
+package parser
 
 import (
 	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/leodido/go-conventionalcommits"
-	"github.com/sirupsen/logrus"
 )
 
 func output(out interface{}) {
@@ -32,11 +31,6 @@ func Example_minimal_withoutbody() {
 }
 
 func Example_multiline_body() {
-	l := logrus.New()
-	l.SetLevel(logrus.DebugLevel)
-	l.SetFormatter(&logrus.TextFormatter{
-		DisableTimestamp: true,
-	})
 	i := []byte(`fix: x
 
 see the issue for details
@@ -45,7 +39,7 @@ but first a newline
 and then two blank lines:
 
 typos fixed.`)
-	m, _ := NewMachine(WithLogger(l)).Parse(i)
+	m, _ := NewMachine().Parse(i)
 	output(m)
 	// Output:
 	// (*conventionalcommits.ConventionalCommit)({
@@ -58,7 +52,7 @@ typos fixed.`)
 	// })
 }
 
-func Example_full() {
+func Example_full_conventional() {
 	i := []byte(`fix: correct minor typos in code
 
 see the issue for details
@@ -66,7 +60,6 @@ on typos fixed.
 
 Reviewed-by: Z
 Refs #133`)
-
 	opts := []conventionalcommits.MachineOption{
 		WithTypes(conventionalcommits.TypesConventional),
 	}

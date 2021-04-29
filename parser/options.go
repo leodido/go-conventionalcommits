@@ -1,4 +1,4 @@
-package slim
+package parser
 
 import (
 	"github.com/leodido/go-conventionalcommits"

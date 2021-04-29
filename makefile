@@ -4,21 +4,21 @@ RAGEL := ragel -I common
 export GO_TEST=env GOTRACEBACK=all go test $(GO_ARGS)
 
 .PHONY: build
-build: slim/machine.go
-	@gofmt -w -s ./slim
+build: parser/machine.go
+	@gofmt -w -s ./parser
 
 .PHONY: clean
 clean:
-	@$(RM) slim/machine.go
-	@$(RM) -R slim/docs
+	@$(RM) parser/machine.go
+	@$(RM) -R parser/docs
 
 .PHONY: dots
 dots:
-	@mkdir -p slim/docs
-	$(MAKE) -s slim/docs/main.dot
+	@mkdir -p parser/docs
+	$(MAKE) -s parser/docs/main.dot
 
 .PHONY: docs
-docs: dots slim/docs/main.png slim/docs/body.png slim/docs/trailer_beg.png slim/docs/trailer_end.png
+docs: dots parser/docs/main.png parser/docs/body.png parser/docs/trailer_beg.png parser/docs/trailer_end.png
 
 .PHONY: snake2camel
 snake2camel:
@@ -28,33 +28,33 @@ snake2camel:
 	print \
 	}' $(file)
 
-slim/docs/main.dot: slim/machine.go.rl common/common.rl
+parser/docs/main.dot: parser/machine.go.rl common/common.rl
 	$(RAGEL) -Z -Vp $< -o $@
 
-slim/docs/main.png: slim/docs/main.dot
+parser/docs/main.png: parser/docs/main.dot
 	dot $< -Tpng -o $@
 
-slim/docs/body.dot: slim/machine.go.rl common/common.rl
+parser/docs/body.dot: parser/machine.go.rl common/common.rl
 	$(RAGEL) -Z -Vp -M body $< -o $@
 
-slim/docs/body.png: slim/docs/body.dot
+parser/docs/body.png: parser/docs/body.dot
 	dot $< -Tpng -o $@
 
-slim/docs/trailer_beg.dot: slim/machine.go.rl common/common.rl
+parser/docs/trailer_beg.dot: parser/machine.go.rl common/common.rl
 	$(RAGEL) -Z -Vp -M trailer_beg $< -o $@
 
-slim/docs/trailer_beg.png: slim/docs/trailer_beg.dot
+parser/docs/trailer_beg.png: parser/docs/trailer_beg.dot
 	dot $< -Tpng -o $@
 
-slim/docs/trailer_end.dot: slim/machine.go.rl common/common.rl
+parser/docs/trailer_end.dot: parser/machine.go.rl common/common.rl
 	$(RAGEL) -Z -Vp -M trailer_end $< -o $@
 
-slim/docs/trailer_end.png: slim/docs/trailer_end.dot
+parser/docs/trailer_end.png: parser/docs/trailer_end.dot
 	dot $< -Tpng -o $@
 
-slim/machine.go: slim/machine.go.rl common/common.rl
+parser/machine.go: parser/machine.go.rl common/common.rl
 
-slim/machine.go:
+parser/machine.go:
 	$(RAGEL) -Z -G2 -e -o $@ $<
 	@sed -i '/^\/\/line/d' $@
 	$(MAKE) file=$@ snake2camel
@@ -64,5 +64,5 @@ tests:
 	$(GO_TEST) ./...
 
 .PHONY: bench
-bench: slim/machine.go slim/perf_test.go
-	go test -bench=. -run=Bench -benchmem -benchtime=5s ./slim
+bench: parser/machine.go parser/perf_test.go
+	go test -bench=. -run=Bench -benchmem -benchtime=5s ./parser
