@@ -6,15 +6,7 @@
 
 > Fu powers to parse your commits!
 
-This repository provides libraries to parse your commit messages according to the Conventional Commits v1.0 specification.
-
-Wanna parse only the first line of your commits?
-
-Use the [leodido/go-conventionalcommits/slim](slim/) package.
-
-Wanna parse the full commit message corpus according to the specification?
-
-Use the [leodido/go-conventionalcommits/full](full/) package (**WIP**).
+This repository provides a library to parse your commit messages according to the Conventional Commits v1.0 specification.
 
 ## Installation
 
@@ -24,7 +16,9 @@ go get github.com/leodido/go-conventionalcommits
 
 ## Docs
 
-TBD.
+[![Documentation](https://img.shields.io/badge/godoc-reference-blue.svg?style=for-the-badge)](http://godoc.org/github.com/leodido/go-conventionalcommits)
+
+The [parser/docs](parser/docs/) directory contains `.dot` and `.png` files representing the finite-state machines (FSMs) implementing the parser.
 
 ## Usage
 
@@ -36,15 +30,28 @@ This library provides support for different types:
 - conventional => build, ci, chore, docs, feat, fix, perf, refactor, revert, style, test
 - falco => build, ci, chore, docs, feat, fix, perf, new, revert, update, test, rule
 
-At the moment, those types are static and cannot be configured.
+At the moment, those types are at build time. Which means users can't configure them at runtime.
 
 ### Options
 
-Every parser has its own options.
+A parser behaviour is configurable by using options.
 
-You can set them calling a function on the parser machine. Or you can provide options to `NewMachine(...)` directly.
+You can set them calling a function on the parser machine.
 
-### Parse only the first line
+```go
+p := parser.NewMachine()
+p.WithBestEffort()
+res, err := p.Parse(i)
+```
+
+Or you can provide options to `NewMachine(...)` directly.
+
+```go
+p := parser.NewMachine(WithBestEffort())
+res, err := p.Parse(i)
+```
+
+### Parse!
 
 Your code base uses only single line commit messages like this one?
 
@@ -52,45 +59,67 @@ Your code base uses only single line commit messages like this one?
 feat: awesomeness
 ```
 
-It's the perfect case for the **slim** parser:
+No problem at all since the body and the footer parts are not mandatory:
 
 ```go
-m, _ := slim.NewMachine().Parse([]byte(`feat: awesomeness`))
+m, _ := parser.NewMachine().Parse([]byte(`feat: awesomeness`))
 ```
 
-### Parse only the first line ignoring the commit message body
+### Full conventional commit messages
 
 Imagine you have a commit message like this:
 
 ```console
-fix: correct minor typos in code
+docs: correct minor typos
 
 see the issue for details
 
-on typos fixed.
+on docs edits.
 
 Reviewed-by: Z
 Refs #133
 ```
 
-And you want to parse only the first line of your commits ignoring its body for some reason...
-
 Go with this:
 
 ```go
 opts := []conventionalcommits.MachineOption{
-    WithBestEffort(),
     WithTypes(conventionalcommits.TypesConventional),
 }
-res, err := slim.NewMachine(opts...).Parse(i)
+res, err := parser.NewMachine(opts...).Parse(i)
 ```
 
-The best effort mode will make the parser return what it found until the point it errored out (ie., the first newline in this case),
-if it found (at least) a valid type and a description (eg., `fix: description`).
+Or, more simpler:
+
+```go
+res, err := parser.NewMachine(WithTypes(conventionalcommits.TypesConventional)).Parse(i)
+```
+
+### Best effort
+
+The best effort mode will make the parser return what it found until the point it errored out,
+if it found (at least) a valid type and a description.
+
+Let's make an example.
+
+Suppose this input commit message:
+
+```console
+fix: description
+a blank line is mandatory to start the body part of the commit message!
+```
+
+The input does not respect the conventional commit v1 specification.
+
+Anyways, if the parser you're using has the best effort mode enabled, you can still obtain some data since at least a valid type and description have been found!
+
+```go
+res, err := parser.NewMachine(WithBestEffort()).Parse(i)
+```
+
+The result will contain a `ConventionalCommit` struct instance with the `Type` and the `Description` fields populated.
 
 The parser will still return the error (with the position information), so that you can eventually use it.
-
-You can see this in action [here](slim/example_test.go).
 
 ## Performances
 
@@ -104,7 +133,7 @@ All the parsers have the best effort mode on.
 
 On my machine<sup>[1](#mymachine)</sup>, these are the results for the `slim` parser with the default - ie., `minimal`, commit message types.
 
-```
+```console
 [ok]_minimal______________________________________-12          4876018       242 ns/op     147 B/op       5 allocs/op
 [ok]_minimal_with_scope___________________________-12          4258562       284 ns/op     163 B/op       6 allocs/op
 [ok]_minimal_breaking_with_scope__________________-12          4176747       288 ns/op     163 B/op       6 allocs/op
@@ -120,7 +149,7 @@ On my machine<sup>[1](#mymachine)</sup>, these are the results for the `slim` pa
 
 Using another set of commit message types, for example the `conventional` one, does not have any noticeable impact on performances, as you can see below.
 
-```
+```console
 [ok]_minimal______________________________________-12          5297486       228 ns/op     147 B/op       5 allocs/op
 [ok]_minimal_with_scope___________________________-12          4498694       267 ns/op     163 B/op       6 allocs/op
 [ok]_minimal_breaking_with_scope__________________-12          4431040       273 ns/op     163 B/op       6 allocs/op
