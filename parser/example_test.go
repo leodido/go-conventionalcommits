@@ -30,6 +30,24 @@ func Example_minimal_withoutbody() {
 	// there are breaking changes? true
 }
 
+func Example_best_effort() {
+	i := []byte(`fix: description
+a blank line is mandatory to start the body part of the commit message!`)
+	m, e := NewMachine(WithBestEffort()).Parse(i)
+	output(m)
+	fmt.Println(e)
+	// Output:
+	// (*conventionalcommits.ConventionalCommit)({
+	//  Type: (string) (len=3) "fix",
+	//  Description: (string) (len=11) "description",
+	//  Scope: (*string)(<nil>),
+	//  Exclamation: (bool) false,
+	//  Body: (*string)(<nil>),
+	//  Footers: (map[string][]string) <nil>
+	// })
+	// missing a blank line: col=17
+}
+
 func Example_multiline_body() {
 	i := []byte(`fix: x
 
