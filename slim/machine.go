@@ -1,6 +1,7 @@
 package slim
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/leodido/go-conventionalcommits"
@@ -29,28 +30,32 @@ const (
 	ErrDescription = "expecting a description text (without newlines) after '%s' character"
 	// ErrNewline communicates an illegal newline to the user.
 	ErrNewline = "illegal newline"
-	// ErrMissingBlankLineAtBodyBegin tells the user that the body must start with a blank line.
-	ErrMissingBlankLineAtBodyBegin = "body must begin with a blank line"
-	// ErrMissingBlankLineAtFooterBegin tells the user that the footer must start with a blank line.
-	ErrMissingBlankLineAtFooterBegin = "footer must begin with a blank line"
+	// ErrMissingBlankLineAtBeginning tells the user that the a blank line is missing after the description or after the body.
+	ErrMissingBlankLineAtBeginning = "missing a blank line"
 )
 
 const start int = 1
-const firstFinal int = 95
+const firstFinal int = 101
 
+const enTrailerBeg int = 103
+const enTrailerEnd int = 18
+const enBody int = 19
 const enMain int = 1
-const enConventionalTypesMain int = 14
-const enFalcoTypesMain int = 55
+const enConventionalTypesMain int = 20
+const enFalcoTypesMain int = 61
 
 type machine struct {
-	data       []byte
-	cs         int
-	p, pe, eof int
-	pb         int
-	err        error
-	bestEffort bool
-	typeConfig conventionalcommits.TypeConfig
-	logger     *logrus.Logger
+	data             []byte
+	cs               int
+	p, pe, eof       int
+	pb               int
+	err              error
+	bestEffort       bool
+	typeConfig       conventionalcommits.TypeConfig
+	logger           *logrus.Logger
+	currentFooterKey string
+	// inBody           bool
+	countNewlines int
 }
 
 func (m *machine) text() []byte {
@@ -59,11 +64,21 @@ func (m *machine) text() []byte {
 
 func (m *machine) emitInfo(s string, args ...interface{}) {
 	if m.logger != nil {
-		var logEntry *logrus.Entry
+		logEntry := logrus.NewEntry(m.logger)
 		for i := 0; i < len(args); i = i + 2 {
 			logEntry = m.logger.WithField(args[0].(string), args[1])
 		}
 		logEntry.Infoln(s)
+	}
+}
+
+func (m *machine) emitDebug(s string, args ...interface{}) {
+	if m.logger != nil {
+		logEntry := logrus.NewEntry(m.logger)
+		for i := 0; i < len(args); i = i + 2 {
+			logEntry = m.logger.WithField(args[0].(string), args[1])
+		}
+		logEntry.Debugln(s)
 	}
 }
 
@@ -112,7 +127,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.pe = len(input)
 	m.eof = len(input)
 	m.err = nil
+	m.currentFooterKey = ""
+	// m.inBody = false
+	m.countNewlines = 0
 	output := &conventionalCommit{}
+	output.footers = make(map[string][]string)
 
 	switch m.typeConfig {
 	case conventionalcommits.TypesConventional:
@@ -133,6 +152,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	}
 
 	{
+		var _widec int16
 		if (m.p) == (m.pe) {
 			goto _testEof
 		}
@@ -155,14 +175,12 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase7
 		case 8:
 			goto stCase8
-		case 95:
-			goto stCase95
+		case 101:
+			goto stCase101
 		case 9:
 			goto stCase9
-		case 96:
-			goto stCase96
-		case 97:
-			goto stCase97
+		case 102:
+			goto stCase102
 		case 10:
 			goto stCase10
 		case 11:
@@ -171,32 +189,24 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase12
 		case 13:
 			goto stCase13
-		case 14:
-			goto stCase14
-		case 15:
-			goto stCase15
-		case 16:
-			goto stCase16
-		case 17:
-			goto stCase17
 		case 18:
 			goto stCase18
+		case 105:
+			goto stCase105
+		case 106:
+			goto stCase106
 		case 19:
 			goto stCase19
+		case 107:
+			goto stCase107
 		case 20:
 			goto stCase20
 		case 21:
 			goto stCase21
 		case 22:
 			goto stCase22
-		case 98:
-			goto stCase98
 		case 23:
 			goto stCase23
-		case 99:
-			goto stCase99
-		case 100:
-			goto stCase100
 		case 24:
 			goto stCase24
 		case 25:
@@ -207,8 +217,12 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase27
 		case 28:
 			goto stCase28
+		case 108:
+			goto stCase108
 		case 29:
 			goto stCase29
+		case 109:
+			goto stCase109
 		case 30:
 			goto stCase30
 		case 31:
@@ -277,14 +291,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase62
 		case 63:
 			goto stCase63
-		case 101:
-			goto stCase101
 		case 64:
 			goto stCase64
-		case 102:
-			goto stCase102
-		case 103:
-			goto stCase103
 		case 65:
 			goto stCase65
 		case 66:
@@ -295,8 +303,12 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase68
 		case 69:
 			goto stCase69
+		case 110:
+			goto stCase110
 		case 70:
 			goto stCase70
+		case 111:
+			goto stCase111
 		case 71:
 			goto stCase71
 		case 72:
@@ -345,6 +357,30 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto stCase93
 		case 94:
 			goto stCase94
+		case 95:
+			goto stCase95
+		case 96:
+			goto stCase96
+		case 97:
+			goto stCase97
+		case 98:
+			goto stCase98
+		case 99:
+			goto stCase99
+		case 100:
+			goto stCase100
+		case 103:
+			goto stCase103
+		case 14:
+			goto stCase14
+		case 15:
+			goto stCase15
+		case 104:
+			goto stCase104
+		case 16:
+			goto stCase16
+		case 17:
+			goto stCase17
 		}
 		goto stOut
 	stCase1:
@@ -388,12 +424,93 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		goto st0
 	tr14:
 
-		m.err = m.emitErrorWithoutCharacter(ErrMissingBlankLineAtBodyBegin)
+		m.err = m.emitErrorWithoutCharacter(ErrMissingBlankLineAtBeginning)
 
 		goto st0
 	tr17:
 
 		m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
+
+		goto st0
+	tr21:
+
+		if len(output.footers) == 0 {
+			// m.inBody = true
+			// Backtrack to the last marker
+			// Ie., the text possibly a trailer token that is instead part of the body content
+			(m.p) = (m.pb) - 1
+
+			m.emitDebug("try to parse body content", "pos", m.p)
+			{
+				goto st19
+			}
+		} else {
+			fmt.Println("todo > rewind/continue to parse footer trailers", m.pb, m.p, string(m.text()))
+		}
+
+		goto st0
+	tr29:
+
+		// Append newlines
+		for m.countNewlines > 0 {
+			output.body += "\n"
+			m.countNewlines--
+			m.emitInfo("valid commit message body content", "body", "\n")
+		}
+		// Append content to body
+		if m.p > m.pb {
+			output.body += string(m.text())
+			m.emitInfo("valid commit message body content", "body", string(m.text()))
+		} else {
+			// assert(m.p == m.pb)
+			output.body += string(m.data[m.pb : m.pb+1])
+			m.emitInfo("valid commit message body content", "body", string(m.data[m.pb:m.pb+1]))
+		}
+
+		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
+		// m.inBody = false;
+		{
+			goto st103
+		}
+
+		goto st0
+	tr123:
+
+		// Append newlines
+		for m.countNewlines > 0 {
+			output.body += "\n"
+			m.countNewlines--
+			m.emitInfo("valid commit message body content", "body", "\n")
+		}
+		// Append content to body
+		if m.p > m.pb {
+			output.body += string(m.text())
+			m.emitInfo("valid commit message body content", "body", string(m.text()))
+		} else {
+			// assert(m.p == m.pb)
+			output.body += string(m.data[m.pb : m.pb+1])
+			m.emitInfo("valid commit message body content", "body", string(m.data[m.pb:m.pb+1]))
+		}
+
+		// Append newlines
+		for m.countNewlines > 0 {
+			output.body += "\n"
+			m.countNewlines--
+			m.emitInfo("valid commit message body content", "body", "\n")
+		}
+		// Append content to body
+		m.pb++
+		m.p++
+		output.body += string(m.text())
+		m.emitInfo("valid commit message body content", "body", string(m.text()))
+		// Do not advance over the current char
+		(m.p)--
+
+		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
+		// m.inBody = false;
+		{
+			goto st103
+		}
 
 		goto st0
 	stCase0:
@@ -500,8 +617,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		switch (m.data)[(m.p)] {
 		case 10:
 			goto tr13
-		case 13:
-			goto tr13
 		case 32:
 			goto st8
 		}
@@ -510,20 +625,17 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		m.pb = m.p
 
-		goto st95
-	st95:
+		goto st101
+	st101:
 		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof95
+			goto _testEof101
 		}
-	stCase95:
-		switch (m.data)[(m.p)] {
-		case 10:
-			goto tr107
-		case 13:
-			goto tr107
+	stCase101:
+		if (m.data)[(m.p)] == 10 {
+			goto tr117
 		}
-		goto st95
-	tr107:
+		goto st101
+	tr117:
 
 		output.descr = string(m.text())
 		m.emitInfo("valid commit message description", "description", output.descr)
@@ -534,30 +646,31 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof9
 		}
 	stCase9:
-		switch (m.data)[(m.p)] {
-		case 10:
-			goto st96
-		case 13:
-			goto st96
+		if (m.data)[(m.p)] == 10 {
+			goto tr15
 		}
 		goto tr14
-	st96:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof96
-		}
-	stCase96:
-		goto tr108
-	tr108:
+	tr15:
 
-		m.pb = m.p
+		m.emitDebug("found a blank line", "pos", m.p)
+		// if m.inBody {
+		// 	output.body += "\n\n"
+		// 	m.inBody = false
+		// }
 
-		goto st97
-	st97:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof97
+		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
+		// m.inBody = false;
+		{
+			goto st103
 		}
-	stCase97:
-		goto st97
+
+		goto st102
+	st102:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof102
+		}
+	stCase102:
+		goto st0
 	st10:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof10
@@ -627,231 +740,206 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto st5
 		}
 		goto tr0
-	stCase14:
-		switch (m.data)[(m.p)] {
-		case 98:
-			goto tr21
-		case 99:
-			goto tr22
-		case 100:
-			goto tr23
-		case 102:
-			goto tr24
-		case 112:
-			goto tr25
-		case 114:
-			goto tr26
-		case 115:
-			goto tr27
-		case 116:
-			goto tr28
-		}
-		goto tr0
-	tr21:
-
-		m.pb = m.p
-
-		goto st15
-	st15:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof15
-		}
-	stCase15:
-		if (m.data)[(m.p)] == 117 {
-			goto st16
-		}
-		goto tr0
-	st16:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof16
-		}
-	stCase16:
-		if (m.data)[(m.p)] == 105 {
-			goto st17
-		}
-		goto tr0
-	st17:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof17
-		}
-	stCase17:
-		if (m.data)[(m.p)] == 108 {
-			goto st18
-		}
-		goto tr0
 	st18:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof18
 		}
 	stCase18:
-		if (m.data)[(m.p)] == 100 {
-			goto st19
+		if 32 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 126 {
+			goto tr28
+		}
+		goto st0
+	tr28:
+
+		m.pb = m.p
+
+		goto st105
+	st105:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof105
+		}
+	stCase105:
+		if (m.data)[(m.p)] == 10 {
+			goto tr120
+		}
+		if 32 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 126 {
+			goto st105
+		}
+		goto st0
+	tr120:
+
+		output.footers[m.currentFooterKey] = append(output.footers[m.currentFooterKey], string(m.text()))
+		m.emitInfo("valid commit message footer trailer", m.currentFooterKey, string(m.text()))
+
+		// Increment number of newlines to use in case we're still in the body
+		m.countNewlines++
+		m.emitDebug("found a newline", "pos", m.p)
+
+		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
+		// m.inBody = false;
+		{
+			goto st103
+		}
+
+		goto st106
+	tr122:
+
+		// Increment number of newlines to use in case we're still in the body
+		m.countNewlines++
+		m.emitDebug("found a newline", "pos", m.p)
+
+		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
+		// m.inBody = false;
+		{
+			goto st103
+		}
+
+		goto st106
+	st106:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof106
+		}
+	stCase106:
+		if (m.data)[(m.p)] == 10 {
+			goto tr122
+		}
+		goto st0
+	st19:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof19
+		}
+	stCase19:
+		_widec = int16((m.data)[(m.p)])
+		_widec = 256 + (int16((m.data)[(m.p)]) - 0)
+		if m.p+2 < m.pe && m.data[m.p+1] == 10 && m.data[m.p+2] == 10 {
+			_widec += 256
+		}
+		if 256 <= _widec && _widec <= 511 {
+			goto tr30
+		}
+		goto tr29
+	tr30:
+
+		m.pb = m.p
+
+		goto st107
+	tr124:
+
+		// Append newlines
+		for m.countNewlines > 0 {
+			output.body += "\n"
+			m.countNewlines--
+			m.emitInfo("valid commit message body content", "body", "\n")
+		}
+		// Append body content
+		output.body += string(m.text())
+		m.emitInfo("valid commit message body content", "body", string(m.text()))
+
+		m.pb = m.p
+
+		goto st107
+	st107:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof107
+		}
+	stCase107:
+		_widec = int16((m.data)[(m.p)])
+		_widec = 256 + (int16((m.data)[(m.p)]) - 0)
+		if m.p+2 < m.pe && m.data[m.p+1] == 10 && m.data[m.p+2] == 10 {
+			_widec += 256
+		}
+		if 256 <= _widec && _widec <= 511 {
+			goto tr124
+		}
+		goto tr123
+	stCase20:
+		switch (m.data)[(m.p)] {
+		case 98:
+			goto tr31
+		case 99:
+			goto tr32
+		case 100:
+			goto tr33
+		case 102:
+			goto tr34
+		case 112:
+			goto tr35
+		case 114:
+			goto tr36
+		case 115:
+			goto tr37
+		case 116:
+			goto tr38
 		}
 		goto tr0
-	st19:
+	tr31:
+
+		m.pb = m.p
+
+		goto st21
+	st21:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof21
+		}
+	stCase21:
+		if (m.data)[(m.p)] == 117 {
+			goto st22
+		}
+		goto tr0
+	st22:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof22
+		}
+	stCase22:
+		if (m.data)[(m.p)] == 105 {
+			goto st23
+		}
+		goto tr0
+	st23:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof23
+		}
+	stCase23:
+		if (m.data)[(m.p)] == 108 {
+			goto st24
+		}
+		goto tr0
+	st24:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof24
+		}
+	stCase24:
+		if (m.data)[(m.p)] == 100 {
+			goto st25
+		}
+		goto tr0
+	st25:
 
 		if (m.p + 1) == m.pe {
 			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
 		}
 
 		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof19
+			goto _testEof25
 		}
-	stCase19:
+	stCase25:
 
 		output._type = string(m.text())
 		m.emitInfo("valid commit message type", "type", output._type)
 
 		switch (m.data)[(m.p)] {
 		case 33:
-			goto tr33
+			goto tr43
 		case 40:
-			goto st24
+			goto st30
 		case 58:
-			goto st21
+			goto st27
 		}
 		goto tr6
-	tr33:
+	tr43:
 
 		output.exclamation = true
 		m.emitInfo("commit message communicates a breaking change")
-
-		goto st20
-	st20:
-
-		if (m.p + 1) == m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof20
-		}
-	stCase20:
-		if (m.data)[(m.p)] == 58 {
-			goto st21
-		}
-		goto tr6
-	st21:
-
-		if (m.p + 1) == m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof21
-		}
-	stCase21:
-		if (m.data)[(m.p)] == 32 {
-			goto st22
-		}
-		goto tr10
-	st22:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof22
-		}
-	stCase22:
-		switch (m.data)[(m.p)] {
-		case 10:
-			goto tr13
-		case 13:
-			goto tr13
-		case 32:
-			goto st22
-		}
-		goto tr37
-	tr37:
-
-		m.pb = m.p
-
-		goto st98
-	st98:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof98
-		}
-	stCase98:
-		switch (m.data)[(m.p)] {
-		case 10:
-			goto tr111
-		case 13:
-			goto tr111
-		}
-		goto st98
-	tr111:
-
-		output.descr = string(m.text())
-		m.emitInfo("valid commit message description", "description", output.descr)
-
-		goto st23
-	st23:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof23
-		}
-	stCase23:
-		switch (m.data)[(m.p)] {
-		case 10:
-			goto st99
-		case 13:
-			goto st99
-		}
-		goto tr14
-	st99:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof99
-		}
-	stCase99:
-		goto tr112
-	tr112:
-
-		m.pb = m.p
-
-		goto st100
-	st100:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof100
-		}
-	stCase100:
-		goto st100
-	st24:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof24
-		}
-	stCase24:
-		switch (m.data)[(m.p)] {
-		case 40:
-			goto tr17
-		case 41:
-			goto tr40
-		}
-		goto tr39
-	tr39:
-
-		m.pb = m.p
-
-		goto st25
-	st25:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof25
-		}
-	stCase25:
-		switch (m.data)[(m.p)] {
-		case 40:
-			goto tr17
-		case 41:
-			goto tr42
-		}
-		goto st25
-	tr40:
-
-		m.pb = m.p
-
-		output.scope = string(m.text())
-		m.emitInfo("valid commit message scope", "scope", output.scope)
-
-		goto st26
-	tr42:
-
-		output.scope = string(m.text())
-		m.emitInfo("valid commit message scope", "scope", output.scope)
 
 		goto st26
 	st26:
@@ -864,58 +952,99 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof26
 		}
 	stCase26:
-		switch (m.data)[(m.p)] {
-		case 33:
-			goto tr33
-		case 58:
-			goto st21
+		if (m.data)[(m.p)] == 58 {
+			goto st27
 		}
 		goto tr6
-	tr22:
-
-		m.pb = m.p
-
-		goto st27
 	st27:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof27
 		}
 	stCase27:
-		switch (m.data)[(m.p)] {
-		case 104:
+		if (m.data)[(m.p)] == 32 {
 			goto st28
-		case 105:
-			goto st19
 		}
-		goto tr0
+		goto tr10
 	st28:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof28
 		}
 	stCase28:
-		if (m.data)[(m.p)] == 111 {
-			goto st29
+		switch (m.data)[(m.p)] {
+		case 10:
+			goto tr13
+		case 32:
+			goto st28
 		}
-		goto tr0
+		goto tr47
+	tr47:
+
+		m.pb = m.p
+
+		goto st108
+	st108:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof108
+		}
+	stCase108:
+		if (m.data)[(m.p)] == 10 {
+			goto tr126
+		}
+		goto st108
+	tr126:
+
+		output.descr = string(m.text())
+		m.emitInfo("valid commit message description", "description", output.descr)
+
+		goto st29
 	st29:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof29
 		}
 	stCase29:
-		if (m.data)[(m.p)] == 114 {
-			goto st30
+		if (m.data)[(m.p)] == 10 {
+			goto tr48
 		}
-		goto tr0
+		goto tr14
+	tr48:
+
+		m.emitDebug("found a blank line", "pos", m.p)
+		// if m.inBody {
+		// 	output.body += "\n\n"
+		// 	m.inBody = false
+		// }
+
+		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
+		// m.inBody = false;
+		{
+			goto st103
+		}
+
+		goto st109
+	st109:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof109
+		}
+	stCase109:
+		goto st0
 	st30:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof30
 		}
 	stCase30:
-		if (m.data)[(m.p)] == 101 {
-			goto st19
+		switch (m.data)[(m.p)] {
+		case 40:
+			goto tr17
+		case 41:
+			goto tr50
 		}
-		goto tr0
-	tr23:
+		goto tr49
+	tr49:
 
 		m.pb = m.p
 
@@ -925,43 +1054,68 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof31
 		}
 	stCase31:
-		if (m.data)[(m.p)] == 111 {
-			goto st32
+		switch (m.data)[(m.p)] {
+		case 40:
+			goto tr17
+		case 41:
+			goto tr52
 		}
-		goto tr0
+		goto st31
+	tr50:
+
+		m.pb = m.p
+
+		output.scope = string(m.text())
+		m.emitInfo("valid commit message scope", "scope", output.scope)
+
+		goto st32
+	tr52:
+
+		output.scope = string(m.text())
+		m.emitInfo("valid commit message scope", "scope", output.scope)
+
+		goto st32
 	st32:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof32
 		}
 	stCase32:
-		if (m.data)[(m.p)] == 99 {
-			goto st33
+		switch (m.data)[(m.p)] {
+		case 33:
+			goto tr43
+		case 58:
+			goto st27
 		}
-		goto tr0
+		goto tr6
+	tr32:
+
+		m.pb = m.p
+
+		goto st33
 	st33:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof33
 		}
 	stCase33:
-		if (m.data)[(m.p)] == 115 {
-			goto st19
+		switch (m.data)[(m.p)] {
+		case 104:
+			goto st34
+		case 105:
+			goto st25
 		}
 		goto tr0
-	tr24:
-
-		m.pb = m.p
-
-		goto st34
 	st34:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof34
 		}
 	stCase34:
-		switch (m.data)[(m.p)] {
-		case 101:
+		if (m.data)[(m.p)] == 111 {
 			goto st35
-		case 105:
-			goto st37
 		}
 		goto tr0
 	st35:
@@ -969,7 +1123,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof35
 		}
 	stCase35:
-		if (m.data)[(m.p)] == 97 {
+		if (m.data)[(m.p)] == 114 {
 			goto st36
 		}
 		goto tr0
@@ -978,30 +1132,30 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof36
 		}
 	stCase36:
-		if (m.data)[(m.p)] == 116 {
-			goto st19
+		if (m.data)[(m.p)] == 101 {
+			goto st25
 		}
 		goto tr0
+	tr33:
+
+		m.pb = m.p
+
+		goto st37
 	st37:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof37
 		}
 	stCase37:
-		if (m.data)[(m.p)] == 120 {
-			goto st19
+		if (m.data)[(m.p)] == 111 {
+			goto st38
 		}
 		goto tr0
-	tr25:
-
-		m.pb = m.p
-
-		goto st38
 	st38:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof38
 		}
 	stCase38:
-		if (m.data)[(m.p)] == 101 {
+		if (m.data)[(m.p)] == 99 {
 			goto st39
 		}
 		goto tr0
@@ -1010,30 +1164,33 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof39
 		}
 	stCase39:
-		if (m.data)[(m.p)] == 114 {
-			goto st40
+		if (m.data)[(m.p)] == 115 {
+			goto st25
 		}
 		goto tr0
+	tr34:
+
+		m.pb = m.p
+
+		goto st40
 	st40:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof40
 		}
 	stCase40:
-		if (m.data)[(m.p)] == 102 {
-			goto st19
+		switch (m.data)[(m.p)] {
+		case 101:
+			goto st41
+		case 105:
+			goto st43
 		}
 		goto tr0
-	tr26:
-
-		m.pb = m.p
-
-		goto st41
 	st41:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof41
 		}
 	stCase41:
-		if (m.data)[(m.p)] == 101 {
+		if (m.data)[(m.p)] == 97 {
 			goto st42
 		}
 		goto tr0
@@ -1042,11 +1199,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof42
 		}
 	stCase42:
-		switch (m.data)[(m.p)] {
-		case 102:
-			goto st43
-		case 118:
-			goto st48
+		if (m.data)[(m.p)] == 116 {
+			goto st25
 		}
 		goto tr0
 	st43:
@@ -1054,16 +1208,21 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof43
 		}
 	stCase43:
-		if (m.data)[(m.p)] == 97 {
-			goto st44
+		if (m.data)[(m.p)] == 120 {
+			goto st25
 		}
 		goto tr0
+	tr35:
+
+		m.pb = m.p
+
+		goto st44
 	st44:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof44
 		}
 	stCase44:
-		if (m.data)[(m.p)] == 99 {
+		if (m.data)[(m.p)] == 101 {
 			goto st45
 		}
 		goto tr0
@@ -1072,7 +1231,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof45
 		}
 	stCase45:
-		if (m.data)[(m.p)] == 116 {
+		if (m.data)[(m.p)] == 114 {
 			goto st46
 		}
 		goto tr0
@@ -1081,17 +1240,22 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof46
 		}
 	stCase46:
-		if (m.data)[(m.p)] == 111 {
-			goto st47
+		if (m.data)[(m.p)] == 102 {
+			goto st25
 		}
 		goto tr0
+	tr36:
+
+		m.pb = m.p
+
+		goto st47
 	st47:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof47
 		}
 	stCase47:
-		if (m.data)[(m.p)] == 114 {
-			goto st19
+		if (m.data)[(m.p)] == 101 {
+			goto st48
 		}
 		goto tr0
 	st48:
@@ -1099,8 +1263,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof48
 		}
 	stCase48:
-		if (m.data)[(m.p)] == 101 {
+		switch (m.data)[(m.p)] {
+		case 102:
 			goto st49
+		case 118:
+			goto st54
 		}
 		goto tr0
 	st49:
@@ -1108,21 +1275,16 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof49
 		}
 	stCase49:
-		if (m.data)[(m.p)] == 114 {
-			goto st36
+		if (m.data)[(m.p)] == 97 {
+			goto st50
 		}
 		goto tr0
-	tr27:
-
-		m.pb = m.p
-
-		goto st50
 	st50:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof50
 		}
 	stCase50:
-		if (m.data)[(m.p)] == 116 {
+		if (m.data)[(m.p)] == 99 {
 			goto st51
 		}
 		goto tr0
@@ -1131,7 +1293,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof51
 		}
 	stCase51:
-		if (m.data)[(m.p)] == 121 {
+		if (m.data)[(m.p)] == 116 {
 			goto st52
 		}
 		goto tr0
@@ -1140,22 +1302,17 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof52
 		}
 	stCase52:
-		if (m.data)[(m.p)] == 108 {
-			goto st30
+		if (m.data)[(m.p)] == 111 {
+			goto st53
 		}
 		goto tr0
-	tr28:
-
-		m.pb = m.p
-
-		goto st53
 	st53:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof53
 		}
 	stCase53:
-		if (m.data)[(m.p)] == 101 {
-			goto st54
+		if (m.data)[(m.p)] == 114 {
+			goto st25
 		}
 		goto tr0
 	st54:
@@ -1163,33 +1320,20 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof54
 		}
 	stCase54:
-		if (m.data)[(m.p)] == 115 {
-			goto st36
+		if (m.data)[(m.p)] == 101 {
+			goto st55
 		}
 		goto tr0
+	st55:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof55
+		}
 	stCase55:
-		switch (m.data)[(m.p)] {
-		case 98:
-			goto tr64
-		case 99:
-			goto tr65
-		case 100:
-			goto tr66
-		case 102:
-			goto tr67
-		case 110:
-			goto tr68
-		case 112:
-			goto tr69
-		case 114:
-			goto tr70
-		case 116:
-			goto tr71
-		case 117:
-			goto tr72
+		if (m.data)[(m.p)] == 114 {
+			goto st42
 		}
 		goto tr0
-	tr64:
+	tr37:
 
 		m.pb = m.p
 
@@ -1199,7 +1343,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof56
 		}
 	stCase56:
-		if (m.data)[(m.p)] == 117 {
+		if (m.data)[(m.p)] == 116 {
 			goto st57
 		}
 		goto tr0
@@ -1208,7 +1352,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof57
 		}
 	stCase57:
-		if (m.data)[(m.p)] == 105 {
+		if (m.data)[(m.p)] == 121 {
 			goto st58
 		}
 		goto tr0
@@ -1218,182 +1362,122 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	stCase58:
 		if (m.data)[(m.p)] == 108 {
-			goto st59
+			goto st36
 		}
 		goto tr0
+	tr38:
+
+		m.pb = m.p
+
+		goto st59
 	st59:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof59
 		}
 	stCase59:
-		if (m.data)[(m.p)] == 100 {
+		if (m.data)[(m.p)] == 101 {
 			goto st60
 		}
 		goto tr0
 	st60:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof60
+		}
+	stCase60:
+		if (m.data)[(m.p)] == 115 {
+			goto st42
+		}
+		goto tr0
+	stCase61:
+		switch (m.data)[(m.p)] {
+		case 98:
+			goto tr74
+		case 99:
+			goto tr75
+		case 100:
+			goto tr76
+		case 102:
+			goto tr77
+		case 110:
+			goto tr78
+		case 112:
+			goto tr79
+		case 114:
+			goto tr80
+		case 116:
+			goto tr81
+		case 117:
+			goto tr82
+		}
+		goto tr0
+	tr74:
+
+		m.pb = m.p
+
+		goto st62
+	st62:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof62
+		}
+	stCase62:
+		if (m.data)[(m.p)] == 117 {
+			goto st63
+		}
+		goto tr0
+	st63:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof63
+		}
+	stCase63:
+		if (m.data)[(m.p)] == 105 {
+			goto st64
+		}
+		goto tr0
+	st64:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof64
+		}
+	stCase64:
+		if (m.data)[(m.p)] == 108 {
+			goto st65
+		}
+		goto tr0
+	st65:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof65
+		}
+	stCase65:
+		if (m.data)[(m.p)] == 100 {
+			goto st66
+		}
+		goto tr0
+	st66:
 
 		if (m.p + 1) == m.pe {
 			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
 		}
 
 		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof60
+			goto _testEof66
 		}
-	stCase60:
+	stCase66:
 
 		output._type = string(m.text())
 		m.emitInfo("valid commit message type", "type", output._type)
 
 		switch (m.data)[(m.p)] {
 		case 33:
-			goto tr77
+			goto tr87
 		case 40:
-			goto st65
+			goto st71
 		case 58:
-			goto st62
+			goto st68
 		}
 		goto tr6
-	tr77:
+	tr87:
 
 		output.exclamation = true
 		m.emitInfo("commit message communicates a breaking change")
-
-		goto st61
-	st61:
-
-		if (m.p + 1) == m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof61
-		}
-	stCase61:
-		if (m.data)[(m.p)] == 58 {
-			goto st62
-		}
-		goto tr6
-	st62:
-
-		if (m.p + 1) == m.pe {
-			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
-		}
-
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof62
-		}
-	stCase62:
-		if (m.data)[(m.p)] == 32 {
-			goto st63
-		}
-		goto tr10
-	st63:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof63
-		}
-	stCase63:
-		switch (m.data)[(m.p)] {
-		case 10:
-			goto tr13
-		case 13:
-			goto tr13
-		case 32:
-			goto st63
-		}
-		goto tr81
-	tr81:
-
-		m.pb = m.p
-
-		goto st101
-	st101:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof101
-		}
-	stCase101:
-		switch (m.data)[(m.p)] {
-		case 10:
-			goto tr115
-		case 13:
-			goto tr115
-		}
-		goto st101
-	tr115:
-
-		output.descr = string(m.text())
-		m.emitInfo("valid commit message description", "description", output.descr)
-
-		goto st64
-	st64:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof64
-		}
-	stCase64:
-		switch (m.data)[(m.p)] {
-		case 10:
-			goto st102
-		case 13:
-			goto st102
-		}
-		goto tr14
-	st102:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof102
-		}
-	stCase102:
-		goto tr116
-	tr116:
-
-		m.pb = m.p
-
-		goto st103
-	st103:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof103
-		}
-	stCase103:
-		goto st103
-	st65:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof65
-		}
-	stCase65:
-		switch (m.data)[(m.p)] {
-		case 40:
-			goto tr17
-		case 41:
-			goto tr84
-		}
-		goto tr83
-	tr83:
-
-		m.pb = m.p
-
-		goto st66
-	st66:
-		if (m.p)++; (m.p) == (m.pe) {
-			goto _testEof66
-		}
-	stCase66:
-		switch (m.data)[(m.p)] {
-		case 40:
-			goto tr17
-		case 41:
-			goto tr86
-		}
-		goto st66
-	tr84:
-
-		m.pb = m.p
-
-		output.scope = string(m.text())
-		m.emitInfo("valid commit message scope", "scope", output.scope)
-
-		goto st67
-	tr86:
-
-		output.scope = string(m.text())
-		m.emitInfo("valid commit message scope", "scope", output.scope)
 
 		goto st67
 	st67:
@@ -1406,58 +1490,99 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof67
 		}
 	stCase67:
-		switch (m.data)[(m.p)] {
-		case 33:
-			goto tr77
-		case 58:
-			goto st62
+		if (m.data)[(m.p)] == 58 {
+			goto st68
 		}
 		goto tr6
-	tr65:
-
-		m.pb = m.p
-
-		goto st68
 	st68:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof68
 		}
 	stCase68:
-		switch (m.data)[(m.p)] {
-		case 104:
+		if (m.data)[(m.p)] == 32 {
 			goto st69
-		case 105:
-			goto st60
 		}
-		goto tr0
+		goto tr10
 	st69:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof69
 		}
 	stCase69:
-		if (m.data)[(m.p)] == 111 {
-			goto st70
+		switch (m.data)[(m.p)] {
+		case 10:
+			goto tr13
+		case 32:
+			goto st69
 		}
-		goto tr0
+		goto tr91
+	tr91:
+
+		m.pb = m.p
+
+		goto st110
+	st110:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof110
+		}
+	stCase110:
+		if (m.data)[(m.p)] == 10 {
+			goto tr128
+		}
+		goto st110
+	tr128:
+
+		output.descr = string(m.text())
+		m.emitInfo("valid commit message description", "description", output.descr)
+
+		goto st70
 	st70:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof70
 		}
 	stCase70:
-		if (m.data)[(m.p)] == 114 {
-			goto st71
+		if (m.data)[(m.p)] == 10 {
+			goto tr92
 		}
-		goto tr0
+		goto tr14
+	tr92:
+
+		m.emitDebug("found a blank line", "pos", m.p)
+		// if m.inBody {
+		// 	output.body += "\n\n"
+		// 	m.inBody = false
+		// }
+
+		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
+		// m.inBody = false;
+		{
+			goto st103
+		}
+
+		goto st111
+	st111:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof111
+		}
+	stCase111:
+		goto st0
 	st71:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof71
 		}
 	stCase71:
-		if (m.data)[(m.p)] == 101 {
-			goto st60
+		switch (m.data)[(m.p)] {
+		case 40:
+			goto tr17
+		case 41:
+			goto tr94
 		}
-		goto tr0
-	tr66:
+		goto tr93
+	tr93:
 
 		m.pb = m.p
 
@@ -1467,43 +1592,68 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof72
 		}
 	stCase72:
-		if (m.data)[(m.p)] == 111 {
-			goto st73
+		switch (m.data)[(m.p)] {
+		case 40:
+			goto tr17
+		case 41:
+			goto tr96
 		}
-		goto tr0
+		goto st72
+	tr94:
+
+		m.pb = m.p
+
+		output.scope = string(m.text())
+		m.emitInfo("valid commit message scope", "scope", output.scope)
+
+		goto st73
+	tr96:
+
+		output.scope = string(m.text())
+		m.emitInfo("valid commit message scope", "scope", output.scope)
+
+		goto st73
 	st73:
+
+		if (m.p + 1) == m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
+		}
+
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof73
 		}
 	stCase73:
-		if (m.data)[(m.p)] == 99 {
-			goto st74
+		switch (m.data)[(m.p)] {
+		case 33:
+			goto tr87
+		case 58:
+			goto st68
 		}
-		goto tr0
+		goto tr6
+	tr75:
+
+		m.pb = m.p
+
+		goto st74
 	st74:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof74
 		}
 	stCase74:
-		if (m.data)[(m.p)] == 115 {
-			goto st60
+		switch (m.data)[(m.p)] {
+		case 104:
+			goto st75
+		case 105:
+			goto st66
 		}
 		goto tr0
-	tr67:
-
-		m.pb = m.p
-
-		goto st75
 	st75:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof75
 		}
 	stCase75:
-		switch (m.data)[(m.p)] {
-		case 101:
+		if (m.data)[(m.p)] == 111 {
 			goto st76
-		case 105:
-			goto st78
 		}
 		goto tr0
 	st76:
@@ -1511,7 +1661,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof76
 		}
 	stCase76:
-		if (m.data)[(m.p)] == 97 {
+		if (m.data)[(m.p)] == 114 {
 			goto st77
 		}
 		goto tr0
@@ -1520,30 +1670,30 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof77
 		}
 	stCase77:
-		if (m.data)[(m.p)] == 116 {
-			goto st60
+		if (m.data)[(m.p)] == 101 {
+			goto st66
 		}
 		goto tr0
+	tr76:
+
+		m.pb = m.p
+
+		goto st78
 	st78:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof78
 		}
 	stCase78:
-		if (m.data)[(m.p)] == 120 {
-			goto st60
+		if (m.data)[(m.p)] == 111 {
+			goto st79
 		}
 		goto tr0
-	tr68:
-
-		m.pb = m.p
-
-		goto st79
 	st79:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof79
 		}
 	stCase79:
-		if (m.data)[(m.p)] == 101 {
+		if (m.data)[(m.p)] == 99 {
 			goto st80
 		}
 		goto tr0
@@ -1552,11 +1702,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof80
 		}
 	stCase80:
-		if (m.data)[(m.p)] == 119 {
-			goto st60
+		if (m.data)[(m.p)] == 115 {
+			goto st66
 		}
 		goto tr0
-	tr69:
+	tr77:
 
 		m.pb = m.p
 
@@ -1566,8 +1716,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof81
 		}
 	stCase81:
-		if (m.data)[(m.p)] == 101 {
+		switch (m.data)[(m.p)] {
+		case 101:
 			goto st82
+		case 105:
+			goto st84
 		}
 		goto tr0
 	st82:
@@ -1575,7 +1728,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof82
 		}
 	stCase82:
-		if (m.data)[(m.p)] == 114 {
+		if (m.data)[(m.p)] == 97 {
 			goto st83
 		}
 		goto tr0
@@ -1584,33 +1737,30 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof83
 		}
 	stCase83:
-		if (m.data)[(m.p)] == 102 {
-			goto st60
+		if (m.data)[(m.p)] == 116 {
+			goto st66
 		}
 		goto tr0
-	tr70:
-
-		m.pb = m.p
-
-		goto st84
 	st84:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof84
 		}
 	stCase84:
-		switch (m.data)[(m.p)] {
-		case 101:
-			goto st85
-		case 117:
-			goto st88
+		if (m.data)[(m.p)] == 120 {
+			goto st66
 		}
 		goto tr0
+	tr78:
+
+		m.pb = m.p
+
+		goto st85
 	st85:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof85
 		}
 	stCase85:
-		if (m.data)[(m.p)] == 118 {
+		if (m.data)[(m.p)] == 101 {
 			goto st86
 		}
 		goto tr0
@@ -1619,17 +1769,22 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof86
 		}
 	stCase86:
-		if (m.data)[(m.p)] == 101 {
-			goto st87
+		if (m.data)[(m.p)] == 119 {
+			goto st66
 		}
 		goto tr0
+	tr79:
+
+		m.pb = m.p
+
+		goto st87
 	st87:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof87
 		}
 	stCase87:
-		if (m.data)[(m.p)] == 114 {
-			goto st77
+		if (m.data)[(m.p)] == 101 {
+			goto st88
 		}
 		goto tr0
 	st88:
@@ -1637,44 +1792,42 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof88
 		}
 	stCase88:
-		if (m.data)[(m.p)] == 108 {
-			goto st71
+		if (m.data)[(m.p)] == 114 {
+			goto st89
 		}
 		goto tr0
-	tr71:
-
-		m.pb = m.p
-
-		goto st89
 	st89:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof89
 		}
 	stCase89:
-		if (m.data)[(m.p)] == 101 {
-			goto st90
+		if (m.data)[(m.p)] == 102 {
+			goto st66
 		}
 		goto tr0
+	tr80:
+
+		m.pb = m.p
+
+		goto st90
 	st90:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof90
 		}
 	stCase90:
-		if (m.data)[(m.p)] == 115 {
-			goto st77
+		switch (m.data)[(m.p)] {
+		case 101:
+			goto st91
+		case 117:
+			goto st94
 		}
 		goto tr0
-	tr72:
-
-		m.pb = m.p
-
-		goto st91
 	st91:
 		if (m.p)++; (m.p) == (m.pe) {
 			goto _testEof91
 		}
 	stCase91:
-		if (m.data)[(m.p)] == 112 {
+		if (m.data)[(m.p)] == 118 {
 			goto st92
 		}
 		goto tr0
@@ -1683,7 +1836,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof92
 		}
 	stCase92:
-		if (m.data)[(m.p)] == 100 {
+		if (m.data)[(m.p)] == 101 {
 			goto st93
 		}
 		goto tr0
@@ -1692,8 +1845,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof93
 		}
 	stCase93:
-		if (m.data)[(m.p)] == 97 {
-			goto st94
+		if (m.data)[(m.p)] == 114 {
+			goto st83
 		}
 		goto tr0
 	st94:
@@ -1701,10 +1854,195 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof94
 		}
 	stCase94:
-		if (m.data)[(m.p)] == 116 {
-			goto st71
+		if (m.data)[(m.p)] == 108 {
+			goto st77
 		}
 		goto tr0
+	tr81:
+
+		m.pb = m.p
+
+		goto st95
+	st95:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof95
+		}
+	stCase95:
+		if (m.data)[(m.p)] == 101 {
+			goto st96
+		}
+		goto tr0
+	st96:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof96
+		}
+	stCase96:
+		if (m.data)[(m.p)] == 115 {
+			goto st83
+		}
+		goto tr0
+	tr82:
+
+		m.pb = m.p
+
+		goto st97
+	st97:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof97
+		}
+	stCase97:
+		if (m.data)[(m.p)] == 112 {
+			goto st98
+		}
+		goto tr0
+	st98:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof98
+		}
+	stCase98:
+		if (m.data)[(m.p)] == 100 {
+			goto st99
+		}
+		goto tr0
+	st99:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof99
+		}
+	stCase99:
+		if (m.data)[(m.p)] == 97 {
+			goto st100
+		}
+		goto tr0
+	st100:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof100
+		}
+	stCase100:
+		if (m.data)[(m.p)] == 116 {
+			goto st77
+		}
+		goto tr0
+	tr118:
+
+		// Increment number of newlines to use in case we're still in the body
+		m.countNewlines++
+		m.emitDebug("found a newline", "pos", m.p)
+
+		goto st103
+	st103:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof103
+		}
+	stCase103:
+		if (m.data)[(m.p)] == 10 {
+			goto tr118
+		}
+		switch {
+		case (m.data)[(m.p)] < 65:
+			if 48 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 57 {
+				goto tr119
+			}
+		case (m.data)[(m.p)] > 90:
+			if 97 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 122 {
+				goto tr119
+			}
+		default:
+			goto tr119
+		}
+		goto st0
+	tr119:
+
+		m.pb = m.p
+
+		goto st14
+	st14:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof14
+		}
+	stCase14:
+		switch (m.data)[(m.p)] {
+		case 32:
+			goto tr22
+		case 45:
+			goto st16
+		case 58:
+			goto tr25
+		}
+		switch {
+		case (m.data)[(m.p)] < 65:
+			if 48 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 57 {
+				goto st14
+			}
+		case (m.data)[(m.p)] > 90:
+			if 97 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 122 {
+				goto st14
+			}
+		default:
+			goto st14
+		}
+		goto tr21
+	tr22:
+
+		m.currentFooterKey = string(bytes.ToLower(m.text()))
+		m.emitDebug("possibly valid footer token", "token", m.currentFooterKey, "pos", m.p)
+
+		goto st15
+	st15:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof15
+		}
+	stCase15:
+		if (m.data)[(m.p)] == 35 {
+			goto tr26
+		}
+		goto tr21
+	tr26:
+
+		m.emitDebug("try to parse a footer trailer value", "pos", m.p)
+		{
+			goto st18
+		}
+
+		goto st104
+	st104:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof104
+		}
+	stCase104:
+		goto st0
+	st16:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof16
+		}
+	stCase16:
+		switch {
+		case (m.data)[(m.p)] < 65:
+			if 48 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 57 {
+				goto st14
+			}
+		case (m.data)[(m.p)] > 90:
+			if 97 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 122 {
+				goto st14
+			}
+		default:
+			goto st14
+		}
+		goto st0
+	tr25:
+
+		m.currentFooterKey = string(bytes.ToLower(m.text()))
+		m.emitDebug("possibly valid footer token", "token", m.currentFooterKey, "pos", m.p)
+
+		goto st17
+	st17:
+		if (m.p)++; (m.p) == (m.pe) {
+			goto _testEof17
+		}
+	stCase17:
+		if (m.data)[(m.p)] == 32 {
+			goto tr26
+		}
+		goto tr21
 	stOut:
 	_testEof2:
 		m.cs = 2
@@ -1727,17 +2065,14 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof8:
 		m.cs = 8
 		goto _testEof
-	_testEof95:
-		m.cs = 95
+	_testEof101:
+		m.cs = 101
 		goto _testEof
 	_testEof9:
 		m.cs = 9
 		goto _testEof
-	_testEof96:
-		m.cs = 96
-		goto _testEof
-	_testEof97:
-		m.cs = 97
+	_testEof102:
+		m.cs = 102
 		goto _testEof
 	_testEof10:
 		m.cs = 10
@@ -1751,23 +2086,20 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof13:
 		m.cs = 13
 		goto _testEof
-	_testEof15:
-		m.cs = 15
-		goto _testEof
-	_testEof16:
-		m.cs = 16
-		goto _testEof
-	_testEof17:
-		m.cs = 17
-		goto _testEof
 	_testEof18:
 		m.cs = 18
+		goto _testEof
+	_testEof105:
+		m.cs = 105
+		goto _testEof
+	_testEof106:
+		m.cs = 106
 		goto _testEof
 	_testEof19:
 		m.cs = 19
 		goto _testEof
-	_testEof20:
-		m.cs = 20
+	_testEof107:
+		m.cs = 107
 		goto _testEof
 	_testEof21:
 		m.cs = 21
@@ -1775,17 +2107,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof22:
 		m.cs = 22
 		goto _testEof
-	_testEof98:
-		m.cs = 98
-		goto _testEof
 	_testEof23:
 		m.cs = 23
-		goto _testEof
-	_testEof99:
-		m.cs = 99
-		goto _testEof
-	_testEof100:
-		m.cs = 100
 		goto _testEof
 	_testEof24:
 		m.cs = 24
@@ -1802,8 +2125,14 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof28:
 		m.cs = 28
 		goto _testEof
+	_testEof108:
+		m.cs = 108
+		goto _testEof
 	_testEof29:
 		m.cs = 29
+		goto _testEof
+	_testEof109:
+		m.cs = 109
 		goto _testEof
 	_testEof30:
 		m.cs = 30
@@ -1880,6 +2209,9 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof54:
 		m.cs = 54
 		goto _testEof
+	_testEof55:
+		m.cs = 55
+		goto _testEof
 	_testEof56:
 		m.cs = 56
 		goto _testEof
@@ -1895,26 +2227,14 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof60:
 		m.cs = 60
 		goto _testEof
-	_testEof61:
-		m.cs = 61
-		goto _testEof
 	_testEof62:
 		m.cs = 62
 		goto _testEof
 	_testEof63:
 		m.cs = 63
 		goto _testEof
-	_testEof101:
-		m.cs = 101
-		goto _testEof
 	_testEof64:
 		m.cs = 64
-		goto _testEof
-	_testEof102:
-		m.cs = 102
-		goto _testEof
-	_testEof103:
-		m.cs = 103
 		goto _testEof
 	_testEof65:
 		m.cs = 65
@@ -1931,8 +2251,14 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof69:
 		m.cs = 69
 		goto _testEof
+	_testEof110:
+		m.cs = 110
+		goto _testEof
 	_testEof70:
 		m.cs = 70
+		goto _testEof
+	_testEof111:
+		m.cs = 111
 		goto _testEof
 	_testEof71:
 		m.cs = 71
@@ -2006,13 +2332,49 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	_testEof94:
 		m.cs = 94
 		goto _testEof
+	_testEof95:
+		m.cs = 95
+		goto _testEof
+	_testEof96:
+		m.cs = 96
+		goto _testEof
+	_testEof97:
+		m.cs = 97
+		goto _testEof
+	_testEof98:
+		m.cs = 98
+		goto _testEof
+	_testEof99:
+		m.cs = 99
+		goto _testEof
+	_testEof100:
+		m.cs = 100
+		goto _testEof
+	_testEof103:
+		m.cs = 103
+		goto _testEof
+	_testEof14:
+		m.cs = 14
+		goto _testEof
+	_testEof15:
+		m.cs = 15
+		goto _testEof
+	_testEof104:
+		m.cs = 104
+		goto _testEof
+	_testEof16:
+		m.cs = 16
+		goto _testEof
+	_testEof17:
+		m.cs = 17
+		goto _testEof
 
 	_testEof:
 		{
 		}
 		if (m.p) == (m.eof) {
 			switch m.cs {
-			case 2, 3, 4, 13, 15, 16, 17, 18, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 56, 57, 58, 59, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94:
+			case 2, 3, 4, 13, 21, 22, 23, 24, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63, 64, 65, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100:
 
 				if m.pe > 0 {
 					if m.p != m.pe {
@@ -2022,23 +2384,23 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 					}
 				}
 
-			case 10, 11, 24, 25, 65, 66:
+			case 10, 11, 30, 31, 71, 72:
 
 				m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
 
-			case 5, 6, 12, 19, 20, 26, 60, 61, 67:
+			case 5, 6, 12, 25, 26, 32, 66, 67, 73:
 
 				if m.err == nil {
 					m.err = m.emitErrorOnCurrentCharacter(ErrColon)
 				}
 
-			case 7, 21, 62:
+			case 7, 27, 68:
 
 				if m.err == nil {
 					m.err = m.emitErrorOnCurrentCharacter(ErrDescriptionInit)
 				}
 
-			case 8, 22, 63:
+			case 8, 28, 69:
 
 				if m.p < m.pe && m.data[m.p] == 10 {
 					m.err = m.emitError(ErrNewline, m.p+1)
@@ -2046,28 +2408,49 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 					m.err = m.emitErrorOnPreviousCharacter(ErrDescription)
 				}
 
-			case 9, 23, 64:
+			case 9, 29, 70:
 
-				m.err = m.emitErrorWithoutCharacter(ErrMissingBlankLineAtBodyBegin)
+				m.err = m.emitErrorWithoutCharacter(ErrMissingBlankLineAtBeginning)
 
-			case 95, 98, 101:
+			case 101, 108, 110:
 
 				output.descr = string(m.text())
 				m.emitInfo("valid commit message description", "description", output.descr)
 
-			case 97, 100, 103:
+			case 105:
 
-				output.body = string(m.text())
-				m.emitInfo("valid commit message body", "body", output.body)
+				output.footers[m.currentFooterKey] = append(output.footers[m.currentFooterKey], string(m.text()))
+				m.emitInfo("valid commit message footer trailer", m.currentFooterKey, string(m.text()))
 
-			case 96, 99, 102:
+			case 107:
 
-				m.pb = m.p
+				// Append newlines
+				for m.countNewlines > 0 {
+					output.body += "\n"
+					m.countNewlines--
+					m.emitInfo("valid commit message body content", "body", "\n")
+				}
+				// Append body content
+				output.body += string(m.text())
+				m.emitInfo("valid commit message body content", "body", string(m.text()))
 
-				output.body = string(m.text())
-				m.emitInfo("valid commit message body", "body", output.body)
+			case 14, 15, 17:
 
-			case 1, 14, 55:
+				if len(output.footers) == 0 {
+					// m.inBody = true
+					// Backtrack to the last marker
+					// Ie., the text possibly a trailer token that is instead part of the body content
+					(m.p) = (m.pb) - 1
+
+					m.emitDebug("try to parse body content", "pos", m.p)
+					{
+						goto st19
+					}
+				} else {
+					fmt.Println("todo > rewind/continue to parse footer trailers", m.pb, m.p, string(m.text()))
+				}
+
+			case 1, 20, 61:
 
 				m.err = m.emitErrorWithoutCharacter(ErrEmpty)
 
@@ -2077,6 +2460,30 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 					} else {
 						m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
 					}
+				}
+
+			case 19:
+
+				// Append newlines
+				for m.countNewlines > 0 {
+					output.body += "\n"
+					m.countNewlines--
+					m.emitInfo("valid commit message body content", "body", "\n")
+				}
+				// Append content to body
+				if m.p > m.pb {
+					output.body += string(m.text())
+					m.emitInfo("valid commit message body content", "body", string(m.text()))
+				} else {
+					// assert(m.p == m.pb)
+					output.body += string(m.data[m.pb : m.pb+1])
+					m.emitInfo("valid commit message body content", "body", string(m.data[m.pb:m.pb+1]))
+				}
+
+				m.emitDebug("try to parse a footer trailer token", "pos", m.p)
+				// m.inBody = false;
+				{
+					goto st103
 				}
 
 			}

@@ -434,7 +434,7 @@ var testCases = []testCase{
 			Scope:       cctesting.StringAddress("az"),
 			Description: "new",
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 14),
+		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 14),
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -449,7 +449,7 @@ var testCases = []testCase{
 			Exclamation: true,
 			Description: "bla",
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
+		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -464,12 +464,12 @@ var testCases = []testCase{
 			Exclamation: true,
 			Description: "bla",
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
+		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
 	},
-	// VALID
+	// VALID / multi-line body is valid (after a blank line)
 	{
-		"valid-with-multiline-body",
-		[]byte(`fix: correct minor typos in code
+		"valid-with-multi-line-body",
+		[]byte(`fix: x
 
 see the issue for details
 
@@ -477,19 +477,91 @@ on typos fixed.`),
 		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
-			Description: "correct minor typos in code",
+			Description: "x",
 			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
-			Description: "correct minor typos in code",
+			Description: "x",
 			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
 		},
 		"",
 	},
-	// VALID
+	// VALID / multi-line body ending with multiple blank lines (they gets discarded) is valid
 	{
-		"valid-with-singleline-body",
+		"valid-with-multi-line-body-ending-extras-blank-lines",
+		[]byte(`fix: x
+
+see the issue for details
+
+on typos fixed.
+
+`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+		},
+		"",
+	},
+	// VALID / multi-line body starting with many extra blank lines is valid
+	{
+		"valid-with-multi-line-body-after-two-extra-blank-lines",
+		[]byte(`fix: magic
+
+
+
+see the issue for details
+
+on typos fixed.`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "magic",
+			Body:        cctesting.StringAddress("\n\nsee the issue for details\n\non typos fixed."),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "magic",
+			Body:        cctesting.StringAddress("\n\nsee the issue for details\n\non typos fixed."),
+		},
+		"",
+	},
+	// VALID / multi-line body starting and ending with many extra blank lines is valid
+	{
+		"valid-with-multi-line-body-with-extra-blank-lines-before-and-after",
+		[]byte(`fix: magic
+
+
+
+see the issue for details
+
+on typos fixed.
+
+
+`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "magic",
+			Body:        cctesting.StringAddress("\n\nsee the issue for details\n\non typos fixed."),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "magic",
+			Body:        cctesting.StringAddress("\n\nsee the issue for details\n\non typos fixed."),
+		},
+		"",
+	},
+	// VALID / single line body (after blank line) is valid
+	{
+		"valid-with-single-line-body",
 		[]byte(`fix: correct minor typos in code
 
 see the issue for details.`),
@@ -506,7 +578,7 @@ see the issue for details.`),
 		},
 		"",
 	},
-	// VALID
+	// VALID / empty body is okay (it's optional)
 	{
 		"valid-with-empty-body",
 		[]byte(`fix: correct something
@@ -523,10 +595,12 @@ see the issue for details.`),
 		},
 		"",
 	},
-	// VALID
+	// VALID / multiple blank lines body is okay (it's considered empty)
 	{
 		"valid-with-multiple-blank-lines-body",
-		[]byte(`fix: correct something
+		[]byte(`fix: descr
+
+
 
 
 
@@ -534,13 +608,242 @@ see the issue for details.`),
 		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
-			Description: "correct something",
-			Body:        cctesting.StringAddress("\n\n"),
+			Description: "descr",
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
-			Description: "correct something",
-			Body:        cctesting.StringAddress("\n\n"),
+			Description: "descr",
+		},
+		"",
+	},
+	// VALID / only footer
+	{
+		"valid-with-footer-only",
+		[]byte(`fix: only footer
+
+Fixes #3
+Signed-off-by: Leo`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "only footer",
+			Footers: map[string][]string{
+				"fixes":         {"3"},
+				"signed-off-by": {"Leo"},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "only footer",
+			Footers: map[string][]string{
+				"fixes":         {"3"},
+				"signed-off-by": {"Leo"},
+			},
+		},
+		"",
+	},
+	// VALID / only footer after many blank lines (that gets ignored)
+	{
+		"valid-with-footer-only-after-many-blank-lines",
+		[]byte(`fix: only footer
+
+
+
+
+Fixes #3
+Signed-off-by: Leo`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "only footer",
+			Footers: map[string][]string{
+				"fixes":         {"3"},
+				"signed-off-by": {"Leo"},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "only footer",
+			Footers: map[string][]string{
+				"fixes":         {"3"},
+				"signed-off-by": {"Leo"},
+			},
+		},
+		"",
+	},
+	// VALID / only footer ending with many blank lines (that gets ignored)
+	{
+		"valid-with-footer-only-ending-with-many-blank-lines",
+		[]byte(`fix: only footer
+
+Fixes #3
+Signed-off-by: Leo
+
+
+`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "only footer",
+			Footers: map[string][]string{
+				"fixes":         {"3"},
+				"signed-off-by": {"Leo"},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "only footer",
+			Footers: map[string][]string{
+				"fixes":         {"3"},
+				"signed-off-by": {"Leo"},
+			},
+		},
+		"",
+	},
+	// VALID / only footer containing repetitions
+	{
+		"valid-with-footer-containing-repetitions",
+		[]byte(`fix: only footer
+
+Fixes #3
+Fixes #4
+Fixes #5`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "only footer",
+			Footers: map[string][]string{
+				"fixes": {"3", "4", "5"},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "only footer",
+			Footers: map[string][]string{
+				"fixes": {"3", "4", "5"},
+			},
+		},
+		"",
+	},
+	// VALID / Multi-line body with extras blank lines after and footer with multiple trailers
+	{
+		"valid-with-multi-line-body-containing-extra-blank-lines-inside-and-after-plus-footer-many-trailers",
+		[]byte(`fix: sarah
+
+FUCK
+
+COVID-19.
+This is the only message I have in my mind
+
+right now.
+
+
+
+Fixes #22
+Co-authored-by: My other personality <persona@email.com>
+Signed-off-by: Leonardo Di Donato <some@email.com>`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "sarah",
+			Body:        cctesting.StringAddress("FUCK\n\nCOVID-19.\nThis is the only message I have in my mind\n\nright now."),
+			Footers: map[string][]string{
+				"fixes":          {"22"},
+				"co-authored-by": {"My other personality <persona@email.com>"},
+				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "sarah",
+			Body:        cctesting.StringAddress("FUCK\n\nCOVID-19.\nThis is the only message I have in my mind\n\nright now."),
+			Footers: map[string][]string{
+				"fixes":          {"22"},
+				"co-authored-by": {"My other personality <persona@email.com>"},
+				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
+			},
+		},
+		"",
+	},
+	// VALID / Multi-line body with newlines inside and many blank lines after and footer with multiple trailers
+	{
+		"valid-with-multi-line-body-and-extra-blank-lines-after-plus-footer-many-trailers",
+		[]byte(`fix: sarah
+
+FUCK
+COVID-19.
+This is the only message I have in my mind
+right
+now.
+
+
+
+Fixes #22
+Co-authored-by: My other personality <persona@email.com>
+Signed-off-by: Leonardo Di Donato <some@email.com>`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "sarah",
+			Body:        cctesting.StringAddress("FUCK\nCOVID-19.\nThis is the only message I have in my mind\nright\nnow."),
+			Footers: map[string][]string{
+				"fixes":          {"22"},
+				"co-authored-by": {"My other personality <persona@email.com>"},
+				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "sarah",
+			Body:        cctesting.StringAddress("FUCK\nCOVID-19.\nThis is the only message I have in my mind\nright\nnow."),
+			Footers: map[string][]string{
+				"fixes":          {"22"},
+				"co-authored-by": {"My other personality <persona@email.com>"},
+				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
+			},
+		},
+		"",
+	},
+	// VALID / Multi-line body with newlines inside and many blank lines before it, plus footer with multiple trailers
+	{
+		"valid-with-multi-line-body-and-extra-blank-lines-before-plus-footer-many-trailers",
+		[]byte(`fix: sarah
+
+
+
+FUCK
+COVID-19.
+This is the only message I have in my mind
+right
+now.
+
+
+
+Fixes #22
+Co-authored-by: My other personality <persona@email.com>
+Signed-off-by: Leonardo Di Donato <some@email.com>`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "sarah",
+			// First blank line ("\n\n") gets ignored
+			Body: cctesting.StringAddress("\n\nFUCK\nCOVID-19.\nThis is the only message I have in my mind\nright\nnow."),
+			Footers: map[string][]string{
+				"fixes":          {"22"},
+				"co-authored-by": {"My other personality <persona@email.com>"},
+				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "sarah",
+			// First blank line ("\n\n") gets ignored
+			Body: cctesting.StringAddress("\n\nFUCK\nCOVID-19.\nThis is the only message I have in my mind\nright\nnow."),
+			Footers: map[string][]string{
+				"fixes":          {"22"},
+				"co-authored-by": {"My other personality <persona@email.com>"},
+				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
+			},
 		},
 		"",
 	},
@@ -1025,7 +1328,7 @@ var testCasesForFalcoTypes = []testCase{
 			Scope:       cctesting.StringAddress("ae"),
 			Description: "new",
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 14),
+		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 14),
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -1040,7 +1343,7 @@ var testCasesForFalcoTypes = []testCase{
 			Exclamation: true,
 			Description: "bla",
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
+		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -1055,7 +1358,7 @@ var testCasesForFalcoTypes = []testCase{
 			Exclamation: true,
 			Description: "bla",
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
+		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
 	},
 	// VALID
 	{
@@ -1126,12 +1429,10 @@ see the issue for details.`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
-			Body:        cctesting.StringAddress("\n\n"),
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
-			Body:        cctesting.StringAddress("\n\n"),
 		},
 		"",
 	},
@@ -1652,7 +1953,7 @@ var testCasesForConventionalTypes = []testCase{
 			Scope:       cctesting.StringAddress("ap"),
 			Description: "new",
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 14),
+		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 14),
 	},
 	// INVALID / newline in the description
 	// VALID / newline in description ignored in best effort mode
@@ -1667,7 +1968,7 @@ var testCasesForConventionalTypes = []testCase{
 			Exclamation: true,
 			Description: "rrr",
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
+		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -1682,7 +1983,7 @@ var testCasesForConventionalTypes = []testCase{
 			Exclamation: true,
 			Description: "rrr",
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBodyBegin+ColumnPositionTemplate, 15),
+		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
 	},
 	// VALID
 	{
@@ -1753,12 +2054,10 @@ see the issue for details.`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
-			Body:        cctesting.StringAddress("\n\n"),
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
-			Body:        cctesting.StringAddress("\n\n"),
 		},
 		"",
 	},
