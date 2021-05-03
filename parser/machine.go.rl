@@ -289,10 +289,10 @@ falco_types_main := falco_types >eof(err_empty) >mark @err(err_type) %from(set_t
 # fixme > what if type contains ': '?
 # fixme > what if type contains '('?
 # fixme > what if type contains '!'?
-free_form_types_main := free_form_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit) :>>
+free_form_types_main := free_form_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
-	colon >err(err_colon) %to(check_early_exit)
+	:>> colon >err(err_colon) %to(check_early_exit)
 	description
 	remainder?;
 

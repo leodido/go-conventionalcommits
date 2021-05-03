@@ -73,8 +73,10 @@ typos fixed.`)
 func Example_full_conventional() {
 	i := []byte(`fix: correct minor typos in code
 
-see the issue for details
+see the issue [0] for details
 on typos fixed.
+
+[0]: https://issue
 
 Reviewed-by: Z
 Refs #133`)
@@ -89,7 +91,7 @@ Refs #133`)
 	//  Description: (string) (len=27) "correct minor typos in code",
 	//  Scope: (*string)(<nil>),
 	//  Exclamation: (bool) false,
-	//  Body: (*string)((len=41) "see the issue for details\non typos fixed."),
+	//  Body: (*string)((len=65) "see the issue [0] for details\non typos fixed.\n\n[0]: https://issue"),
 	//  Footers: (map[string][]string) (len=2) {
 	//   (string) (len=11) "reviewed-by": ([]string) (len=1) {
 	//    (string) (len=1) "Z"

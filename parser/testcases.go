@@ -2301,4 +2301,142 @@ with this approach.
 		},
 		"",
 	},
+	// VALID / type containing slash
+	{
+		"valid-kernel-commit-type-containing-slash",
+		[]byte(`selftests/bpf: Fix core_reloc test runner
+
+Fix failed tests checks in core_reloc test runner, which allowed failing tests
+to pass quietly. Also add extra check to make sure that expected to fail test cases with
+invalid names are caught as test failure anyway, as this is not an expected
+failure mode. Also fix mislabeled probed vs direct bitfield test cases.
+
+Fixes: 124a892d1c41 ("selftests/bpf: Test TYPE_EXISTS and TYPE_SIZE CO-RE relocations")
+Reported-by: Lorenz Bauer <lmb@cloudflare.com>
+Signed-off-by: Andrii Nakryiko <andrii@kernel.org>
+Signed-off-by: Alexei Starovoitov <ast@kernel.org>
+Acked-by: Lorenz Bauer <lmb@cloudflare.com>
+Link: https://lore.kernel.org/bpf/20210426192949.416837-6-andrii@kernel.org`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "selftests/bpf",
+			Description: "Fix core_reloc test runner",
+			Body: cctesting.StringAddress(`Fix failed tests checks in core_reloc test runner, which allowed failing tests
+to pass quietly. Also add extra check to make sure that expected to fail test cases with
+invalid names are caught as test failure anyway, as this is not an expected
+failure mode. Also fix mislabeled probed vs direct bitfield test cases.`),
+			Footers: map[string][]string{
+				"fixes": {
+					"124a892d1c41 (\"selftests/bpf: Test TYPE_EXISTS and TYPE_SIZE CO-RE relocations\")",
+				},
+				"reported-by": {
+					"Lorenz Bauer <lmb@cloudflare.com>",
+				},
+				"signed-off-by": {
+					"Andrii Nakryiko <andrii@kernel.org>",
+					"Alexei Starovoitov <ast@kernel.org>",
+				},
+				"acked-by": {
+					"Lorenz Bauer <lmb@cloudflare.com>",
+				},
+				"link": {
+					"https://lore.kernel.org/bpf/20210426192949.416837-6-andrii@kernel.org",
+				},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "selftests/bpf",
+			Description: "Fix core_reloc test runner",
+			Body: cctesting.StringAddress(`Fix failed tests checks in core_reloc test runner, which allowed failing tests
+to pass quietly. Also add extra check to make sure that expected to fail test cases with
+invalid names are caught as test failure anyway, as this is not an expected
+failure mode. Also fix mislabeled probed vs direct bitfield test cases.`),
+			Footers: map[string][]string{
+				"fixes": {
+					"124a892d1c41 (\"selftests/bpf: Test TYPE_EXISTS and TYPE_SIZE CO-RE relocations\")",
+				},
+				"reported-by": {
+					"Lorenz Bauer <lmb@cloudflare.com>",
+				},
+				"signed-off-by": {
+					"Andrii Nakryiko <andrii@kernel.org>",
+					"Alexei Starovoitov <ast@kernel.org>",
+				},
+				"acked-by": {
+					"Lorenz Bauer <lmb@cloudflare.com>",
+				},
+				"link": {
+					"https://lore.kernel.org/bpf/20210426192949.416837-6-andrii@kernel.org",
+				},
+			},
+		},
+		"",
+	},
+	// VALID / colon and space separator in the description
+	{
+		"valid-colon-separator-in-description",
+		[]byte(`bpf: selftests: Add kfunc_call test
+
+Signed-off-by: Martin KaFai Lau <kafai@fb.com>
+Signed-off-by: Alexei Starovoitov <ast@kernel.org>
+Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "bpf",
+			Description: "selftests: Add kfunc_call test",
+			Footers: map[string][]string{
+				"signed-off-by": {
+					"Martin KaFai Lau <kafai@fb.com>",
+					"Alexei Starovoitov <ast@kernel.org>",
+				},
+				"link": {
+					"https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com",
+				},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "bpf",
+			Description: "selftests: Add kfunc_call test",
+			Footers: map[string][]string{
+				"signed-off-by": {
+					"Martin KaFai Lau <kafai@fb.com>",
+					"Alexei Starovoitov <ast@kernel.org>",
+				},
+				"link": {
+					"https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com",
+				},
+			},
+		},
+		"",
+	},
+	// VALID / free form type containing comma and space
+	{
+		"valid-type-containing-comma-and-space",
+		[]byte(`bpf, selftests: test_maps generating unrecognized data section`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "bpf, selftests",
+			Description: "test_maps generating unrecognized data section",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "bpf, selftests",
+			Description: "test_maps generating unrecognized data section",
+		},
+		"",
+	},
+	// VALID /
+	{
+		"valid-type-uppercase",
+		[]byte(`KVM: nVMX: Truncate base/index GPR value on address calc in !64-bit`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "kvm",
+			Description: "nVMX: Truncate base/index GPR value on address calc in !64-bit",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "kvm",
+			Description: "nVMX: Truncate base/index GPR value on address calc in !64-bit",
+		},
+		"",
+	},
 }
