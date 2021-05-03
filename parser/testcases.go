@@ -1006,10 +1006,34 @@ var testCasesForFalcoTypes = []testCase{
 		},
 		"",
 	},
+	// VALID / minimal commit message with uppercase type
+	{
+		"valid-minimal-commit-message-rule-with-uppercase-type",
+		[]byte("RULE: super secure rule"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "rule",
+			Description: "super secure rule",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "rule",
+			Description: "super secure rule",
+		},
+		"",
+	},
 	// INVALID / missing colon after valid commit message type
 	{
 		"missing-colon-after-type-3-chars",
 		[]byte("new>"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ">", 3),
+	},
+	// INVALID / missing colon after valid uppercase commit message type
+	{
+		"missing-colon-after-uppercase-type-3-chars",
+		[]byte("NEW>"),
 		false,
 		nil,
 		nil,
@@ -1024,6 +1048,15 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 4),
 	},
+	// INVALID / missing colon after valid uppercase commit message type
+	{
+		"missing-colon-after-uppercase-type-4-chars",
+		[]byte("PERF?"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 4),
+	},
 	// INVALID / missing colon after valid commit message type
 	{
 		"missing-colon-after-type-5-chars",
@@ -1033,10 +1066,36 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 5),
 	},
+	// INVALID / missing colon after valid uppercase commit message type
+	{
+		"missing-colon-after-uppercase-type-5-chars",
+		[]byte("BUILD?"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 5),
+	},
 	// VALID / type + scope + description
 	{
 		"valid-with-scope",
 		[]byte("new(xyz): ccc"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "new",
+			Scope:       cctesting.StringAddress("xyz"),
+			Description: "ccc",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "new",
+			Scope:       cctesting.StringAddress("xyz"),
+			Description: "ccc",
+		},
+		"",
+	},
+	// VALID / uppercase type + scope + description
+	{
+		"valid-with-uppercase-type-and-scope",
+		[]byte("NEW(xyz): ccc"),
 		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "new",
@@ -1105,10 +1164,44 @@ var testCasesForFalcoTypes = []testCase{
 		},
 		"",
 	},
+	// VALID / uppercase type + scope + breaking + description
+	{
+		"valid-breaking-with-scope-feat-uppercase-type",
+		[]byte("FEAT(aaa)!: bbb"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("aaa"),
+			Description: "bbb",
+			Exclamation: true,
+		},
+		"",
+	},
 	// VALID / empty scope is ignored
 	{
 		"valid-empty-scope-is-ignored",
 		[]byte("fix(): bbb"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "bbb",
+		},
+		"",
+	},
+	// VALID / empty scope is ignored (uppercase type)
+	{
+		"valid-empty-scope-is-ignored-uppercase-type",
+		[]byte("FIX(): bbb"),
 		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -1158,6 +1251,15 @@ var testCasesForFalcoTypes = []testCase{
 	{
 		"invalid-missing-ws-after-colon-with-breaking",
 		[]byte("fix!:a"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 5),
+	},
+	// INVALID / missing whitespace after colon (with breaking, uppercase type)
+	{
+		"invalid-missing-ws-after-colon-with-breaking-uppercase-type",
+		[]byte("FIX!:a"),
 		false,
 		nil,
 		nil,
@@ -1631,6 +1733,21 @@ var testCasesForConventionalTypes = []testCase{
 		},
 		"",
 	},
+	// VALID / minimal commit message with uppercase type
+	{
+		"valid-minimal-commit-message-style-uppercase-type",
+		[]byte("STYLE: CSS skillz"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "style",
+			Description: "CSS skillz",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "style",
+			Description: "CSS skillz",
+		},
+		"",
+	},
 	// INVALID / missing colon after valid commit message type
 	{
 		"missing-colon-after-type-3-chars",
@@ -1662,6 +1779,23 @@ var testCasesForConventionalTypes = []testCase{
 	{
 		"valid-with-scope",
 		[]byte("refactor(xyz): ccc"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "refactor",
+			Scope:       cctesting.StringAddress("xyz"),
+			Description: "ccc",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "refactor",
+			Scope:       cctesting.StringAddress("xyz"),
+			Description: "ccc",
+		},
+		"",
+	},
+	// VALID / uppercase type + scope + description
+	{
+		"valid-with-scope-uppercase-type",
+		[]byte("REFACTOR(xyz): ccc"),
 		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "refactor",
@@ -1846,6 +1980,15 @@ var testCasesForConventionalTypes = []testCase{
 	{
 		"invalid-after-valid-type-scope-and-breaking",
 		[]byte("test(scope)!"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "!", 11),
+	},
+	// INVALID / invalid after valid mixed-case type, scope, and breaking
+	{
+		"invalid-after-valid-mixed-case-type-scope-and-breaking",
+		[]byte("Test(scope)!"),
 		false,
 		nil,
 		nil,

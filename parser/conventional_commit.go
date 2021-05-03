@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"strings"
+
 	"github.com/leodido/go-conventionalcommits"
 )
 
@@ -20,7 +22,7 @@ func (c *conventionalCommit) minimal() bool {
 func (c *conventionalCommit) export() conventionalcommits.Message {
 	out := &conventionalcommits.ConventionalCommit{}
 	out.Exclamation = c.exclamation
-	out.Type = c._type
+	out.Type = strings.ToLower(c._type)
 	out.Description = c.descr
 	if c.scope != "" {
 		out.Scope = &c.scope
