@@ -135,6 +135,7 @@ action set_footer {
 action count_nl {
 	// Increment number of newlines to use in case we're still in the body
 	m.countNewlines++
+	m.lastNewline = m.p
 	m.emitDebug("found a newline", "pos", m.p)
 }
 
@@ -200,6 +201,12 @@ action rewind {
 	if len(output.footers) == 0 {
 		// Backtrack to the last marker
 		// Ie., the text possibly a trailer token that is instead part of the body content
+		if m.countNewlines > 0 {
+			// In case new lines met while rewinding
+			// advance the last marker by the number of the newlines so that they don't get parsed again
+			// (they be added in the result by the body content appender)
+			m.pb = m.lastNewline + 1
+		}
 		fexec m.pb;
 		m.emitDebug("try to parse body content", "pos", m.p)
 		fgoto body;
@@ -239,11 +246,12 @@ trailer_val = print+;
 # Optionally match a trailer token followed by a trailer separator.
 # In such case, continue looking for a trailer value.
 # Otherwise, assume machine is in the body part.
-trailer_beg := nl* $count_nl (trailer_tok >mark %err(rewind) trailer_sep @err(rewind) >set_current_footer_key @complete_trailer_parsing)?;
+trailer_beg := nl* $count_nl (trailer_tok >mark @err(rewind) trailer_sep @err(rewind) >set_current_footer_key @complete_trailer_parsing)?;
 
 # Match a trailer value.
 # Then, ignoring newlines, continue trying to detect other trailers.
 trailer_end := trailer_val >mark %set_footer nl* $count_nl @start_trailer_parsing;
+## todo > test out multi-line trailer values
 
 # Match anything until two newlines (ie., a blank line).
 # Then, try detect a footer looking for a trailer token.
@@ -256,6 +264,7 @@ remainder = blank_line @start_trailer_parsing;
 ## todo > make types case-insensitive
 ## todo > option to allow free-form types
 ## todo > option to limit the total length (of the first line or of the description)
+## todo > set_type is an append
 main := minimal_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
@@ -302,6 +311,7 @@ type machine struct {
 	logger           *logrus.Logger
 	currentFooterKey string
 	countNewlines    int
+	lastNewline      int
 }
 
 func (m *machine) text() []byte {
