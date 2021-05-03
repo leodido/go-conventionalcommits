@@ -22,6 +22,10 @@ func TestMachineParseWithConventionalTypes(t *testing.T) {
 	runner(t, "conventionaltypes", testCasesForConventionalTypes, WithTypes(conventionalcommits.TypesConventional))
 }
 
+func TestMachineParseWithFreeFormTypes(t *testing.T) {
+	runner(t, "freeformtypes", testCasesForFreeFormTypes, WithTypes(conventionalcommits.TypesFreeForm))
+}
+
 func runner(t *testing.T, label string, cases []testCase, machineOpts ...conventionalcommits.MachineOption) {
 	t.Helper()
 

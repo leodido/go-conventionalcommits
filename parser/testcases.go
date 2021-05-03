@@ -2062,3 +2062,243 @@ see the issue for details.`),
 		"",
 	},
 }
+
+var testCasesForFreeFormTypes = []testCase{
+	// VALID / multi-line body (with blank lines) and multiple signed-off-by trailers
+	{
+		"valid-kernel-commit-multiline-body-with-blank-lines-and-multiple-signed-off-by-trailers",
+		[]byte(`kconfig: highlight xconfig 'comment' lines with '***'
+
+Mark Kconfig "comment" lines with "*** <commentstring> ***"
+so that it is clear that these lines are comments and not some
+kconfig item that cannot be modified.
+
+This is helpful in some menus to be able to provide a menu
+"sub-heading" for groups of similar config items.
+
+This also makes the comments be presented in a way that is
+similar to menuconfig and nconfig.
+
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Signed-off-by: Masahiro Yamada <masahiroy@kernel.org>`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "kconfig",
+			Description: "highlight xconfig 'comment' lines with '***'",
+			Body: cctesting.StringAddress(`Mark Kconfig "comment" lines with "*** <commentstring> ***"
+so that it is clear that these lines are comments and not some
+kconfig item that cannot be modified.
+
+This is helpful in some menus to be able to provide a menu
+"sub-heading" for groups of similar config items.
+
+This also makes the comments be presented in a way that is
+similar to menuconfig and nconfig.`),
+			Footers: map[string][]string{
+				"signed-off-by": {
+					"Randy Dunlap <rdunlap@infradead.org>",
+					"Masahiro Yamada <masahiroy@kernel.org>",
+				},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "kconfig",
+			Description: "highlight xconfig 'comment' lines with '***'",
+			Body: cctesting.StringAddress(`Mark Kconfig "comment" lines with "*** <commentstring> ***"
+so that it is clear that these lines are comments and not some
+kconfig item that cannot be modified.
+
+This is helpful in some menus to be able to provide a menu
+"sub-heading" for groups of similar config items.
+
+This also makes the comments be presented in a way that is
+similar to menuconfig and nconfig.`),
+			Footers: map[string][]string{
+				"signed-off-by": {
+					"Randy Dunlap <rdunlap@infradead.org>",
+					"Masahiro Yamada <masahiroy@kernel.org>",
+				},
+			},
+		},
+		"",
+	},
+	// VALID / multi-line body (with blank lines and non alphanumberic character after a blank line) and multiple different trailers
+	{
+		"valid-kernel-commit-long-body-with-non-trailer-start-chars-after-blank-line-and-multiple-different-trailers",
+		[]byte(`bpf: fix buggy r0 retval refinement for tracing helpers
+
+See the glory details in 100605035e15 ("bpf: Verifier, do_refine_retval_range
+may clamp umin to 0 incorrectly") for why 849fa50662fb ("bpf/verifier: refine
+retval R0 state for bpf_get_stack helper") is buggy. The whole series however
+is not suitable for stable since it adds significant amount [0] of verifier
+complexity in order to add 32bit subreg tracking. Something simpler is needed.
+
+Unfortunately, reverting 849fa50662fb ("bpf/verifier: refine retval R0 state
+for bpf_get_stack helper") or just cherry-picking 100605035e15 ("bpf: Verifier,
+do_refine_retval_range may clamp umin to 0 incorrectly") is not an option since
+it will break existing tracing programs badly (at least those that are using
+bpf_get_stack() and bpf_probe_read_str() helpers). Not fixing it in stable is
+also not an option since on 4.19 kernels an error will cause a soft-lockup due
+to hitting dead-code sanitized branch since we don't hard-wire such branches
+in old kernels yet. But even then for 5.x 849fa50662fb ("bpf/verifier: refine
+retval R0 state for bpf_get_stack helper") would cause wrong bounds on the
+verifier simluation when an error is hit.
+
+In one of the earlier iterations of mentioned patch series for upstream there
+was the concern that just using smax_value in do_refine_retval_range() would
+nuke bounds by subsequent <<32 >>32 shifts before the comparison against 0 [1]
+which eventually led to the 32bit subreg tracking in the first place. While I
+initially went for implementing the idea [1] to pattern match the two shift
+operations, it turned out to be more complex than actually needed, meaning, we
+could simply treat do_refine_retval_range() similarly to how we branch off
+verification for conditionals or under speculation, that is, pushing a new
+reg state to the stack for later verification. This means, instead of verifying
+the current path with the ret_reg in [S32MIN, msize_max_value] interval where
+later bounds would get nuked, we split this into two: i) for the success case
+where ret_reg can be in [0, msize_max_value], and ii) for the error case with
+ret_reg known to be in interval [S32MIN, -1]. Latter will preserve the bounds
+during these shift patterns and can match reg < 0 test. test_progs also succeed
+with this approach.
+
+[0] https://lore.kernel.org/bpf/158507130343.15666.8018068546764556975.stgit@john-Precision-5820-Tower/
+[1] https://lore.kernel.org/bpf/158015334199.28573.4940395881683556537.stgit@john-XPS-13-9370/T/#m2e0ad1d5949131014748b6daa48a3495e7f0456d
+
+Fixes: 849fa50662fb ("bpf/verifier: refine retval R0 state for bpf_get_stack helper")
+Reported-by: Lorenzo Fontana <fontanalorenz@gmail.com>
+Reported-by: Leonardo Di Donato <leodidonato@gmail.com>
+Reported-by: John Fastabend <john.fastabend@gmail.com>
+Signed-off-by: Daniel Borkmann <daniel@iogearbox.net>
+Acked-by: Alexei Starovoitov <ast@kernel.org>
+Acked-by: John Fastabend <john.fastabend@gmail.com>
+Tested-by: John Fastabend <john.fastabend@gmail.com>
+Tested-by: Lorenzo Fontana <fontanalorenz@gmail.com>
+Tested-by: Leonardo Di Donato <leodidonato@gmail.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "bpf",
+			Description: "fix buggy r0 retval refinement for tracing helpers",
+			Body: cctesting.StringAddress(`See the glory details in 100605035e15 ("bpf: Verifier, do_refine_retval_range
+may clamp umin to 0 incorrectly") for why 849fa50662fb ("bpf/verifier: refine
+retval R0 state for bpf_get_stack helper") is buggy. The whole series however
+is not suitable for stable since it adds significant amount [0] of verifier
+complexity in order to add 32bit subreg tracking. Something simpler is needed.
+
+Unfortunately, reverting 849fa50662fb ("bpf/verifier: refine retval R0 state
+for bpf_get_stack helper") or just cherry-picking 100605035e15 ("bpf: Verifier,
+do_refine_retval_range may clamp umin to 0 incorrectly") is not an option since
+it will break existing tracing programs badly (at least those that are using
+bpf_get_stack() and bpf_probe_read_str() helpers). Not fixing it in stable is
+also not an option since on 4.19 kernels an error will cause a soft-lockup due
+to hitting dead-code sanitized branch since we don't hard-wire such branches
+in old kernels yet. But even then for 5.x 849fa50662fb ("bpf/verifier: refine
+retval R0 state for bpf_get_stack helper") would cause wrong bounds on the
+verifier simluation when an error is hit.
+
+In one of the earlier iterations of mentioned patch series for upstream there
+was the concern that just using smax_value in do_refine_retval_range() would
+nuke bounds by subsequent <<32 >>32 shifts before the comparison against 0 [1]
+which eventually led to the 32bit subreg tracking in the first place. While I
+initially went for implementing the idea [1] to pattern match the two shift
+operations, it turned out to be more complex than actually needed, meaning, we
+could simply treat do_refine_retval_range() similarly to how we branch off
+verification for conditionals or under speculation, that is, pushing a new
+reg state to the stack for later verification. This means, instead of verifying
+the current path with the ret_reg in [S32MIN, msize_max_value] interval where
+later bounds would get nuked, we split this into two: i) for the success case
+where ret_reg can be in [0, msize_max_value], and ii) for the error case with
+ret_reg known to be in interval [S32MIN, -1]. Latter will preserve the bounds
+during these shift patterns and can match reg < 0 test. test_progs also succeed
+with this approach.
+
+[0] https://lore.kernel.org/bpf/158507130343.15666.8018068546764556975.stgit@john-Precision-5820-Tower/
+[1] https://lore.kernel.org/bpf/158015334199.28573.4940395881683556537.stgit@john-XPS-13-9370/T/#m2e0ad1d5949131014748b6daa48a3495e7f0456d`),
+			Footers: map[string][]string{
+				"acked-by": {
+					"Alexei Starovoitov <ast@kernel.org>",
+					"John Fastabend <john.fastabend@gmail.com>",
+				},
+				"fixes": {
+					"849fa50662fb (\"bpf/verifier: refine retval R0 state for bpf_get_stack helper\")",
+				},
+				"reported-by": {
+					"Lorenzo Fontana <fontanalorenz@gmail.com>",
+					"Leonardo Di Donato <leodidonato@gmail.com>",
+					"John Fastabend <john.fastabend@gmail.com>",
+				},
+				"signed-off-by": {
+					"Daniel Borkmann <daniel@iogearbox.net>",
+					"Greg Kroah-Hartman <gregkh@linuxfoundation.org>",
+				},
+				"tested-by": {
+					"John Fastabend <john.fastabend@gmail.com>",
+					"Lorenzo Fontana <fontanalorenz@gmail.com>",
+					"Leonardo Di Donato <leodidonato@gmail.com>",
+				},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "bpf",
+			Description: "fix buggy r0 retval refinement for tracing helpers",
+			Body: cctesting.StringAddress(`See the glory details in 100605035e15 ("bpf: Verifier, do_refine_retval_range
+may clamp umin to 0 incorrectly") for why 849fa50662fb ("bpf/verifier: refine
+retval R0 state for bpf_get_stack helper") is buggy. The whole series however
+is not suitable for stable since it adds significant amount [0] of verifier
+complexity in order to add 32bit subreg tracking. Something simpler is needed.
+
+Unfortunately, reverting 849fa50662fb ("bpf/verifier: refine retval R0 state
+for bpf_get_stack helper") or just cherry-picking 100605035e15 ("bpf: Verifier,
+do_refine_retval_range may clamp umin to 0 incorrectly") is not an option since
+it will break existing tracing programs badly (at least those that are using
+bpf_get_stack() and bpf_probe_read_str() helpers). Not fixing it in stable is
+also not an option since on 4.19 kernels an error will cause a soft-lockup due
+to hitting dead-code sanitized branch since we don't hard-wire such branches
+in old kernels yet. But even then for 5.x 849fa50662fb ("bpf/verifier: refine
+retval R0 state for bpf_get_stack helper") would cause wrong bounds on the
+verifier simluation when an error is hit.
+
+In one of the earlier iterations of mentioned patch series for upstream there
+was the concern that just using smax_value in do_refine_retval_range() would
+nuke bounds by subsequent <<32 >>32 shifts before the comparison against 0 [1]
+which eventually led to the 32bit subreg tracking in the first place. While I
+initially went for implementing the idea [1] to pattern match the two shift
+operations, it turned out to be more complex than actually needed, meaning, we
+could simply treat do_refine_retval_range() similarly to how we branch off
+verification for conditionals or under speculation, that is, pushing a new
+reg state to the stack for later verification. This means, instead of verifying
+the current path with the ret_reg in [S32MIN, msize_max_value] interval where
+later bounds would get nuked, we split this into two: i) for the success case
+where ret_reg can be in [0, msize_max_value], and ii) for the error case with
+ret_reg known to be in interval [S32MIN, -1]. Latter will preserve the bounds
+during these shift patterns and can match reg < 0 test. test_progs also succeed
+with this approach.
+
+[0] https://lore.kernel.org/bpf/158507130343.15666.8018068546764556975.stgit@john-Precision-5820-Tower/
+[1] https://lore.kernel.org/bpf/158015334199.28573.4940395881683556537.stgit@john-XPS-13-9370/T/#m2e0ad1d5949131014748b6daa48a3495e7f0456d`),
+			Footers: map[string][]string{
+				"acked-by": {
+					"Alexei Starovoitov <ast@kernel.org>",
+					"John Fastabend <john.fastabend@gmail.com>",
+				},
+				"fixes": {
+					"849fa50662fb (\"bpf/verifier: refine retval R0 state for bpf_get_stack helper\")",
+				},
+				"reported-by": {
+					"Lorenzo Fontana <fontanalorenz@gmail.com>",
+					"Leonardo Di Donato <leodidonato@gmail.com>",
+					"John Fastabend <john.fastabend@gmail.com>",
+				},
+				"signed-off-by": {
+					"Daniel Borkmann <daniel@iogearbox.net>",
+					"Greg Kroah-Hartman <gregkh@linuxfoundation.org>",
+				},
+				"tested-by": {
+					"John Fastabend <john.fastabend@gmail.com>",
+					"Lorenzo Fontana <fontanalorenz@gmail.com>",
+					"Leonardo Di Donato <leodidonato@gmail.com>",
+				},
+			},
+		},
+		"",
+	},
+}
