@@ -163,9 +163,14 @@ Using another set of commit message types, for example the `conventional` one, d
 [no]_missing_whitespace_in_description____________-12          1883124       623 ns/op     312 B/op      10 allocs/op
 ```
 
+As you may notice, this library is very fast at what it does.
+
+Parsing a commit goes from taking about the same amount of time (~299ns) the half-life of polonium-212 takes<sup>[2](#nanosecondwiki)</sup> to less than a microsecond.
+
 ---
 
 * <a name="mymachine">[1]</a>: Intel Core i7-8850H CPU @ 2.60GHz
+* <a name="nanosecondwiki">[2]</a>: https://en.wikipedia.org/wiki/nanosecond
 
 ---
 
