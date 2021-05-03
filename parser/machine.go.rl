@@ -184,7 +184,7 @@ action append_body_before_blank_line {
 	fhold;
 }
 
-# Navigation
+# Jumps
 
 action start_trailer_parsing {
 	m.emitDebug("try to parse a footer trailer token", "pos", m.p)
@@ -216,7 +216,9 @@ minimal_types = ('fix' | 'feat');
 
 conventional_types = ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'refactor' | 'revert' | 'style' | 'test');
 
-falco_types = ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'new' | 'revert' | 'update' | 'test' | 'rule' );
+falco_types = ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'new' | 'revert' | 'update' | 'test' | 'rule');
+
+free_form_types = print+;
 
 scope = lpar ((any* -- lpar) -- rpar) >mark %err(err_malformed_scope) %set_scope rpar;
 
@@ -269,6 +271,16 @@ conventional_types_main := conventional_types >eof(err_empty) >mark @err(err_typ
 	remainder?;
 
 falco_types_main := falco_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
+	scope? %to(check_early_exit)
+	breaking? %to(check_early_exit)
+	colon >err(err_colon) %to(check_early_exit)
+	description
+	remainder?;
+
+# fixme > what if type contains ': '?
+# fixme > what if type contains '('?
+# fixme > what if type contains '!'?
+free_form_types_main := free_form_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit) :>>
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
@@ -373,11 +385,14 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	output.footers = make(map[string][]string)
 
 	switch m.typeConfig {
-	case conventionalcommits.TypesConventional:
-		m.cs = en_conventional_types_main
+	case conventionalcommits.TypesFreeForm:
+		m.cs = en_free_form_types_main
 		break
 	case conventionalcommits.TypesFalco:
 		m.cs = en_falco_types_main
+		break
+	case conventionalcommits.TypesConventional:
+		m.cs = en_conventional_types_main
 		break
 	case conventionalcommits.TypesMinimal:
 		fallthrough
