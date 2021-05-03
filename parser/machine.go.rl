@@ -212,11 +212,11 @@ action blank_line_ahead { m.p + 2 < m.pe && m.data[m.p + 1] == 10 && m.data[m.p 
 
 # Machine definitions
 
-minimal_types = ('fix' | 'feat');
+minimal_types = ('fix'i | 'feat'i);
 
-conventional_types = ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'refactor' | 'revert' | 'style' | 'test');
+conventional_types = ('build'i | 'ci'i | 'chore'i | 'docs'i | 'feat'i | 'fix'i | 'perf'i | 'refactor'i | 'revert'i | 'style'i | 'test'i);
 
-falco_types = ('build' | 'ci' | 'chore' | 'docs' | 'feat' | 'fix' | 'perf' | 'new' | 'revert' | 'update' | 'test' | 'rule');
+falco_types = ('build'i | 'ci'i | 'chore'i | 'docs'i | 'feat'i | 'fix'i | 'perf'i | 'new'i | 'revert'i | 'update'i | 'test'i | 'rule'i);
 
 free_form_types = print+;
 
