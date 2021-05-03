@@ -16,6 +16,8 @@ const (
 	// TypesFalco represents the set of types that Falco uses for its release notes.
 	// See https://github.com/falcosecurity/falco
 	TypesFalco
+	// TypeFreeForm represents a free-form set of types.
+	TypesFreeForm
 )
 
 // TypeConfigurer represents parsers with the option to enable different commit message types.
