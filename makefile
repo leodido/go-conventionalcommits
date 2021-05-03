@@ -15,10 +15,9 @@ clean:
 .PHONY: dots
 dots:
 	@mkdir -p parser/docs
-	$(MAKE) -s parser/docs/main.dot
 
 .PHONY: docs
-docs: dots parser/docs/main.png parser/docs/body.png parser/docs/trailer_beg.png parser/docs/trailer_end.png
+docs: dots parser/docs/minimal_types.png parser/docs/falco_types.png parser/docs/conventional_types.png parser/docs/free_form_types.png parser/docs/body.png parser/docs/trailer_beg.png parser/docs/trailer_end.png
 
 .PHONY: snake2camel
 snake2camel:
@@ -28,10 +27,28 @@ snake2camel:
 	print \
 	}' $(file)
 
-parser/docs/main.dot: parser/machine.go.rl common/common.rl
-	$(RAGEL) -Z -Vp $< -o $@
+parser/docs/minimal_types.dot: parser/machine.go.rl common/common.rl
+	$(RAGEL) -Z -Vp -M main $< -o $@
 
-parser/docs/main.png: parser/docs/main.dot
+parser/docs/minimal_types.png: parser/docs/minimal_types.dot
+	dot $< -Tpng -o $@
+
+parser/docs/falco_types.dot: parser/machine.go.rl common/common.rl
+	$(RAGEL) -Z -Vp -M falco_types_main $< -o $@
+
+parser/docs/falco_types.png: parser/docs/falco_types.dot
+	dot $< -Tpng -o $@
+
+parser/docs/conventional_types.dot: parser/machine.go.rl common/common.rl
+	$(RAGEL) -Z -Vp -M conventional_types_main $< -o $@
+
+parser/docs/conventional_types.png: parser/docs/conventional_types.dot
+	dot $< -Tpng -o $@
+
+parser/docs/free_form_types.dot: parser/machine.go.rl common/common.rl
+	$(RAGEL) -Z -Vp -M free_form_types_main $< -o $@
+
+parser/docs/free_form_types.png: parser/docs/free_form_types.dot
 	dot $< -Tpng -o $@
 
 parser/docs/body.dot: parser/machine.go.rl common/common.rl
