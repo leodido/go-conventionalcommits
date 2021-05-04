@@ -16,7 +16,7 @@ const (
 	// TypesFalco represents the set of types that Falco uses for its release notes.
 	// See https://github.com/falcosecurity/falco
 	TypesFalco
-	// TypeFreeForm represents a free-form set of types.
+	// TypesFreeForm represents a free-form set of types.
 	TypesFreeForm
 )
 
@@ -71,12 +71,13 @@ func (c *ConventionalCommit) Ok() bool {
 	return c.Type != "" && c.Description != ""
 }
 
-// IsBreakingChange tells whether the receiving commit message represents a breaking change or not.
+// IsBreakingChange tells whether the receiving commit message struct represents a breaking change or not.
 func (c *ConventionalCommit) IsBreakingChange() bool {
 	_, hasBreakingChangeTrailer := c.Footers["breaking-change"]
 	return c.Exclamation || hasBreakingChangeTrailer
 }
 
+// HasFooter tells whether the receiving commit message struct has one or more trailers.
 func (c *ConventionalCommit) HasFooter() bool {
 	return len(c.Footers) > 0
 }
