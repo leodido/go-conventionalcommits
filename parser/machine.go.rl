@@ -236,7 +236,7 @@ falco_types = ('build'i | 'ci'i | 'chore'i | 'docs'i | 'feat'i | 'fix'i | 'perf'
 
 free_form_types = print+;
 
-scope = lpar ((any* -- lpar) -- rpar) >mark %err(err_malformed_scope) %eof(err_malformed_scope_closing) %set_scope rpar;
+scope = lpar ((print* -- lpar) -- rpar) >mark %err(err_malformed_scope) %eof(err_malformed_scope_closing) %set_scope rpar;
 
 breaking = exclamation >set_exclamation;
 
