@@ -98,7 +98,7 @@ action err_begin_blank_line {
 
 # Setters
 
-action set_type {
+action append_type {
 	output._type = string(m.text())
 	m.emitInfo("valid commit message type", "type", output._type)
 }
@@ -251,7 +251,6 @@ trailer_beg := nl* $count_nl (trailer_tok >mark @err(rewind) trailer_sep @err(re
 # Match a trailer value.
 # Then, ignoring newlines, continue trying to detect other trailers.
 trailer_end := trailer_val >mark %set_footer nl* $count_nl @start_trailer_parsing;
-## todo > test out multi-line trailer values
 
 # Match anything until two newlines (ie., a blank line).
 # Then, try detect a footer looking for a trailer token.
@@ -261,36 +260,29 @@ body := (any >mark $err(append_body_all_states) %append_body %err(append_body_be
 # Try detect a footer looking for a trailer token.
 remainder = blank_line @start_trailer_parsing;
 
-## todo > make types case-insensitive
-## todo > option to allow free-form types
-## todo > option to limit the total length (of the first line or of the description)
-## todo > set_type is an append
-main := minimal_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
+main := minimal_types >eof(err_empty) >mark @err(err_type) %from(append_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
 	description
 	remainder?;
 
-conventional_types_main := conventional_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
+conventional_types_main := conventional_types >eof(err_empty) >mark @err(err_type) %from(append_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
 	description
 	remainder?;
 
-falco_types_main := falco_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
+falco_types_main := falco_types >eof(err_empty) >mark @err(err_type) %from(append_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
 	description
 	remainder?;
 
-# fixme > what if type contains ': '?
-# fixme > what if type contains '('?
-# fixme > what if type contains '!'?
-free_form_types_main := free_form_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
-	scope? %to(check_early_exit)
+free_form_types_main := free_form_types >eof(err_empty) >mark @err(err_type) %from(append_type) %to(check_early_exit)
+	:> scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	:>> colon >err(err_colon) %to(check_early_exit)
 	description
