@@ -70,6 +70,7 @@ typos fixed.`)
 	// })
 }
 
+// fixme > flaky because of the footer map keys
 func Example_full_conventional() {
 	i := []byte(`fix: correct minor typos in code
 
@@ -111,7 +112,7 @@ func Example_breaking_freeformtype_with_scope() {
 	// (*conventionalcommits.ConventionalCommit)({
 	//  Type: (string) (len=3) "kvm",
 	//  Description: (string) (len=56) "Truncate base/index GPR value on address calc in !64-bit",
-	//  Scope: (*string)((len=4) "nVMX"),
+	//  Scope: (*string)((len=4) "nvmx"),
 	//  Exclamation: (bool) true,
 	//  Body: (*string)(<nil>),
 	//  Footers: (map[string][]string) <nil>
