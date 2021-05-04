@@ -375,7 +375,7 @@ var testCases = []testCase{
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 4),
+		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 4),
 	},
 	// INVALID / double left parentheses in scope after valid character
 	{
@@ -384,7 +384,7 @@ var testCases = []testCase{
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 5),
+		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 5),
 	},
 	// INVALID / double right parentheses in place of an exclamation, or a colon
 	{
@@ -1371,7 +1371,7 @@ var testCasesForFalcoTypes = []testCase{
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 6),
+		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 6),
 	},
 	// INVALID / double left parentheses in scope after valid character
 	{
@@ -1380,7 +1380,7 @@ var testCasesForFalcoTypes = []testCase{
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 6),
+		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 6),
 	},
 	// INVALID / double right parentheses in place of an exclamation, or a colon
 	{
@@ -2037,7 +2037,7 @@ var testCasesForConventionalTypes = []testCase{
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 6),
+		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 6),
 	},
 	// INVALID / incomplete scope
 	{
@@ -2046,7 +2046,7 @@ var testCasesForConventionalTypes = []testCase{
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrMalformedScopeClosing+ColumnPositionTemplate, "e", 9),
+		fmt.Sprintf(ErrScopeIncomplete+ColumnPositionTemplate, "e", 9),
 	},
 	// INVALID / double left parentheses in scope after valid character
 	{
@@ -2055,7 +2055,7 @@ var testCasesForConventionalTypes = []testCase{
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 6),
+		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 6),
 	},
 	// INVALID / double right parentheses in place of an exclamation, or a colon
 	{
@@ -2598,12 +2598,12 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "kvm",
-			Scope:       cctesting.StringAddress("nVMX"),
+			Scope:       cctesting.StringAddress("nvmx"),
 			Description: "Truncate base/index GPR value on address calc in !64-bit",
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "kvm",
-			Scope:       cctesting.StringAddress("nVMX"),
+			Scope:       cctesting.StringAddress("nvmx"),
 			Description: "Truncate base/index GPR value on address calc in !64-bit",
 		},
 		"",
@@ -2633,7 +2633,7 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 4),
+		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 4),
 	},
 	// INVALID / incomplete scope
 	{
@@ -2642,7 +2642,7 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrMalformedScopeClosing+ColumnPositionTemplate, "e", 9),
+		fmt.Sprintf(ErrScopeIncomplete+ColumnPositionTemplate, "e", 9),
 	},
 	// INVALID / double left parentheses in scope after valid character
 	{
@@ -2651,7 +2651,7 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		false,
 		nil,
 		nil,
-		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 5),
+		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 5),
 	},
 	// VALID / breaking free form type with scope
 	{
@@ -2671,5 +2671,322 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 			Exclamation: true,
 		},
 		"",
+	},
+	// VALID / breaking change trailer
+	{
+		"valid-breaking-change-space-trailer",
+		[]byte(`fix: description
+
+BREAKING CHANGE: APIs`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"breaking-change": {
+					"APIs",
+				},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"breaking-change": {
+					"APIs",
+				},
+			},
+		},
+		"",
+	},
+	// VALID / breaking-change trailer
+	{
+		"valid-breaking-change-trailer",
+		[]byte(`fix: description
+
+BREAKING-CHANGE: APIs`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"breaking-change": {
+					"APIs",
+				},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"breaking-change": {
+					"APIs",
+				},
+			},
+		},
+		"",
+	},
+	// VALID / breaking change trailer before other trailers
+	{
+		"valid-breaking-change-space-trailer-before-others",
+		[]byte(`fix: description
+
+BREAKING CHANGE: APIs
+Acked-by: Leo Di Donato`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"breaking-change": {
+					"APIs",
+				},
+				"acked-by": {
+					"Leo Di Donato",
+				},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"breaking-change": {
+					"APIs",
+				},
+				"acked-by": {
+					"Leo Di Donato",
+				},
+			},
+		},
+		"",
+	},
+	// VALID / breaking change trailer after trailers
+	{
+		"valid-breaking-change-space-trailer-after-others",
+		[]byte(`fix: description
+
+
+Acked-by: Leo Di Donato
+BREAKING CHANGE: APIs`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"breaking-change": {
+					"APIs",
+				},
+				"acked-by": {
+					"Leo Di Donato",
+				},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"breaking-change": {
+					"APIs",
+				},
+				"acked-by": {
+					"Leo Di Donato",
+				},
+			},
+		},
+		"",
+	},
+	// VALID / breaking change trailer after blank lines and other trailers
+	{
+		"valid-breaking-change-space-trailer-after-blanklines-and-others",
+		[]byte(`fix: description
+
+
+Acked-by: Leo Di Donato
+
+
+BREAKING CHANGE: APIs`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"breaking-change": {
+					"APIs",
+				},
+				"acked-by": {
+					"Leo Di Donato",
+				},
+			},
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"breaking-change": {
+					"APIs",
+				},
+				"acked-by": {
+					"Leo Di Donato",
+				},
+			},
+		},
+		"",
+	},
+	// VALID / invalid BREAKING CHANGE trailer separator after body
+	// Note that because of the wrong separator (#) the BREAKING CHANGE trailer gets discarded as a footer component and captured as body content
+	{
+		"valid-breaking-change-invalid-separator-after-body",
+		[]byte(`fix: description
+
+Some text.
+
+BREAKING CHANGE #5`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Body:        cctesting.StringAddress("Some text.\n\nBREAKING CHANGE #5"),
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Body:        cctesting.StringAddress("Some text.\n\nBREAKING CHANGE #5"),
+		},
+		"",
+	},
+	// INVALID / invalid BREAKING CHANGE trailer separator after valid trailers
+	// VALID / until the last valid footer trailer
+	{
+		"invalid-breaking-change-invalid-separator-after-trailers",
+		[]byte(`fix: description
+
+Tested-by: Leo
+BREAKING CHANGE #5`),
+		false,
+		nil,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo"},
+			},
+		},
+		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, " ", 48),
+	},
+	// INVALID / incomplete BREAKING CHANGE trailer
+	// VALID / until the last valid footer trailer
+	{
+		"invalid-breaking-change-incomplete-after-trailers",
+		[]byte(`fix: description
+
+Tested-by: Leo
+BREAKING CHANG: XYZ`),
+		false,
+		nil,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo"},
+			},
+		},
+		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, ":", 47),
+	},
+	// INVALID / lowercase (space separated) BREAKING CHANGE trailer
+	// VALID / until the last valid footer trailer
+	{
+		"invalid-lowercase-space-separated-breaking-change-after-trailers",
+		[]byte(`fix: description
+
+Tested-by: Leo
+breaking change: xyz`),
+		false,
+		nil,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo"},
+			},
+		},
+		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "c", 42),
+	},
+	// INVALID / illegal trailer after valid trailer
+	// VALID / until the last valid footer trailer
+	{
+		"invalid-illegal-trailer-after-valid-trailer",
+		[]byte(`fix: description
+
+Tested-by: Leo
+!`),
+		false,
+		nil,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo"},
+			},
+		},
+		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "!", 33),
+	},
+	// INVALID / illegal trailer after valid trailer with an ending newline
+	// VALID / until the last valid footer trailer
+	{
+		"invalid-illegal-trailer-after-valid-trailer-with-ending-newline",
+		[]byte(`fix: description
+
+Tested-by: Leo
+a
+`),
+		false,
+		nil,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo"},
+			},
+		},
+		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "\n", 34),
+	},
+	// INVALID / incomplete trailer after valid trailer with an ending newline
+	// VALID / until the last valid footer trailer
+	{
+		"invalid-incomplete-trailer-after-valid-trailer-with-ending-newline",
+		[]byte(`fix: description
+
+Tested-by: Leo
+a`),
+		false,
+		nil,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo"},
+			},
+		},
+		fmt.Sprintf(ErrTrailerIncomplete+ColumnPositionTemplate, "a", 34),
+	},
+	// INVALID / incomplete trailer after valid trailer
+	// VALID / until the last valid footer trailer
+	{
+		"invalid-incomplete-trailer-after-valid-trailer",
+		[]byte(`fix: description
+
+Tested-by: Leo
+X-
+Another-trailer: x`),
+		false,
+		nil,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo"},
+			},
+		},
+		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "\n", 35),
 	},
 }
