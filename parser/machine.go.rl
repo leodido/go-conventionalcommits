@@ -14,18 +14,18 @@ var ColumnPositionTemplate = ": col=%02d"
 const (
 	// ErrType represents an error in the type part of the commit message.
 	ErrType = "illegal '%s' character in commit message type"
+	// ErrTypeIncomplete represents an error when the type part of the commit message is not complete.
+	ErrTypeIncomplete = "incomplete commit message type after '%s' character"
 	// ErrColon is the error message that communicate that the mandatory colon after the type part of the commit message is missing.
 	ErrColon = "expecting colon (':') character, got '%s' character"
-	// ErrTypeIncomplete represents an error in the type part of the commit message.
-	ErrTypeIncomplete = "incomplete commit message type after '%s' character"
-	// ErrMalformedScope represents an error about illegal characters into the the scope part of the commit message.
-	ErrMalformedScope = "illegal '%s' character in scope"
+	// ErrScope represents an error about illegal characters into the the scope part of the commit message.
+	ErrScope = "illegal '%s' character in scope"
+	// ErrScopeIncomplete represents a specific early-exit error.
+	ErrScopeIncomplete = "expecting closing parentheses (')') character, got early exit after '%s' character"
 	// ErrEmpty represents an error when the input is empty.
 	ErrEmpty = "empty input"
 	// ErrEarly represents an error when the input makes the machine exit too early.
 	ErrEarly = "early exit after '%s' character"
-	// ErrMalformedScopeClosing represents a specific early-exit error.
-	ErrMalformedScopeClosing = "expecting closing parentheses (')') character, got early exit after '%s' character"
 	// ErrDescriptionInit tells the user that before of the description part a whitespace is mandatory.
 	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
 	// ErrDescription tells the user that after the whitespace is mandatory a description.
@@ -34,6 +34,10 @@ const (
 	ErrNewline = "illegal newline"
 	// ErrMissingBlankLineAtBeginning tells the user that the a blank line is missing after the description or after the body.
 	ErrMissingBlankLineAtBeginning = "missing a blank line"
+	// ErrTrailer represents an error due to an unexepected character while parsing a footer trailer.
+	ErrTrailer = "illegal '%s' character in trailer"
+	// ErrTrailerIncomplete represent an error when a trailer is not complete.
+	ErrTrailerIncomplete = "incomplete footer trailer after '%s' character"
 )
 
 %%{
@@ -59,6 +63,7 @@ action err_type {
 		if m.p != m.pe {
 			m.err = m.emitErrorOnCurrentCharacter(ErrType)
 		} else {
+			// assert(m.p == m.pe)
 			m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
 		}
 	}
@@ -66,13 +71,13 @@ action err_type {
 
 action err_malformed_scope {
 	if m.p < m.pe {
-		m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
+		m.err = m.emitErrorOnCurrentCharacter(ErrScope)
 	}
 }
 
 action err_malformed_scope_closing {
-	// assert(m.p >= m.pe)
-	m.err = m.emitErrorOnPreviousCharacter(ErrMalformedScopeClosing)
+	// assert(m.p == m.pe)
+	m.err = m.emitErrorOnPreviousCharacter(ErrScopeIncomplete)
 }
 
 action err_colon {
@@ -91,6 +96,7 @@ action err_description {
 	if m.p < m.pe && m.data[m.p] == 10 {
 		m.err = m.emitError(ErrNewline, m.p + 1)
 	} else {
+		// assert(m.p == m.pe)
 		m.err = m.emitErrorOnPreviousCharacter(ErrDescription)
 	}
 }
@@ -132,7 +138,11 @@ action set_body_blank_line {
 }
 
 action set_current_footer_key {
+	// todo > alnum[[- ]alnum] string to lower can be more performant?
 	m.currentFooterKey = string(bytes.ToLower(m.text()))
+	if m.currentFooterKey == "breaking change" {
+		m.currentFooterKey = "breaking-change"
+	}
 	m.emitDebug("possibly valid footer token", "token", m.currentFooterKey, "pos", m.p)
 }
 
@@ -160,31 +170,7 @@ action append_body {
 	m.emitInfo("valid commit message body content", "body", string(m.text()))
 }
 
-action append_body_all_states {
-	// Append newlines
-	for ; m.countNewlines > 0; {
-		output.body += "\n"
-		m.countNewlines--
-		m.emitInfo("valid commit message body content", "body", "\n")
-	}
-	// Append content to body
-	if m.p > m.pb {
-		output.body += string(m.text())
-		m.emitInfo("valid commit message body content", "body", string(m.text()))
-	} else {
-		// assert(m.p == m.pb)
-		output.body += string(m.data[m.pb:m.pb + 1])
-		m.emitInfo("valid commit message body content", "body", string(m.data[m.pb:m.pb + 1]))
-	}
-}
-
 action append_body_before_blank_line {
-	// Append newlines
-	for ; m.countNewlines > 0; {
-		output.body += "\n"
-		m.countNewlines--
-		m.emitInfo("valid commit message body content", "body", "\n")
-	}
 	// Append content to body
 	m.pb++
 	m.p++
@@ -220,7 +206,15 @@ action rewind {
 		m.emitDebug("try to parse body content", "pos", m.p)
 		fgoto body;
 	} else {
-		fmt.Println("todo > rewind/continue to parse footer trailers", m.pb, m.p, string(m.text()));
+		// A rewind happens when an error while parsing a footer trailer is encountered
+		// If this is not the first footer trailer the parser can't go back to parse body content again
+		// Thus, emit an error
+		if m.p != m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrTrailer)
+		} else {
+			// assert(m.p == m.pe)
+			m.err = m.emitErrorOnPreviousCharacter(ErrTrailerIncomplete)
+		}
 	}
 }
 
@@ -245,17 +239,24 @@ description = ws+ >err(err_description_init) <: (any - nl)+ >mark >err(err_descr
 
 blank_line = nl nl >err(err_begin_blank_line) >set_body_blank_line;
 
+trailer_tok_breaking = 'BREAKING CHANGE';
+
+trailer_sep_breaking = colon ws+;
+
 trailer_tok = alnum+ (dash alnum+)*;
 
-trailer_sep = (colon ws) | (ws '#');
+trailer_sep = trailer_sep_breaking | (ws '#');
 
 trailer_val = print+;
+
+trailer_init = trailer_tok_breaking >mark @err(rewind) trailer_sep_breaking >set_current_footer_key @err(rewind) |
+               trailer_tok >mark @err(rewind) trailer_sep >set_current_footer_key @err(rewind);
 
 # Count newlines that can be part of the body or just trailer separators.
 # Optionally match a trailer token followed by a trailer separator.
 # In such case, continue looking for a trailer value.
 # Otherwise, assume machine is in the body part.
-trailer_beg := nl* $count_nl (trailer_tok >mark @err(rewind) trailer_sep @err(rewind) >set_current_footer_key @complete_trailer_parsing)?;
+trailer_beg := nl* $count_nl (trailer_init @complete_trailer_parsing)?;
 
 # Match a trailer value.
 # Then, ignoring newlines, continue trying to detect other trailers.
@@ -263,7 +264,7 @@ trailer_end := trailer_val >mark %set_footer nl* $count_nl @start_trailer_parsin
 
 # Match anything until two newlines (ie., a blank line).
 # Then, try detect a footer looking for a trailer token.
-body := (any >mark $err(append_body_all_states) %append_body %err(append_body_before_blank_line) when !blank_line_ahead)+ $err(start_trailer_parsing);
+body := (any >mark $err(append_body) %append_body %err(append_body_before_blank_line) when !blank_line_ahead)+ $err(start_trailer_parsing);
 
 # Expect a blank line after the description.
 # Try detect a footer looking for a trailer token.
