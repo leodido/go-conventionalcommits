@@ -25,6 +25,7 @@ func (c *conventionalCommit) export() conventionalcommits.Message {
 	out.Type = strings.ToLower(c._type)
 	out.Description = c.descr
 	if c.scope != "" {
+		c.scope = strings.ToLower(c.scope)
 		out.Scope = &c.scope
 	}
 	if c.body != "" {
