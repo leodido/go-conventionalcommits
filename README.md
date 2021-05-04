@@ -22,36 +22,7 @@ The [parser/docs](parser/docs/) directory contains `.dot` and `.png` files repre
 
 ## Usage
 
-### Types
-
-This library provides support for different types:
-
-- minimal => fix, feat
-- conventional => build, ci, chore, docs, feat, fix, perf, refactor, revert, style, test
-- falco => build, ci, chore, docs, feat, fix, perf, new, revert, update, test, rule
-
-At the moment, those types are at build time. Which means users can't configure them at runtime.
-
-### Options
-
-A parser behaviour is configurable by using options.
-
-You can set them calling a function on the parser machine.
-
-```go
-p := parser.NewMachine()
-p.WithBestEffort()
-res, err := p.Parse(i)
-```
-
-Or you can provide options to `NewMachine(...)` directly.
-
-```go
-p := parser.NewMachine(WithBestEffort())
-res, err := p.Parse(i)
-```
-
-### Parse!
+### Parse
 
 Your code base uses only single line commit messages like this one?
 
@@ -95,10 +66,43 @@ Or, more simpler:
 res, err := parser.NewMachine(WithTypes(conventionalcommits.TypesConventional)).Parse(i)
 ```
 
+### Types
+
+This library provides support for different types sets:
+
+- **minimal**: fix, feat
+- **conventional**: build, ci, chore, docs, feat, fix, perf, refactor, revert, style, test
+- **falco**: build, ci, chore, docs, feat, fix, perf, new, revert, update, test, rule
+
+At the moment, those types are at build time. Which means users can't configure them at runtime.
+
+Anyway, there's also a **free-form** types set that accepts any combination of printable characters (before the separator after which the commit description starts) as a valid type.
+
+You can choose the type set passing the `WithTypes(conventionalcommits.TypesConventional)` option as shown above.
+
+### Options
+
+A parser behaviour is configurable by using options.
+
+You can set them calling a function on the parser machine.
+
+```go
+p := parser.NewMachine()
+p.WithBestEffort()
+res, err := p.Parse(i)
+```
+
+Or you can provide options to `NewMachine(...)` directly.
+
+```go
+p := parser.NewMachine(WithBestEffort())
+res, err := p.Parse(i)
+```
+
 ### Best effort
 
 The best effort mode will make the parser return what it found until the point it errored out,
-if it found (at least) a valid type and a description.
+if it found (at least) a valid type and a valid description.
 
 Let's make an example.
 
@@ -109,15 +113,15 @@ fix: description
 a blank line is mandatory to start the body part of the commit message!
 ```
 
-The input does not respect the conventional commit v1 specification.
+The input does not respect the Conventional Commits v1 specification because it lacks a blank line after the description (before the body).
 
-Anyways, if the parser you're using has the best effort mode enabled, you can still obtain some data since at least a valid type and description have been found!
+Anyways, if the parser you're using has the best effort mode enabled, you can still obtain some structured data since at least a valid type and description have been found!
 
 ```go
 res, err := parser.NewMachine(WithBestEffort()).Parse(i)
 ```
 
-The result will contain a `ConventionalCommit` struct instance with the `Type` and the `Description` fields populated.
+The result will contain a `ConventionalCommit` struct instance with the `Type` and the `Description` fields populated and ignore the rest after the error column.
 
 The parser will still return the error (with the position information), so that you can eventually use it.
 
@@ -169,8 +173,8 @@ Parsing a commit goes from taking about the same amount of time (~299ns) the hal
 
 ---
 
-* <a name="mymachine">[1]</a>: Intel Core i7-8850H CPU @ 2.60GHz
-* <a name="nanosecondwiki">[2]</a>: https://en.wikipedia.org/wiki/nanosecond
+- <a name="mymachine">[1]</a>: Intel Core i7-8850H CPU @ 2.60GHz
+- <a name="nanosecondwiki">[2]</a>: <https://en.wikipedia.org/wiki/nanosecond>
 
 ---
 
