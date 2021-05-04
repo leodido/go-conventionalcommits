@@ -2039,6 +2039,15 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 6),
 	},
+	// INVALID / incomplete scope
+	{
+		"invalid-incomplete-scope",
+		[]byte("fix(scope"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrMalformedScopeClosing+ColumnPositionTemplate, "e", 9),
+	},
 	// INVALID / double left parentheses in scope after valid character
 	{
 		"invalid-double-left-parentheses-scope-after-valid-character",
@@ -2567,9 +2576,9 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		},
 		"",
 	},
-	// VALID /
+	// VALID / valid type (uppercase) + description starting with type-like string
 	{
-		"valid-type-uppercase",
+		"valid-type-uppercase-and-description-starting-with-type-like-string",
 		[]byte(`KVM: nVMX: Truncate base/index GPR value on address calc in !64-bit`),
 		true,
 		&conventionalcommits.ConventionalCommit{
@@ -2579,6 +2588,87 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "kvm",
 			Description: "nVMX: Truncate base/index GPR value on address calc in !64-bit",
+		},
+		"",
+	},
+	// VALID / free form type with scope
+	{
+		"valid-free-form-type-with-scope",
+		[]byte(`KVM(nVMX): Truncate base/index GPR value on address calc in !64-bit`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "kvm",
+			Scope:       cctesting.StringAddress("nVMX"),
+			Description: "Truncate base/index GPR value on address calc in !64-bit",
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "kvm",
+			Scope:       cctesting.StringAddress("nVMX"),
+			Description: "Truncate base/index GPR value on address calc in !64-bit",
+		},
+		"",
+	},
+	// INVALID / text after well-formed scope
+	{
+		"invalid-text-after-well-formed-scope",
+		[]byte(`some(scope)text: aaaa`),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "t", 11),
+	},
+	// INVALID / invalid after valid type, scope, breaking, colon, and white-spaces
+	{
+		"invalid-after-valid-type-scope-breaking-colon-and-spaces",
+		[]byte("fix(scope)!:  "),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 14),
+	},
+	// INVALID / double left parentheses in scope
+	{
+		"invalid-double-left-parentheses-scope",
+		[]byte("fix(("),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 4),
+	},
+	// INVALID / incomplete scope
+	{
+		"invalid-incomplete-scope",
+		[]byte("fix(scope"),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrMalformedScopeClosing+ColumnPositionTemplate, "e", 9),
+	},
+	// INVALID / double left parentheses in scope after valid character
+	{
+		"invalid-double-left-parentheses-scope-after-valid-character",
+		[]byte("fix(a("),
+		false,
+		nil,
+		nil,
+		fmt.Sprintf(ErrMalformedScope+ColumnPositionTemplate, "(", 5),
+	},
+	// VALID / breaking free form type with scope
+	{
+		"valid-breaking-free-form-type-with-scope",
+		[]byte(`some(scope)!: breaking desc`),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "some",
+			Scope:       cctesting.StringAddress("scope"),
+			Description: "breaking desc",
+			Exclamation: true,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "some",
+			Scope:       cctesting.StringAddress("scope"),
+			Description: "breaking desc",
+			Exclamation: true,
 		},
 		"",
 	},
