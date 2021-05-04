@@ -56,12 +56,12 @@ digraph conventionalcommits {
 	8 -> 14 [ label = "DEF / mark" ];
 	9 -> 15 [ label = "'\\n' / set_body_blank_line, start_trailer_parsing" ];
 	9 -> err_9 [ label = "DEF / err_begin_blank_line" ];
-	10 -> err_10 [ label = "'(' / err_malformed_scope" ];
+	10 -> 11 [ label = "SP..''', '*'..'~' / mark" ];
 	10 -> 12 [ label = "')' / mark, set_scope, check_early_exit" ];
-	10 -> 11 [ label = "DEF / mark" ];
-	11 -> err_11 [ label = "'(' / err_malformed_scope" ];
+	10 -> err_10 [ label = "DEF / err_malformed_scope" ];
+	11 -> 11 [ label = "SP..''', '*'..'~'" ];
 	11 -> 12 [ label = "')' / set_scope, check_early_exit" ];
-	11 -> 11 [ label = "DEF" ];
+	11 -> err_11 [ label = "DEF / err_malformed_scope" ];
 	12 -> 6 [ label = "'!' / set_exclamation, check_early_exit" ];
 	12 -> 7 [ label = "':' / check_early_exit" ];
 	12 -> err_12 [ label = "DEF / err_colon" ];
@@ -79,8 +79,8 @@ digraph conventionalcommits {
 	7 -> eof_7 [ label = "EOF / err_description_init" ];
 	8 -> eof_8 [ label = "EOF / err_description" ];
 	9 -> eof_9 [ label = "EOF / err_begin_blank_line" ];
-	10 -> eof_10 [ label = "EOF / err_malformed_scope" ];
-	11 -> eof_11 [ label = "EOF / err_malformed_scope" ];
+	10 -> eof_10 [ label = "EOF / err_malformed_scope, err_malformed_scope_closing" ];
+	11 -> eof_11 [ label = "EOF / err_malformed_scope, err_malformed_scope_closing" ];
 	12 -> eof_12 [ label = "EOF / err_colon" ];
 	13 -> eof_13 [ label = "EOF / err_type" ];
 	14 -> eof_14 [ label = "EOF / set_description" ];
