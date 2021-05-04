@@ -25,7 +25,7 @@ const (
 	// ErrEarly represents an error when the input makes the machine exit too early.
 	ErrEarly = "early exit after '%s' character"
 	// ErrMalformedScopeClosing represents a specific early-exit error.
-	ErrMalformedScopeClosing = "expecting closing parentheses (')') character, got early exit at '%s' character"
+	ErrMalformedScopeClosing = "expecting closing parentheses (')') character, got early exit after '%s' character"
 	// ErrDescriptionInit tells the user that before of the description part a whitespace is mandatory.
 	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
 	// ErrDescription tells the user that after the whitespace is mandatory a description.

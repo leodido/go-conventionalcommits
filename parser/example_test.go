@@ -102,3 +102,18 @@ Refs #133`)
 	//  }
 	// })
 }
+
+func Example_breaking_freeformtype_with_scope() {
+	i := []byte(`KVM(nVMX)!: Truncate base/index GPR value on address calc in !64-bit`)
+	m, _ := NewMachine(WithTypes(conventionalcommits.TypesFreeForm)).Parse(i)
+	output(m)
+	// Output:
+	// (*conventionalcommits.ConventionalCommit)({
+	//  Type: (string) (len=3) "kvm",
+	//  Description: (string) (len=56) "Truncate base/index GPR value on address calc in !64-bit",
+	//  Scope: (*string)((len=4) "nVMX"),
+	//  Exclamation: (bool) true,
+	//  Body: (*string)(<nil>),
+	//  Footers: (map[string][]string) <nil>
+	// })
+}
