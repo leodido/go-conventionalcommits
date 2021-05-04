@@ -11,10 +11,10 @@ digraph conventionalcommits {
 	2;
 	node [ shape = circle ];
 	1 -> 2 [ label = "0..255(!blank_line_ahead) / mark" ];
-	1 -> err_1 [ label = "DEF / append_body_all_states, start_trailer_parsing" ];
+	1 -> err_1 [ label = "DEF / append_body, start_trailer_parsing" ];
 	2 -> 2 [ label = "0..255(!blank_line_ahead) / append_body, mark" ];
-	2 -> err_2 [ label = "DEF / append_body_all_states, append_body_before_blank_line, start_trailer_parsing" ];
+	2 -> err_2 [ label = "DEF / append_body, append_body_before_blank_line, start_trailer_parsing" ];
 	ENTRY -> 1 [ label = "IN" ];
-	1 -> eof_1 [ label = "EOF / append_body_all_states, start_trailer_parsing" ];
+	1 -> eof_1 [ label = "EOF / append_body, start_trailer_parsing" ];
 	2 -> eof_2 [ label = "EOF / append_body" ];
 }
