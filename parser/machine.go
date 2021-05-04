@@ -24,6 +24,8 @@ const (
 	ErrEmpty = "empty input"
 	// ErrEarly represents an error when the input makes the machine exit too early.
 	ErrEarly = "early exit after '%s' character"
+	// ErrMalformedScopeClosing represents a specific early-exit error.
+	ErrMalformedScopeClosing = "expecting closing parentheses (')') character, got early exit at '%s' character"
 	// ErrDescriptionInit tells the user that before of the description part a whitespace is mandatory.
 	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
 	// ErrDescription tells the user that after the whitespace is mandatory a description.
@@ -457,7 +459,9 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		goto st0
 	tr17:
 
-		m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
+		if m.p < m.pe {
+			m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
+		}
 
 		goto st0
 	tr21:
@@ -2860,10 +2864,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 					}
 				}
 
-			case 10, 11, 30, 31, 71, 72, 107, 108:
-
-				m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
-
 			case 5, 6, 12, 25, 26, 32, 66, 67, 73, 102, 103, 109:
 
 				if m.err == nil {
@@ -2942,6 +2942,15 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 						m.err = m.emitErrorOnPreviousCharacter(ErrTypeIncomplete)
 					}
 				}
+
+			case 10, 11, 30, 31, 71, 72, 107, 108:
+
+				if m.p < m.pe {
+					m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
+				}
+
+				// assert(m.p >= m.pe)
+				m.err = m.emitErrorOnPreviousCharacter(ErrMalformedScopeClosing)
 
 			case 19:
 

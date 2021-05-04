@@ -24,6 +24,8 @@ const (
 	ErrEmpty = "empty input"
 	// ErrEarly represents an error when the input makes the machine exit too early.
 	ErrEarly = "early exit after '%s' character"
+	// ErrMalformedScopeClosing represents a specific early-exit error.
+	ErrMalformedScopeClosing = "expecting closing parentheses (')') character, got early exit at '%s' character"
 	// ErrDescriptionInit tells the user that before of the description part a whitespace is mandatory.
 	ErrDescriptionInit = "expecting at least one white-space (' ') character, got '%s' character"
 	// ErrDescription tells the user that after the whitespace is mandatory a description.
@@ -63,7 +65,14 @@ action err_type {
 }
 
 action err_malformed_scope {
-	m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
+	if m.p < m.pe {
+		m.err = m.emitErrorOnCurrentCharacter(ErrMalformedScope)
+	}
+}
+
+action err_malformed_scope_closing {
+	// assert(m.p >= m.pe)
+	m.err = m.emitErrorOnPreviousCharacter(ErrMalformedScopeClosing)
 }
 
 action err_colon {
@@ -88,7 +97,7 @@ action err_description {
 
 action check_early_exit {
 	if (m.p + 1) == m.pe {
-		m.err = m.emitErrorOnCurrentCharacter(ErrEarly);
+		m.err = m.emitErrorOnCurrentCharacter(ErrEarly)
 	}
 }
 
@@ -98,7 +107,7 @@ action err_begin_blank_line {
 
 # Setters
 
-action append_type {
+action set_type {
 	output._type = string(m.text())
 	m.emitInfo("valid commit message type", "type", output._type)
 }
@@ -227,7 +236,7 @@ falco_types = ('build'i | 'ci'i | 'chore'i | 'docs'i | 'feat'i | 'fix'i | 'perf'
 
 free_form_types = print+;
 
-scope = lpar ((any* -- lpar) -- rpar) >mark %err(err_malformed_scope) %set_scope rpar;
+scope = lpar ((any* -- lpar) -- rpar) >mark %err(err_malformed_scope) %eof(err_malformed_scope_closing) %set_scope rpar;
 
 breaking = exclamation >set_exclamation;
 
@@ -260,29 +269,29 @@ body := (any >mark $err(append_body_all_states) %append_body %err(append_body_be
 # Try detect a footer looking for a trailer token.
 remainder = blank_line @start_trailer_parsing;
 
-main := minimal_types >eof(err_empty) >mark @err(err_type) %from(append_type) %to(check_early_exit)
+main := minimal_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
 	description
 	remainder?;
 
-conventional_types_main := conventional_types >eof(err_empty) >mark @err(err_type) %from(append_type) %to(check_early_exit)
+conventional_types_main := conventional_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
 	description
 	remainder?;
 
-falco_types_main := falco_types >eof(err_empty) >mark @err(err_type) %from(append_type) %to(check_early_exit)
+falco_types_main := falco_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
 	scope? %to(check_early_exit)
 	breaking? %to(check_early_exit)
 	colon >err(err_colon) %to(check_early_exit)
 	description
 	remainder?;
 
-free_form_types_main := free_form_types >eof(err_empty) >mark @err(err_type) %from(append_type) %to(check_early_exit)
-	:> scope? %to(check_early_exit)
+free_form_types_main := free_form_types >eof(err_empty) >mark @err(err_type) %from(set_type) %to(check_early_exit)
+	:> (scope? %to(check_early_exit))
 	breaking? %to(check_early_exit)
 	:>> colon >err(err_colon) %to(check_early_exit)
 	description
