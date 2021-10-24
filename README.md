@@ -1,6 +1,6 @@
 # go-conventionalcommits
 
-[![Build](https://img.shields.io/circleci/build/github/leodido/go-conventionalcommits/develop?style=for-the-badge)](https://app.circleci.com/pipelines/github/leodido/go-conventionalcommits)] [![Coverage](https://img.shields.io/codecov/c/github/leodido/go-conventionalcommits.svg?style=for-the-badge)](https://codecov.io/gh/leodido/go-conventionalcommits) [![License](https://img.shields.io/github/license/leodido/go-conventionalcommits?style=for-the-badge)](LICENSE) [![Go Report](https://goreportcard.com/badge/github.com/leodido/go-conventionalcommits?style=for-the-badge)](https://goreportcard.com/report/github.com/leodido/go-conventionalcommits)
+[![Build](https://img.shields.io/circleci/build/github/leodido/go-conventionalcommits/develop?style=for-the-badge)](https://app.circleci.com/pipelines/github/leodido/go-conventionalcommits) [![Coverage](https://img.shields.io/codecov/c/github/leodido/go-conventionalcommits.svg?style=for-the-badge)](https://codecov.io/gh/leodido/go-conventionalcommits) [![License](https://img.shields.io/github/license/leodido/go-conventionalcommits?style=for-the-badge)](LICENSE) [![Go Report](https://goreportcard.com/badge/github.com/leodido/go-conventionalcommits?style=for-the-badge)](https://goreportcard.com/report/github.com/leodido/go-conventionalcommits)
 
 **A parser for [Conventional Commits v1.0](https://www.conventionalcommits.org/en/v1.0.0/#specification) commit messages**.
 
