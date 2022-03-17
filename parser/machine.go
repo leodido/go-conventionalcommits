@@ -159,6 +159,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		break
 	}
+	output.typeconfig = m.typeConfig
 
 	{
 		var _widec int16

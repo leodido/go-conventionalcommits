@@ -66,7 +66,7 @@ type Message interface {
 	IsBreakingChange() bool
 	IsFeat() bool
 	IsFix() bool
-	VersionBump() VersionBump
+	VersionBump(VersionBumpStrategy) VersionBump
 	HasFooter() bool
 }
 
@@ -78,6 +78,24 @@ type ConventionalCommit struct {
 	Exclamation bool
 	Body        *string             // optional
 	Footers     map[string][]string // optional
+	TypeConfig  TypeConfig
+}
+
+// VersionBumpStrategy represents a strategy how to evaluate the version bump depending on the TypeConfig initially used and the commits Type
+type VersionBumpStrategy func(*ConventionalCommit) VersionBump
+
+// DefaultStrategy is a basic, opiniated strategy to evaluate the version bump
+func DefaultStrategy(c *ConventionalCommit) VersionBump {
+	if c.IsBreakingChange() {
+		return MajorVersion
+	}
+	if c.IsFeat() {
+		return MinorVersion
+	}
+	if c.IsFix() {
+		return PatchVersion
+	}
+	return UnknownVersion
 }
 
 // Ok tells whether the receiving commit message is well-formed or not.
@@ -96,6 +114,9 @@ func (c *ConventionalCommit) IsBreakingChange() bool {
 
 // IsFeat tells whether the receiving commit message struct represents a feat change or not.
 func (c *ConventionalCommit) IsFeat() bool {
+	if c.TypeConfig == TypesFalco && c.Type == "new" {
+		return true
+	}
 	return c.Type == "feat"
 }
 
@@ -105,17 +126,12 @@ func (c *ConventionalCommit) IsFix() bool {
 }
 
 // VersionBump tells which version bump the receiving commit message mandates.
-func (c *ConventionalCommit) VersionBump() VersionBump {
-	if c.IsBreakingChange() {
-		return MajorVersion
+func (c *ConventionalCommit) VersionBump(strategy VersionBumpStrategy) VersionBump {
+	if strategy == nil {
+		return DefaultStrategy(c)
 	}
-	if c.IsFeat() {
-		return MinorVersion
-	}
-	if c.IsFix() {
-		return PatchVersion
-	}
-	return UnknownVersion
+
+	return strategy(c)
 }
 
 // HasFooter tells whether the receiving commit message struct has one or more trailers.

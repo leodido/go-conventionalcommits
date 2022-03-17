@@ -61,6 +61,9 @@ func runner(t *testing.T, label string, cases []testCase, machineOpts ...convent
 				assert.Equal(t, message, partial)
 				assert.Equal(t, tc.partialValue, partial)
 				assert.Equal(t, messageErr, partialErr)
+				if tc.bump != nil {
+					assert.Equal(t, message.VersionBump(nil), partial.VersionBump(nil))
+				}
 			}
 
 			assert.Equal(t, tc.value, message)
@@ -83,6 +86,7 @@ func TestMachineTypeConfigOption(t *testing.T) {
 	res := &conventionalcommits.ConventionalCommit{
 		Type:        "new",
 		Description: "ciao",
+		TypeConfig:  2,
 	}
 
 	assert.NoError(t, err)

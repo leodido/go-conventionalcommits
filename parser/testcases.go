@@ -17,7 +17,13 @@ type testCase struct {
 	value        conventionalcommits.Message
 	partialValue conventionalcommits.Message
 	errorString  string
+	bump         *conventionalcommits.VersionBump
 }
+
+var UnknownVersion = conventionalcommits.UnknownVersion
+var PatchVersion = conventionalcommits.PatchVersion
+var MinorVersion = conventionalcommits.MinorVersion
+var MajorVersion = conventionalcommits.MajorVersion
 
 var testCases = []testCase{
 	// INVALID / empty
@@ -28,6 +34,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEmpty+ColumnPositionTemplate, 0),
+		nil,
 	},
 	// INVALID / invalid type (1 char)
 	{
@@ -37,6 +44,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "f", 1),
+		nil,
 	},
 	// INVALID / invalid type (2 char)
 	{
@@ -46,6 +54,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "x", 1),
+		nil,
 	},
 	// INVALID / invalid type (2 char) with almost valid type
 	{
@@ -55,6 +64,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "e", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char)
 	{
@@ -64,6 +74,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "t", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char) again
 	{
@@ -73,6 +84,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "i", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char) with almost valid type
 	{
@@ -82,6 +94,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "a", 3),
+		nil,
 	},
 	// INVALID / invalid type (4 char)
 	{
@@ -91,6 +104,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "x", 3),
+		nil,
 	},
 	// INVALID / missing colon after type fix
 	{
@@ -100,6 +114,7 @@ var testCases = []testCase{
 		nil,
 		nil, // no partial result because it is not a minimal valid commit message
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "x", 2),
+		nil,
 	},
 	// INVALID / missing colon after type feat
 	{
@@ -109,6 +124,7 @@ var testCases = []testCase{
 		nil,
 		nil, // no partial result because it is not a minimal valid commit message
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "t", 3),
+		nil,
 	},
 	// INVALID / invalid type (2 char) + colon
 	{
@@ -118,6 +134,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, ":", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char) + colon
 	{
@@ -127,6 +144,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, ":", 3),
+		nil,
 	},
 	// VALID / minimal commit message
 	{
@@ -136,12 +154,15 @@ var testCases = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "x",
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "x",
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// INVALID / missing colon after valid commit message type
 	{
@@ -151,6 +172,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ">", 3),
+		nil,
 	},
 	// INVALID / missing colon after valid commit message type
 	{
@@ -160,6 +182,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 4),
+		nil,
 	},
 	// INVALID / invalid after valid type and scope
 	{
@@ -169,6 +192,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ")", 9),
+		nil,
 	},
 	// VALID / type + scope + description
 	{
@@ -179,13 +203,16 @@ var testCases = []testCase{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + scope + multiple whitespaces + description
 	{
@@ -196,13 +223,16 @@ var testCases = []testCase{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + scope + breaking + description
 	{
@@ -214,14 +244,17 @@ var testCases = []testCase{
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / empty scope is ignored
 	{
@@ -231,12 +264,15 @@ var testCases = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + empty scope + breaking + description
 	{
@@ -247,13 +283,16 @@ var testCases = []testCase{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + breaking + description
 	{
@@ -264,13 +303,16 @@ var testCases = []testCase{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// INVALID / missing whitespace after colon (with breaking)
 	{
@@ -280,6 +322,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 5),
+		nil,
 	},
 	// INVALID / missing whitespace after colon with scope
 	{
@@ -289,6 +332,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 7),
+		nil,
 	},
 	// INVALID / missing whitespace after colon with empty scope
 	{
@@ -298,6 +342,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 6),
+		nil,
 	},
 	// INVALID / missing whitespace after colon
 	{
@@ -307,6 +352,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 4),
+		nil,
 	},
 	// INVALID / invalid initial character
 	{
@@ -316,6 +362,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "(", 0),
+		nil,
 	},
 	// INVALID / invalid second character
 	{
@@ -325,6 +372,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, " ", 1),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, and breaking
 	{
@@ -334,6 +382,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "!", 10),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, and colon
 	{
@@ -343,6 +392,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 10),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, breaking, and colon
 	{
@@ -352,6 +402,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 11),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, breaking, colon, and white-space
 	{
@@ -361,6 +412,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 13),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, breaking, colon, and white-spaces
 	{
@@ -370,6 +422,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 14),
+		nil,
 	},
 	// INVALID / double left parentheses in scope
 	{
@@ -379,6 +432,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 4),
+		nil,
 	},
 	// INVALID / double left parentheses in scope after valid character
 	{
@@ -388,6 +442,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 5),
+		nil,
 	},
 	// INVALID / double right parentheses in place of an exclamation, or a colon
 	{
@@ -397,6 +452,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ")", 6),
+		nil,
 	},
 	// INVALID / new left parentheses after valid scope
 	{
@@ -406,6 +462,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "(", 8),
+		nil,
 	},
 	// INVALID / newline rather than whitespace in description
 	{
@@ -415,6 +472,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "\n", 9),
+		nil,
 	},
 	// INVALID / newline after whitespace in description
 	{
@@ -424,6 +482,7 @@ var testCases = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 11),
+		nil,
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -436,8 +495,10 @@ var testCases = []testCase{
 			Type:        "feat",
 			Scope:       cctesting.StringAddress("az"),
 			Description: "new",
+			TypeConfig:  0,
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 14),
+		nil,
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -451,8 +512,10 @@ var testCases = []testCase{
 			Scope:       cctesting.StringAddress("az"),
 			Exclamation: true,
 			Description: "bla",
+			TypeConfig:  0,
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
+		nil,
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -466,8 +529,10 @@ var testCases = []testCase{
 			Scope:       cctesting.StringAddress("az"),
 			Exclamation: true,
 			Description: "bla",
+			TypeConfig:  0,
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
+		nil,
 	},
 	// VALID / multi-line body is valid (after a blank line)
 	{
@@ -482,13 +547,16 @@ on typos fixed.`),
 			Type:        "fix",
 			Description: "x",
 			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "x",
 			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / multi-line body ending with multiple blank lines (they gets discarded) is valid
 	{
@@ -505,13 +573,16 @@ on typos fixed.
 			Type:        "fix",
 			Description: "x",
 			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "x",
 			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / multi-line body starting with many extra blank lines is valid
 	{
@@ -528,13 +599,16 @@ on typos fixed.`),
 			Type:        "fix",
 			Description: "magic",
 			Body:        cctesting.StringAddress("\n\nsee the issue for details\n\non typos fixed."),
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "magic",
 			Body:        cctesting.StringAddress("\n\nsee the issue for details\n\non typos fixed."),
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / multi-line body starting and ending with many extra blank lines is valid
 	{
@@ -554,13 +628,16 @@ on typos fixed.
 			Type:        "fix",
 			Description: "magic",
 			Body:        cctesting.StringAddress("\n\nsee the issue for details\n\non typos fixed."),
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "magic",
 			Body:        cctesting.StringAddress("\n\nsee the issue for details\n\non typos fixed."),
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / single line body (after blank line) is valid
 	{
@@ -573,13 +650,16 @@ see the issue for details.`),
 			Type:        "fix",
 			Description: "correct minor typos in code",
 			Body:        cctesting.StringAddress("see the issue for details."),
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct minor typos in code",
 			Body:        cctesting.StringAddress("see the issue for details."),
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / empty body is okay (it's optional)
 	{
@@ -591,12 +671,15 @@ see the issue for details.`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / multiple blank lines body is okay (it's considered empty)
 	{
@@ -612,12 +695,15 @@ see the issue for details.`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "descr",
+			TypeConfig:  0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "descr",
+			TypeConfig:  0,
 		},
 		"",
+		nil,
 	},
 	// VALID / only footer
 	{
@@ -634,6 +720,7 @@ Signed-off-by: Leo`),
 				"fixes":         {"3"},
 				"signed-off-by": {"Leo"},
 			},
+			TypeConfig: 0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -642,8 +729,10 @@ Signed-off-by: Leo`),
 				"fixes":         {"3"},
 				"signed-off-by": {"Leo"},
 			},
+			TypeConfig: 0,
 		},
 		"",
+		nil,
 	},
 	// VALID / only footer after many blank lines (that gets ignored)
 	{
@@ -663,6 +752,7 @@ Signed-off-by: Leo`),
 				"fixes":         {"3"},
 				"signed-off-by": {"Leo"},
 			},
+			TypeConfig: 0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -671,8 +761,10 @@ Signed-off-by: Leo`),
 				"fixes":         {"3"},
 				"signed-off-by": {"Leo"},
 			},
+			TypeConfig: 0,
 		},
 		"",
+		nil,
 	},
 	// VALID / only footer ending with many blank lines (that gets ignored)
 	{
@@ -692,6 +784,7 @@ Signed-off-by: Leo
 				"fixes":         {"3"},
 				"signed-off-by": {"Leo"},
 			},
+			TypeConfig: 0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -700,8 +793,10 @@ Signed-off-by: Leo
 				"fixes":         {"3"},
 				"signed-off-by": {"Leo"},
 			},
+			TypeConfig: 0,
 		},
 		"",
+		nil,
 	},
 	// VALID / only footer containing repetitions
 	{
@@ -718,6 +813,7 @@ Fixes #5`),
 			Footers: map[string][]string{
 				"fixes": {"3", "4", "5"},
 			},
+			TypeConfig: 0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -725,8 +821,10 @@ Fixes #5`),
 			Footers: map[string][]string{
 				"fixes": {"3", "4", "5"},
 			},
+			TypeConfig: 0,
 		},
 		"",
+		nil,
 	},
 	// VALID / Multi-line body with extras blank lines after and footer with multiple trailers
 	{
@@ -755,6 +853,7 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 				"co-authored-by": {"My other personality <persona@email.com>"},
 				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
 			},
+			TypeConfig: 0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -765,8 +864,10 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 				"co-authored-by": {"My other personality <persona@email.com>"},
 				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
 			},
+			TypeConfig: 0,
 		},
 		"",
+		nil,
 	},
 	// VALID / Multi-line body with newlines inside and many blank lines after and footer with multiple trailers
 	{
@@ -794,6 +895,7 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 				"co-authored-by": {"My other personality <persona@email.com>"},
 				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
 			},
+			TypeConfig: 0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -804,8 +906,10 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 				"co-authored-by": {"My other personality <persona@email.com>"},
 				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
 			},
+			TypeConfig: 0,
 		},
 		"",
+		nil,
 	},
 	// VALID / Multi-line body with newlines inside and many blank lines before it, plus footer with multiple trailers
 	{
@@ -836,6 +940,7 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 				"co-authored-by": {"My other personality <persona@email.com>"},
 				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
 			},
+			TypeConfig: 0,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -847,8 +952,10 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 				"co-authored-by": {"My other personality <persona@email.com>"},
 				"signed-off-by":  {"Leonardo Di Donato <some@email.com>"},
 			},
+			TypeConfig: 0,
 		},
 		"",
+		nil,
 	},
 }
 
@@ -861,6 +968,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEmpty+ColumnPositionTemplate, 0),
+		nil,
 	},
 	// INVALID / invalid type (1 char)
 	{
@@ -870,6 +978,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "c", 1),
+		nil,
 	},
 	// INVALID / invalid type (2 char)
 	{
@@ -879,6 +988,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "x", 1),
+		nil,
 	},
 	// INVALID / invalid type (2 char) with almost valid type
 	{
@@ -888,6 +998,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "e", 2),
+		nil,
 	},
 	// INVALID / invalid type (2 char) with almost valid type
 	{
@@ -897,6 +1008,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "e", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char)
 	{
@@ -906,6 +1018,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "t", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char) again
 	{
@@ -915,6 +1028,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "i", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char) with almost valid type
 	{
@@ -924,6 +1038,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "i", 3),
+		nil,
 	},
 	// INVALID / invalid type (4 char)
 	{
@@ -933,6 +1048,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "x", 3),
+		nil,
 	},
 	// INVALID / invalid type (4 char)
 	{
@@ -942,6 +1058,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "z", 3),
+		nil,
 	},
 	// INVALID / missing colon after type fix
 	{
@@ -951,6 +1068,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil, // no partial result because it is not a minimal valid commit message
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "x", 2),
+		nil,
 	},
 	// INVALID / missing colon after type feat
 	{
@@ -960,6 +1078,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil, // no partial result because it is not a minimal valid commit message
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "t", 3),
+		nil,
 	},
 	// INVALID / invalid type (2 char) + colon
 	{
@@ -969,6 +1088,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, ":", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char) + colon
 	{
@@ -978,6 +1098,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, ":", 3),
+		nil,
 	},
 	// VALID / minimal commit message
 	{
@@ -987,12 +1108,33 @@ var testCasesForFalcoTypes = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "w",
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "w",
+			TypeConfig:  2,
 		},
 		"",
+		nil,
+	},
+	// VALID / minimal commit message with minor bump for new
+	{
+		"valid-minimal-commit-message-with-minor-bump-for-new",
+		[]byte("new: w"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "new",
+			Description: "w",
+			TypeConfig:  2,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "new",
+			Description: "w",
+			TypeConfig:  2,
+		},
+		"",
+		&PatchVersion,
 	},
 	// VALID / minimal commit message
 	{
@@ -1002,12 +1144,15 @@ var testCasesForFalcoTypes = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "rule",
 			Description: "super secure rule",
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "rule",
 			Description: "super secure rule",
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID / minimal commit message with uppercase type
 	{
@@ -1017,12 +1162,15 @@ var testCasesForFalcoTypes = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "rule",
 			Description: "super secure rule",
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "rule",
 			Description: "super secure rule",
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// INVALID / missing colon after valid commit message type
 	{
@@ -1032,6 +1180,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ">", 3),
+		nil,
 	},
 	// INVALID / missing colon after valid uppercase commit message type
 	{
@@ -1041,6 +1190,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ">", 3),
+		nil,
 	},
 	// INVALID / missing colon after valid commit message type
 	{
@@ -1050,6 +1200,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 4),
+		nil,
 	},
 	// INVALID / missing colon after valid uppercase commit message type
 	{
@@ -1059,6 +1210,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 4),
+		nil,
 	},
 	// INVALID / missing colon after valid commit message type
 	{
@@ -1068,6 +1220,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 5),
+		nil,
 	},
 	// INVALID / missing colon after valid uppercase commit message type
 	{
@@ -1077,6 +1230,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 5),
+		nil,
 	},
 	// VALID / type + scope + description
 	{
@@ -1087,13 +1241,16 @@ var testCasesForFalcoTypes = []testCase{
 			Type:        "new",
 			Scope:       cctesting.StringAddress("xyz"),
 			Description: "ccc",
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "new",
 			Scope:       cctesting.StringAddress("xyz"),
 			Description: "ccc",
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID / uppercase type + scope + description
 	{
@@ -1104,13 +1261,16 @@ var testCasesForFalcoTypes = []testCase{
 			Type:        "new",
 			Scope:       cctesting.StringAddress("xyz"),
 			Description: "ccc",
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "new",
 			Scope:       cctesting.StringAddress("xyz"),
 			Description: "ccc",
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + scope + multiple whitespaces + description
 	{
@@ -1121,13 +1281,16 @@ var testCasesForFalcoTypes = []testCase{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + scope + breaking + description
 	{
@@ -1139,14 +1302,17 @@ var testCasesForFalcoTypes = []testCase{
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + scope + breaking + description
 	{
@@ -1158,14 +1324,17 @@ var testCasesForFalcoTypes = []testCase{
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "feat",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID / uppercase type + scope + breaking + description
 	{
@@ -1177,14 +1346,17 @@ var testCasesForFalcoTypes = []testCase{
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "feat",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID / empty scope is ignored
 	{
@@ -1194,12 +1366,15 @@ var testCasesForFalcoTypes = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID / empty scope is ignored (uppercase type)
 	{
@@ -1209,12 +1384,15 @@ var testCasesForFalcoTypes = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + empty scope + breaking + description
 	{
@@ -1225,13 +1403,16 @@ var testCasesForFalcoTypes = []testCase{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + breaking + description
 	{
@@ -1242,13 +1423,16 @@ var testCasesForFalcoTypes = []testCase{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// INVALID / missing whitespace after colon (with breaking)
 	{
@@ -1258,6 +1442,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 5),
+		nil,
 	},
 	// INVALID / missing whitespace after colon (with breaking, uppercase type)
 	{
@@ -1267,6 +1452,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 5),
+		nil,
 	},
 	// INVALID / missing whitespace after colon with scope
 	{
@@ -1276,6 +1462,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 7),
+		nil,
 	},
 	// INVALID / missing whitespace after colon with empty scope
 	{
@@ -1285,6 +1472,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 6),
+		nil,
 	},
 	// INVALID / missing whitespace after colon
 	{
@@ -1294,6 +1482,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 4),
+		nil,
 	},
 	// INVALID / invalid after valid type and scope
 	{
@@ -1303,6 +1492,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ")", 9),
+		nil,
 	},
 	// INVALID / invalid initial character
 	{
@@ -1312,6 +1502,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "(", 0),
+		nil,
 	},
 	// INVALID / invalid second character
 	{
@@ -1321,6 +1512,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, " ", 1),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, and breaking
 	{
@@ -1330,6 +1522,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "!", 10),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, and colon
 	{
@@ -1339,6 +1532,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 10),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, breaking, and colon
 	{
@@ -1348,6 +1542,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 11),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, breaking, colon, and white-space
 	{
@@ -1357,6 +1552,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 16),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, breaking, colon, and white-spaces
 	{
@@ -1366,6 +1562,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 13),
+		nil,
 	},
 	// INVALID / double left parentheses in scope
 	{
@@ -1375,6 +1572,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 6),
+		nil,
 	},
 	// INVALID / double left parentheses in scope after valid character
 	{
@@ -1384,6 +1582,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 6),
+		nil,
 	},
 	// INVALID / double right parentheses in place of an exclamation, or a colon
 	{
@@ -1393,6 +1592,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ")", 6),
+		nil,
 	},
 	// INVALID / new left parentheses after valid scope
 	{
@@ -1402,6 +1602,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "(", 7),
+		nil,
 	},
 	// INVALID / newline rather than whitespace in description
 	{
@@ -1411,6 +1612,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "\n", 9),
+		nil,
 	},
 	// INVALID / newline after whitespace in description
 	{
@@ -1420,6 +1622,7 @@ var testCasesForFalcoTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 11),
+		nil,
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -1432,8 +1635,10 @@ var testCasesForFalcoTypes = []testCase{
 			Type:        "feat",
 			Scope:       cctesting.StringAddress("ae"),
 			Description: "new",
+			TypeConfig:  2,
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 14),
+		nil,
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -1447,8 +1652,10 @@ var testCasesForFalcoTypes = []testCase{
 			Scope:       cctesting.StringAddress("az"),
 			Exclamation: true,
 			Description: "bla",
+			TypeConfig:  2,
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
+		nil,
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -1462,8 +1669,10 @@ var testCasesForFalcoTypes = []testCase{
 			Scope:       cctesting.StringAddress("az"),
 			Exclamation: true,
 			Description: "bla",
+			TypeConfig:  2,
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
+		nil,
 	},
 	// VALID
 	{
@@ -1478,13 +1687,16 @@ on typos fixed.`),
 			Type:        "fix",
 			Description: "correct minor typos in code",
 			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct minor typos in code",
 			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID
 	{
@@ -1497,13 +1709,16 @@ see the issue for details.`),
 			Type:        "fix",
 			Description: "correct minor typos in code",
 			Body:        cctesting.StringAddress("see the issue for details."),
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct minor typos in code",
 			Body:        cctesting.StringAddress("see the issue for details."),
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID
 	{
@@ -1515,12 +1730,15 @@ see the issue for details.`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 	// VALID
 	{
@@ -1534,12 +1752,15 @@ see the issue for details.`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
+			TypeConfig:  2,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
+			TypeConfig:  2,
 		},
 		"",
+		nil,
 	},
 }
 
@@ -1552,6 +1773,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEmpty+ColumnPositionTemplate, 0),
+		nil,
 	},
 	// INVALID / invalid type (1 char)
 	{
@@ -1561,6 +1783,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "c", 1),
+		nil,
 	},
 	// INVALID / invalid type (2 char)
 	{
@@ -1570,6 +1793,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "x", 1),
+		nil,
 	},
 	// INVALID / invalid type (2 char) with almost valid type
 	{
@@ -1579,6 +1803,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "e", 2),
+		nil,
 	},
 	// INVALID / invalid type (2 char) with almost valid type
 	{
@@ -1588,6 +1813,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "e", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char)
 	{
@@ -1597,6 +1823,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "t", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char) again
 	{
@@ -1606,6 +1833,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "i", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char) with almost valid type
 	{
@@ -1615,6 +1843,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "i", 3),
+		nil,
 	},
 	// INVALID / invalid type (4 char)
 	{
@@ -1624,6 +1853,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "x", 3),
+		nil,
 	},
 	// INVALID / invalid type (4 char) with almost valid type
 	{
@@ -1633,6 +1863,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "a", 4),
+		nil,
 	},
 	// INVALID / invalid type (4 char)
 	{
@@ -1642,6 +1873,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "z", 3),
+		nil,
 	},
 	// INVALID / invalid type (5 char) with almost valid type
 	{
@@ -1651,6 +1883,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "c", 5),
+		nil,
 	},
 	// INVALID / invalid type (6 char) with almost valid type
 	{
@@ -1660,6 +1893,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "t", 6),
+		nil,
 	},
 	// INVALID / invalid type (7 char) with almost valid type
 	{
@@ -1669,6 +1903,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrTypeIncomplete+ColumnPositionTemplate, "o", 7),
+		nil,
 	},
 	// INVALID / missing colon after type fix
 	{
@@ -1678,6 +1913,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil, // no partial result because it is not a minimal valid commit message
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "x", 2),
+		nil,
 	},
 	// INVALID / missing colon after type test
 	{
@@ -1687,6 +1923,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil, // no partial result because it is not a minimal valid commit message
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "t", 3),
+		nil,
 	},
 	// INVALID / invalid type (2 char) + colon
 	{
@@ -1696,6 +1933,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, ":", 2),
+		nil,
 	},
 	// INVALID / invalid type (3 char) + colon
 	{
@@ -1705,6 +1943,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, ":", 3),
+		nil,
 	},
 	// VALID / minimal commit message
 	{
@@ -1714,12 +1953,70 @@ var testCasesForConventionalTypes = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "w",
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "w",
+			TypeConfig:  1,
 		},
 		"",
+		nil,
+	},
+	{
+		"valid-minimal-commit-message-with-patch.bump",
+		[]byte("fix: w"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "w",
+			TypeConfig:  1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "w",
+			TypeConfig:  1,
+		},
+		"",
+		&PatchVersion,
+	},
+	// VALID / minimal commit message with minor bump
+	{
+		"valid-minimal-commit-message-with-minor.bump",
+		[]byte("feat: w"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "w",
+			TypeConfig:  1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "w",
+			TypeConfig:  1,
+		},
+		"",
+		&MinorVersion,
+	},
+	// VALID / minimal commit message with major bump
+	{
+		"valid-minimal-commit-message-with-major.bump",
+		[]byte("fix!: w"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "w",
+			Exclamation: true,
+			TypeConfig:  1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "w",
+			Exclamation: true,
+			TypeConfig:  1,
+		},
+		"",
+		&MajorVersion,
 	},
 	// VALID / minimal commit message
 	{
@@ -1729,12 +2026,15 @@ var testCasesForConventionalTypes = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "style",
 			Description: "CSS skillz",
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "style",
 			Description: "CSS skillz",
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID / minimal commit message with uppercase type
 	{
@@ -1744,12 +2044,15 @@ var testCasesForConventionalTypes = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "style",
 			Description: "CSS skillz",
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "style",
 			Description: "CSS skillz",
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// INVALID / missing colon after valid commit message type
 	{
@@ -1759,6 +2062,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ">", 3),
+		nil,
 	},
 	// INVALID / missing colon after valid commit message type
 	{
@@ -1768,6 +2072,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 4),
+		nil,
 	},
 	// INVALID / missing colon after valid commit message type
 	{
@@ -1777,6 +2082,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "?", 5),
+		nil,
 	},
 	// VALID / type + scope + description
 	{
@@ -1787,13 +2093,16 @@ var testCasesForConventionalTypes = []testCase{
 			Type:        "refactor",
 			Scope:       cctesting.StringAddress("xyz"),
 			Description: "ccc",
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "refactor",
 			Scope:       cctesting.StringAddress("xyz"),
 			Description: "ccc",
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID / uppercase type + scope + description
 	{
@@ -1804,13 +2113,16 @@ var testCasesForConventionalTypes = []testCase{
 			Type:        "refactor",
 			Scope:       cctesting.StringAddress("xyz"),
 			Description: "ccc",
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "refactor",
 			Scope:       cctesting.StringAddress("xyz"),
 			Description: "ccc",
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + scope + multiple whitespaces + description
 	{
@@ -1821,13 +2133,16 @@ var testCasesForConventionalTypes = []testCase{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + scope + breaking + description
 	{
@@ -1839,14 +2154,17 @@ var testCasesForConventionalTypes = []testCase{
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + scope + breaking + description
 	{
@@ -1858,14 +2176,17 @@ var testCasesForConventionalTypes = []testCase{
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "feat",
 			Scope:       cctesting.StringAddress("aaa"),
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID / empty scope is ignored
 	{
@@ -1875,12 +2196,15 @@ var testCasesForConventionalTypes = []testCase{
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + empty scope + breaking + description
 	{
@@ -1891,13 +2215,16 @@ var testCasesForConventionalTypes = []testCase{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID / type + breaking + description
 	{
@@ -1908,13 +2235,16 @@ var testCasesForConventionalTypes = []testCase{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "bbb",
 			Exclamation: true,
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// INVALID / missing whitespace after colon (with breaking)
 	{
@@ -1924,6 +2254,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 5),
+		nil,
 	},
 	// INVALID / missing whitespace after colon with scope
 	{
@@ -1933,6 +2264,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 7),
+		nil,
 	},
 	// INVALID / missing whitespace after colon with empty scope
 	{
@@ -1942,6 +2274,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 6),
+		nil,
 	},
 	// INVALID / missing whitespace after colon
 	{
@@ -1951,6 +2284,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "a", 4),
+		nil,
 	},
 	// INVALID / invalid after valid type and scope
 	{
@@ -1960,6 +2294,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ")", 10),
+		nil,
 	},
 	// INVALID / invalid initial character
 	{
@@ -1969,6 +2304,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, "(", 0),
+		nil,
 	},
 	// INVALID / invalid second character
 	{
@@ -1978,6 +2314,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrType+ColumnPositionTemplate, " ", 1),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, and breaking
 	{
@@ -1987,6 +2324,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "!", 11),
+		nil,
 	},
 	// INVALID / invalid after valid mixed-case type, scope, and breaking
 	{
@@ -1996,6 +2334,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "!", 11),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, and colon
 	{
@@ -2005,6 +2344,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 10),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, breaking, and colon
 	{
@@ -2014,6 +2354,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrEarly+ColumnPositionTemplate, ":", 10),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, breaking, colon, and white-space
 	{
@@ -2023,6 +2364,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 16),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, breaking, colon, and white-spaces
 	{
@@ -2032,6 +2374,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 13),
+		nil,
 	},
 	// INVALID / double left parentheses in scope
 	{
@@ -2041,6 +2384,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 6),
+		nil,
 	},
 	// INVALID / incomplete scope
 	{
@@ -2050,6 +2394,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrScopeIncomplete+ColumnPositionTemplate, "e", 9),
+		nil,
 	},
 	// INVALID / double left parentheses in scope after valid character
 	{
@@ -2059,6 +2404,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 6),
+		nil,
 	},
 	// INVALID / double right parentheses in place of an exclamation, or a colon
 	{
@@ -2068,6 +2414,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, ")", 6),
+		nil,
 	},
 	// INVALID / new left parentheses after valid scope
 	{
@@ -2077,6 +2424,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "(", 9),
+		nil,
 	},
 	// INVALID / newline rather than whitespace in description
 	{
@@ -2086,6 +2434,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescriptionInit+ColumnPositionTemplate, "\n", 9),
+		nil,
 	},
 	// INVALID / newline after whitespace in description
 	{
@@ -2095,6 +2444,7 @@ var testCasesForConventionalTypes = []testCase{
 		nil,
 		nil,
 		fmt.Sprintf(ErrNewline+ColumnPositionTemplate, 11),
+		nil,
 	},
 	// INVALID / newline in the description
 	// VALID / newline in description ignored in best effort mode
@@ -2107,8 +2457,10 @@ var testCasesForConventionalTypes = []testCase{
 			Type:        "feat",
 			Scope:       cctesting.StringAddress("ap"),
 			Description: "new",
+			TypeConfig:  1,
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 14),
+		nil,
 	},
 	// INVALID / newline in the description
 	// VALID / newline in description ignored in best effort mode
@@ -2122,8 +2474,10 @@ var testCasesForConventionalTypes = []testCase{
 			Scope:       cctesting.StringAddress("at"),
 			Exclamation: true,
 			Description: "rrr",
+			TypeConfig:  1,
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
+		nil,
 	},
 	// INVALID / newline in the description
 	// VALID / until the newline
@@ -2137,8 +2491,10 @@ var testCasesForConventionalTypes = []testCase{
 			Scope:       cctesting.StringAddress("at"),
 			Exclamation: true,
 			Description: "rrr",
+			TypeConfig:  1,
 		},
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
+		nil,
 	},
 	// VALID
 	{
@@ -2153,13 +2509,16 @@ on typos fixed.`),
 			Type:        "fix",
 			Description: "correct minor typos in code",
 			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct minor typos in code",
 			Body:        cctesting.StringAddress("see the issue for details\n\non typos fixed."),
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID
 	{
@@ -2172,13 +2531,16 @@ see the issue for details.`),
 			Type:        "fix",
 			Description: "correct minor typos in code",
 			Body:        cctesting.StringAddress("see the issue for details."),
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct minor typos in code",
 			Body:        cctesting.StringAddress("see the issue for details."),
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID
 	{
@@ -2190,12 +2552,15 @@ see the issue for details.`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 	// VALID
 	{
@@ -2209,16 +2574,37 @@ see the issue for details.`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
+			TypeConfig:  1,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "correct something",
+			TypeConfig:  1,
 		},
 		"",
+		nil,
 	},
 }
 
 var testCasesForFreeFormTypes = []testCase{
+	// VALID / minimal commit message with unknown bump
+	{
+		"valid-minimal-commit-message-with-unknown-bump",
+		[]byte("new: w"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "new",
+			Description: "w",
+			TypeConfig:  3,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "new",
+			Description: "w",
+			TypeConfig:  3,
+		},
+		"",
+		&UnknownVersion,
+	},
 	// VALID / multi-line body (with blank lines) and multiple signed-off-by trailers
 	{
 		"valid-kernel-commit-multiline-body-with-blank-lines-and-multiple-signed-off-by-trailers",
@@ -2255,6 +2641,7 @@ similar to menuconfig and nconfig.`),
 					"Masahiro Yamada <masahiroy@kernel.org>",
 				},
 			},
+			TypeConfig: 3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "kconfig",
@@ -2274,8 +2661,10 @@ similar to menuconfig and nconfig.`),
 					"Masahiro Yamada <masahiroy@kernel.org>",
 				},
 			},
+			TypeConfig: 3,
 		},
 		"",
+		nil,
 	},
 	// VALID / multi-line body (with blank lines and non alphanumberic character after a blank line) and multiple different trailers
 	{
@@ -2391,6 +2780,7 @@ with this approach.
 					"Leonardo Di Donato <leodidonato@gmail.com>",
 				},
 			},
+			TypeConfig: 3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "bpf",
@@ -2453,8 +2843,10 @@ with this approach.
 					"Leonardo Di Donato <leodidonato@gmail.com>",
 				},
 			},
+			TypeConfig: 3,
 		},
 		"",
+		nil,
 	},
 	// VALID / type containing slash
 	{
@@ -2498,6 +2890,7 @@ failure mode. Also fix mislabeled probed vs direct bitfield test cases.`),
 					"https://lore.kernel.org/bpf/20210426192949.416837-6-andrii@kernel.org",
 				},
 			},
+			TypeConfig: 3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "selftests/bpf",
@@ -2524,8 +2917,10 @@ failure mode. Also fix mislabeled probed vs direct bitfield test cases.`),
 					"https://lore.kernel.org/bpf/20210426192949.416837-6-andrii@kernel.org",
 				},
 			},
+			TypeConfig: 3,
 		},
 		"",
+		nil,
 	},
 	// VALID / colon and space separator in the description
 	{
@@ -2548,6 +2943,7 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 					"https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com",
 				},
 			},
+			TypeConfig: 3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "bpf",
@@ -2561,8 +2957,10 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 					"https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com",
 				},
 			},
+			TypeConfig: 3,
 		},
 		"",
+		nil,
 	},
 	// VALID / free form type containing comma and space
 	{
@@ -2572,12 +2970,15 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "bpf, selftests",
 			Description: "test_maps generating unrecognized data section",
+			TypeConfig:  3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "bpf, selftests",
 			Description: "test_maps generating unrecognized data section",
+			TypeConfig:  3,
 		},
 		"",
+		nil,
 	},
 	// VALID / valid type (uppercase) + description starting with type-like string
 	{
@@ -2587,12 +2988,15 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		&conventionalcommits.ConventionalCommit{
 			Type:        "kvm",
 			Description: "nVMX: Truncate base/index GPR value on address calc in !64-bit",
+			TypeConfig:  3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "kvm",
 			Description: "nVMX: Truncate base/index GPR value on address calc in !64-bit",
+			TypeConfig:  3,
 		},
 		"",
+		nil,
 	},
 	// VALID / free form type with scope
 	{
@@ -2603,13 +3007,16 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 			Type:        "kvm",
 			Scope:       cctesting.StringAddress("nvmx"),
 			Description: "Truncate base/index GPR value on address calc in !64-bit",
+			TypeConfig:  3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "kvm",
 			Scope:       cctesting.StringAddress("nvmx"),
 			Description: "Truncate base/index GPR value on address calc in !64-bit",
+			TypeConfig:  3,
 		},
 		"",
+		nil,
 	},
 	// INVALID / text after well-formed scope
 	{
@@ -2619,6 +3026,7 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		nil,
 		nil,
 		fmt.Sprintf(ErrColon+ColumnPositionTemplate, "t", 11),
+		nil,
 	},
 	// INVALID / invalid after valid type, scope, breaking, colon, and white-spaces
 	{
@@ -2628,6 +3036,7 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		nil,
 		nil,
 		fmt.Sprintf(ErrDescription+ColumnPositionTemplate, " ", 14),
+		nil,
 	},
 	// INVALID / double left parentheses in scope
 	{
@@ -2637,6 +3046,7 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		nil,
 		nil,
 		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 4),
+		nil,
 	},
 	// INVALID / incomplete scope
 	{
@@ -2646,6 +3056,7 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		nil,
 		nil,
 		fmt.Sprintf(ErrScopeIncomplete+ColumnPositionTemplate, "e", 9),
+		nil,
 	},
 	// INVALID / double left parentheses in scope after valid character
 	{
@@ -2655,6 +3066,7 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 		nil,
 		nil,
 		fmt.Sprintf(ErrScope+ColumnPositionTemplate, "(", 5),
+		nil,
 	},
 	// VALID / breaking free form type with scope
 	{
@@ -2666,14 +3078,17 @@ Link: https://lore.kernel.org/bpf/20210325015252.1551395-1-kafai@fb.com`),
 			Scope:       cctesting.StringAddress("scope"),
 			Description: "breaking desc",
 			Exclamation: true,
+			TypeConfig:  3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "some",
 			Scope:       cctesting.StringAddress("scope"),
 			Description: "breaking desc",
 			Exclamation: true,
+			TypeConfig:  3,
 		},
 		"",
+		nil,
 	},
 	// VALID / breaking change trailer
 	{
@@ -2690,6 +3105,7 @@ BREAKING CHANGE: APIs`),
 					"APIs",
 				},
 			},
+			TypeConfig: 3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -2699,8 +3115,10 @@ BREAKING CHANGE: APIs`),
 					"APIs",
 				},
 			},
+			TypeConfig: 3,
 		},
 		"",
+		nil,
 	},
 	// VALID / breaking-change trailer
 	{
@@ -2717,6 +3135,7 @@ BREAKING-CHANGE: APIs`),
 					"APIs",
 				},
 			},
+			TypeConfig: 3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -2726,8 +3145,10 @@ BREAKING-CHANGE: APIs`),
 					"APIs",
 				},
 			},
+			TypeConfig: 3,
 		},
 		"",
+		nil,
 	},
 	// VALID / breaking change trailer before other trailers
 	{
@@ -2748,6 +3169,7 @@ Acked-by: Leo Di Donato`),
 					"Leo Di Donato",
 				},
 			},
+			TypeConfig: 3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -2760,8 +3182,10 @@ Acked-by: Leo Di Donato`),
 					"Leo Di Donato",
 				},
 			},
+			TypeConfig: 3,
 		},
 		"",
+		nil,
 	},
 	// VALID / breaking change trailer after trailers
 	{
@@ -2783,6 +3207,7 @@ BREAKING CHANGE: APIs`),
 					"Leo Di Donato",
 				},
 			},
+			TypeConfig: 3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -2795,8 +3220,10 @@ BREAKING CHANGE: APIs`),
 					"Leo Di Donato",
 				},
 			},
+			TypeConfig: 3,
 		},
 		"",
+		nil,
 	},
 	// VALID / breaking change trailer after blank lines and other trailers
 	{
@@ -2820,6 +3247,7 @@ BREAKING CHANGE: APIs`),
 					"Leo Di Donato",
 				},
 			},
+			TypeConfig: 3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
@@ -2832,8 +3260,10 @@ BREAKING CHANGE: APIs`),
 					"Leo Di Donato",
 				},
 			},
+			TypeConfig: 3,
 		},
 		"",
+		nil,
 	},
 	// VALID / invalid BREAKING CHANGE trailer separator after body
 	// Note that because of the wrong separator (#) the BREAKING CHANGE trailer gets discarded as a footer component and captured as body content
@@ -2849,13 +3279,16 @@ BREAKING CHANGE #5`),
 			Type:        "fix",
 			Description: "description",
 			Body:        cctesting.StringAddress("Some text.\n\nBREAKING CHANGE #5"),
+			TypeConfig:  3,
 		},
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "description",
 			Body:        cctesting.StringAddress("Some text.\n\nBREAKING CHANGE #5"),
+			TypeConfig:  3,
 		},
 		"",
+		nil,
 	},
 	// INVALID / invalid BREAKING CHANGE trailer separator after valid trailers
 	// VALID / until the last valid footer trailer
@@ -2873,8 +3306,10 @@ BREAKING CHANGE #5`),
 			Footers: map[string][]string{
 				"tested-by": {"Leo"},
 			},
+			TypeConfig: 3,
 		},
 		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, " ", 48),
+		nil,
 	},
 	// INVALID / incomplete BREAKING CHANGE trailer
 	// VALID / until the last valid footer trailer
@@ -2892,8 +3327,10 @@ BREAKING CHANG: XYZ`),
 			Footers: map[string][]string{
 				"tested-by": {"Leo"},
 			},
+			TypeConfig: 3,
 		},
 		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, ":", 47),
+		nil,
 	},
 	// INVALID / lowercase (space separated) BREAKING CHANGE trailer
 	// VALID / until the last valid footer trailer
@@ -2911,8 +3348,10 @@ breaking change: xyz`),
 			Footers: map[string][]string{
 				"tested-by": {"Leo"},
 			},
+			TypeConfig: 3,
 		},
 		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "c", 42),
+		nil,
 	},
 	// INVALID / illegal trailer after valid trailer
 	// VALID / until the last valid footer trailer
@@ -2930,8 +3369,10 @@ Tested-by: Leo
 			Footers: map[string][]string{
 				"tested-by": {"Leo"},
 			},
+			TypeConfig: 3,
 		},
 		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "!", 33),
+		nil,
 	},
 	// INVALID / illegal trailer after valid trailer with an ending newline
 	// VALID / until the last valid footer trailer
@@ -2950,8 +3391,10 @@ a
 			Footers: map[string][]string{
 				"tested-by": {"Leo"},
 			},
+			TypeConfig: 3,
 		},
 		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "\n", 34),
+		nil,
 	},
 	// INVALID / incomplete trailer after valid trailer with an ending newline
 	// VALID / until the last valid footer trailer
@@ -2969,8 +3412,10 @@ a`),
 			Footers: map[string][]string{
 				"tested-by": {"Leo"},
 			},
+			TypeConfig: 3,
 		},
 		fmt.Sprintf(ErrTrailerIncomplete+ColumnPositionTemplate, "a", 34),
+		nil,
 	},
 	// INVALID / incomplete trailer after valid trailer
 	// VALID / until the last valid footer trailer
@@ -2989,7 +3434,9 @@ Another-trailer: x`),
 			Footers: map[string][]string{
 				"tested-by": {"Leo"},
 			},
+			TypeConfig: 3,
 		},
 		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "\n", 35),
+		nil,
 	},
 }
