@@ -29,7 +29,8 @@ func Example_minimal_withoutbody() {
 	//  Scope: (*string)(<nil>),
 	//  Exclamation: (bool) true,
 	//  Body: (*string)(<nil>),
-	//  Footers: (map[string][]string) <nil>
+	//  Footers: (map[string][]string) <nil>,
+	//  TypeConfig: (conventionalcommits.TypeConfig) 0
 	// })
 	// there are breaking changes? true
 }
@@ -47,7 +48,8 @@ a blank line is mandatory to start the body part of the commit message!`)
 	//  Scope: (*string)(<nil>),
 	//  Exclamation: (bool) false,
 	//  Body: (*string)(<nil>),
-	//  Footers: (map[string][]string) <nil>
+	//  Footers: (map[string][]string) <nil>,
+	//  TypeConfig: (conventionalcommits.TypeConfig) 0
 	// })
 	// missing a blank line: col=17
 }
@@ -70,7 +72,8 @@ typos fixed.`)
 	//  Scope: (*string)(<nil>),
 	//  Exclamation: (bool) false,
 	//  Body: (*string)((len=86) "see the issue for details\n\nbut first a newline\nand then two blank lines:\n\ntypos fixed."),
-	//  Footers: (map[string][]string) <nil>
+	//  Footers: (map[string][]string) <nil>,
+	//  TypeConfig: (conventionalcommits.TypeConfig) 0
 	// })
 }
 
@@ -104,7 +107,8 @@ Refs #133`)
 	//   (string) (len=11) "reviewed-by": ([]string) (len=1) {
 	//    (string) (len=1) "Z"
 	//   }
-	//  }
+	//  },
+	//  TypeConfig: (conventionalcommits.TypeConfig) 1
 	// })
 }
 
@@ -119,6 +123,7 @@ func Example_breaking_freeformtype_with_scope() {
 	//  Scope: (*string)((len=4) "nvmx"),
 	//  Exclamation: (bool) true,
 	//  Body: (*string)(<nil>),
-	//  Footers: (map[string][]string) <nil>
+	//  Footers: (map[string][]string) <nil>,
+	//  TypeConfig: (conventionalcommits.TypeConfig) 3
 	// })
 }
