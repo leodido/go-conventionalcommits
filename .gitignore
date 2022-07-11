@@ -3,5 +3,6 @@
 *.test
 
 vendor/
+.vscode/
 
 /removecomments
