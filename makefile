@@ -73,7 +73,7 @@ parser/machine.go: parser/machine.go.rl common/common.rl
 
 parser/machine.go:
 	$(RAGEL) -Z -G2 -e -o $@ $<
-	@sed -i '/^\/\/line/d' $@
+	@sed -i '' '/^\/\/line/d' $@
 	$(MAKE) file=$@ snake2camel
 
 .PHONY: tests
