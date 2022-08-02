@@ -171,6 +171,16 @@ As you may notice, this library is very fast at what it does.
 
 Parsing a commit goes from taking about the same amount of time (~299ns) the half-life of polonium-212 takes<sup>[2](#nanosecondwiki)</sup> to less than a microsecond.
 
+## Build
+
+To build this Go library locally just run:
+
+```bash
+make
+```
+
+You'd need Ragel 6.10 to be present into your machine.
+
 ---
 
 - <a name="mymachine">[1]</a>: Intel Core i7-8850H CPU @ 2.60GHz
