@@ -27,6 +27,10 @@ snake2camel:
 	print \
 	}' $(file)
 
+.PHONY: removecomments
+removecomments:
+	@go build ./tools/removecomments
+
 parser/docs/minimal_types.dot: parser/machine.go.rl common/common.rl
 	$(RAGEL) -Z -Vp -M main $< -o $@
 
@@ -71,9 +75,11 @@ parser/docs/trailer_end.png: parser/docs/trailer_end.dot
 
 parser/machine.go: parser/machine.go.rl common/common.rl
 
+parser/machine.go: removecomments
+
 parser/machine.go:
 	$(RAGEL) -Z -G2 -e -o $@ $<
-	@sed -i '/^\/\/line/d' $@
+	@./removecomments $@
 	$(MAKE) file=$@ snake2camel
 
 .PHONY: tests
