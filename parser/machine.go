@@ -2504,7 +2504,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		goto tr21
 	tr22:
 
-		// todo > alnum[[- ]alnum] string to lower
+		// todo > alnum[[- ]alnum] string to lower can be more performant?
 		m.currentFooterKey = string(bytes.ToLower(m.text()))
 		if m.currentFooterKey == "breaking change" {
 			m.currentFooterKey = "breaking-change"
@@ -2555,7 +2555,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		goto tr21
 	tr25:
 
-		// todo > alnum[[- ]alnum] string to lower
+		// todo > alnum[[- ]alnum] string to lower can be more performant?
 		m.currentFooterKey = string(bytes.ToLower(m.text()))
 		if m.currentFooterKey == "breaking change" {
 			m.currentFooterKey = "breaking-change"
@@ -2818,7 +2818,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		goto tr21
 	tr35:
 
-		// todo > alnum[[- ]alnum] string to lower
+		// todo > alnum[[- ]alnum] string to lower can be more performant?
 		m.currentFooterKey = string(bytes.ToLower(m.text()))
 		if m.currentFooterKey == "breaking change" {
 			m.currentFooterKey = "breaking-change"
