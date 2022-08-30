@@ -15,6 +15,10 @@ on:
   pull_request_review:
   pull_request_review_comment:
 
+permissions:
+  pull-requests: write
+  issues: write
+
 jobs:
   reviewpad_job:
     runs-on: ubuntu-latest
