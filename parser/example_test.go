@@ -10,6 +10,7 @@ import (
 func output(out interface{}) {
 	spew.Config.DisableCapacities = true
 	spew.Config.DisablePointerAddresses = true
+	spew.Config.SortKeys = true
 	spew.Dump(out)
 }
 
@@ -94,11 +95,11 @@ Refs #133`)
 	//  Exclamation: (bool) false,
 	//  Body: (*string)((len=65) "see the issue [0] for details\non typos fixed.\n\n[0]: https://issue"),
 	//  Footers: (map[string][]string) (len=2) {
-	//   (string) (len=11) "reviewed-by": ([]string) (len=1) {
-	//    (string) (len=1) "Z"
-	//   },
 	//   (string) (len=4) "refs": ([]string) (len=1) {
 	//    (string) (len=3) "133"
+	//   },
+	//   (string) (len=11) "reviewed-by": ([]string) (len=1) {
+	//    (string) (len=1) "Z"
 	//   }
 	//  }
 	// })
