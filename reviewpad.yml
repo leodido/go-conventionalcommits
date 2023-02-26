@@ -93,24 +93,6 @@ workflows:
           - $removeLabels(["small", "medium"])
           - $addLabel("large")
 
-  - name: reviewer-assignment
-    description: Assign a reviewer to pull requests
-    always-run: true
-    if:
-      # Automatically assign a random reviewer when the pull request is ready for review;
-      - rule: $isDraft() == false
-        extra-actions:
-          - $assignRandomReviewer()
-
-  - name: check-approvals
-    description: Check that pull requests have the required number of approvals
-    always-run: true
-    if:
-      # Label pull requests with `waiting-for-review` if there are no approvals;
-      - rule: $isDraft() == false && $approvalsCount() < 1
-        extra-actions:
-          - $addLabel("waiting-for-review")
-
   - name: pulls-labelling
     description: Label pull requests
     always-run: true
