@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Copyright © 2020- Leonardo Di Donato <leodidonato@gmail.com>
 package parser
 
 import (
@@ -91,7 +94,11 @@ func TestParseLoggingErrorsOnly(t *testing.T) {
 	l.SetLevel(logrus.ErrorLevel)
 
 	p := NewMachine(WithLogger(l))
-	p.Parse([]byte("fix: a wonderful logger\x0Aaaa"))
+	res, err := p.Parse([]byte("fix: a wonderful logger\x0Aaaa"))
+	assert.Nil(t, res)
+	if assert.Error(t, err) {
+		assert.Equal(t, "missing a blank line: col=24", err.Error())
+	}
 
 	assert.Equal(t, 1, len(hook.Entries))
 	assert.Equal(t, logrus.ErrorLevel, hook.LastEntry().Level)
@@ -102,11 +109,14 @@ func TestParseLoggingErrorsOnly(t *testing.T) {
 }
 
 func TestParseLoggingEverything(t *testing.T) {
-	l := logrus.New()
-	hook := logrustest.NewLocal(l)
+	l, hook := logrustest.NewNullLogger()
 
 	p := NewMachine(WithLogger(l))
-	p.Parse([]byte("fix: a wonderful logger\x0Aaaa"))
+	res, err := p.Parse([]byte("fix: a wonderful logger\x0Aaaa"))
+	assert.Nil(t, res)
+	if assert.Error(t, err) {
+		assert.Equal(t, "missing a blank line: col=24", err.Error())
+	}
 
 	var logEntries = hook.AllEntries()
 	assert.Equal(t, 3, len(logEntries))

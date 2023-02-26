@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Copyright © 2020- Leonardo Di Donato <leodidonato@gmail.com>
 package parser
 
 import (
@@ -71,7 +74,7 @@ typos fixed.`)
 	// })
 }
 
-// fixme > flaky because of the footer map keys
+// fixme > flaky because of the footer map keys.
 func Example_full_conventional() {
 	i := []byte(`fix: correct minor typos in code
 
