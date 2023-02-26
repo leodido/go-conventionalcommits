@@ -1,5 +1,6 @@
 SHELL := /bin/bash
 RAGEL := ragel -I common
+GOFMT := go fmt
 
 export GO_TEST=env GOTRACEBACK=all go test $(GO_ARGS)
 
@@ -81,6 +82,7 @@ parser/machine.go:
 	$(RAGEL) -Z -G2 -e -o $@ $<
 	@./removecomments $@
 	$(MAKE) file=$@ snake2camel
+	$(GOFMT) $@
 
 .PHONY: tests
 tests:
