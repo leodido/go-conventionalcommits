@@ -11,6 +11,21 @@ labels:
   large:
     description: Pull request is large
     color: "#c90076"
+  dependencies:
+    description: Something about our dependencies
+    color: "#ff8722"
+  build:
+    description: Marks issues or pull requests regarding changes to the build tool
+    color: "#FCEA0F"
+  breaking-change:
+    description: Marks a pull request as introducing breaking changes
+    color: "#b3c9c9"
+  no-releasenotes:
+    description: To not include a pull request in the changelog
+    color: "#333635"
+  needs-review:
+    description: Marks a pull request as waiting for review
+    color: "#aa2297"
 
 rules:
   - name: docs-changes
