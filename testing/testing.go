@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Copyright © 2020- Leonardo Di Donato <leodidonato@gmail.com>
 package testing
 
 import (
@@ -11,6 +14,7 @@ func StringAddress(str string) *string {
 
 // RightPad pads a string with spaces until the given limit, or it cuts the string to the given limit.
 func RightPad(str string, limit int) string {
-	str = str + strings.Repeat(" ", limit)
+	str += strings.Repeat(" ", limit)
+
 	return str[:limit]
 }

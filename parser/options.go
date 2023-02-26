@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Copyright © 2020- Leonardo Di Donato <leodidonato@gmail.com>
 package parser
 
 import (
@@ -12,6 +15,7 @@ import (
 func WithBestEffort() conventionalcommits.MachineOption {
 	return func(m conventionalcommits.Machine) conventionalcommits.Machine {
 		m.WithBestEffort()
+
 		return m
 	}
 }
@@ -20,6 +24,7 @@ func WithBestEffort() conventionalcommits.MachineOption {
 func WithTypes(t conventionalcommits.TypeConfig) conventionalcommits.MachineOption {
 	return func(m conventionalcommits.Machine) conventionalcommits.Machine {
 		m.WithTypes(t)
+
 		return m
 	}
 }
@@ -28,6 +33,7 @@ func WithTypes(t conventionalcommits.TypeConfig) conventionalcommits.MachineOpti
 func WithLogger(l *logrus.Logger) conventionalcommits.MachineOption {
 	return func(m conventionalcommits.Machine) conventionalcommits.Machine {
 		m.WithLogger(l)
+
 		return m
 	}
 }

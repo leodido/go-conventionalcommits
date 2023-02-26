@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Copyright © 2020- Leonardo Di Donato <leodidonato@gmail.com>
 package parser
 
 import (
@@ -7,7 +10,7 @@ import (
 	cctesting "github.com/leodido/go-conventionalcommits/testing"
 )
 
-// Avoid compiler optimizations that could remove the actual call we are benchmarking during benchmarks
+// Avoid compiler optimizations that could remove the actual call we are benchmarking during benchmarks.
 var benchParseResult conventionalcommits.Message
 
 type benchCase struct {

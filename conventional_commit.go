@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+//
+// Copyright © 2020- Leonardo Di Donato <leodidonato@gmail.com>
 package conventionalcommits
 
 import (
@@ -74,6 +77,7 @@ func (c *ConventionalCommit) Ok() bool {
 // IsBreakingChange tells whether the receiving commit message struct represents a breaking change or not.
 func (c *ConventionalCommit) IsBreakingChange() bool {
 	_, hasBreakingChangeTrailer := c.Footers["breaking-change"]
+
 	return c.Exclamation || hasBreakingChangeTrailer
 }
 
