@@ -6,7 +6,6 @@ release:
 before:
   hooks:
     - go mod tidy
-    - make
 
 builds:
   - skip: true
