@@ -138,6 +138,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.countNewlines = 0
 	output := &conventionalCommit{}
 	output.footers = make(map[string][]string)
+	output.typeconfig = m.typeConfig
 
 	switch m.typeConfig {
 	case conventionalcommits.TypesFreeForm:
@@ -159,7 +160,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		break
 	}
-	output.typeconfig = m.typeConfig
 
 	{
 		var _widec int16
