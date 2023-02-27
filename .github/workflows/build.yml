@@ -1,27 +1,16 @@
-name: linting
+name: building
 
 on:
   push:
-    paths:
-      - "**.go"
-      - go.mod
-      - go.sum
-    branches: ['develop']
+    branches: ['ci/build-workflow']
   pull_request:
-    paths:
-      - "**.go"
-      - go.mod
-      - go.sum
-    branches: ['develop']
-
-permissions:
-  contents: read
+    branches: ['ci/build-workflow']
 
 jobs:
-  lint:
+  build:
     runs-on: ubuntu-latest
-
     steps:
+
       - name: Set up Go 1.19
         uses: actions/setup-go@v3
         with:
@@ -38,12 +27,11 @@ jobs:
           restore-keys: |
             go-${{ runner.os }}-
 
-      - name: Verify the dependencies
-        run: |
-          go mod verify
-          go mod download
+      - name: Install Ragel 6.10
+        run: sudo apt-get install -y ragel
 
-      - name: Lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.51.0
+      - name: Build the parser
+        run: make
+
+      - name: Ensure the parser code is updated
+        run: git diff --exit-code
