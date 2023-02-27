@@ -81,10 +81,10 @@ type ConventionalCommit struct {
 	TypeConfig  TypeConfig
 }
 
-// VersionBumpStrategy represents a strategy how to evaluate the version bump depending on the TypeConfig initially used and the commits Type
+// VersionBumpStrategy represents a strategy how to evaluate the version bump depending on the TypeConfig initially used and the commits type.
 type VersionBumpStrategy func(*ConventionalCommit) VersionBump
 
-// DefaultStrategy is a basic, opiniated strategy to evaluate the version bump
+// DefaultStrategy is a basic, opiniated strategy to evaluate the version bump.
 func DefaultStrategy(c *ConventionalCommit) VersionBump {
 	if c.IsBreakingChange() {
 		return MajorVersion
@@ -95,6 +95,7 @@ func DefaultStrategy(c *ConventionalCommit) VersionBump {
 	if c.IsFix() {
 		return PatchVersion
 	}
+
 	return UnknownVersion
 }
 
@@ -117,6 +118,7 @@ func (c *ConventionalCommit) IsFeat() bool {
 	if c.TypeConfig == TypesFalco && c.Type == "new" {
 		return true
 	}
+
 	return c.Type == "feat"
 }
 
