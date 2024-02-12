@@ -6,3 +6,4 @@ vendor/
 .vscode/
 
 /removecomments
+/snake2camel
