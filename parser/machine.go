@@ -69,6 +69,15 @@ func (m *machine) text() []byte {
 	return m.data[m.pb:m.p]
 }
 
+// shouldRedirectToBody is consulted by the startTrailerParsing Ragel
+// action to decide whether the next stretch of input should be parsed
+// as body content rather than the start of a footer trailer. Returning
+// false preserves the historical behavior (always enter trailer
+// parsing). The fix for issue #38 plugs its decision logic in here.
+func (m *machine) shouldRedirectToBody() bool {
+	return false
+}
+
 func (m *machine) emitInfo(s string, args ...interface{}) {
 	if m.logger != nil {
 		logEntry := logrus.NewEntry(m.logger)
@@ -545,6 +554,18 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		output.body += string(m.text())
 		m.emitInfo("valid commit message body content", "body", string(m.text()))
 
+		// shouldRedirectToBody centralizes the decision of whether the next
+		// stretch of input should be parsed as body content rather than as
+		// the start of a footer trailer. Keeping the predicate in Go (and
+		// the fgoto in Ragel) means the action body Ragel emits at every
+		// callsite stays one line of conditional + fgoto, so the generated
+		// machine.go does not multiply the predicate logic across callsites.
+		if m.shouldRedirectToBody() {
+			m.emitDebug("redirecting to body parsing", "pos", m.p)
+			{
+				goto st34
+			}
+		}
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
 		{
 			goto st127
@@ -571,6 +592,18 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		// Do not advance over the current char
 		(m.p)--
 
+		// shouldRedirectToBody centralizes the decision of whether the next
+		// stretch of input should be parsed as body content rather than as
+		// the start of a footer trailer. Keeping the predicate in Go (and
+		// the fgoto in Ragel) means the action body Ragel emits at every
+		// callsite stays one line of conditional + fgoto, so the generated
+		// machine.go does not multiply the predicate logic across callsites.
+		if m.shouldRedirectToBody() {
+			m.emitDebug("redirecting to body parsing", "pos", m.p)
+			{
+				goto st34
+			}
+		}
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
 		{
 			goto st127
@@ -728,6 +761,18 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		m.emitDebug("found a blank line", "pos", m.p)
 
+		// shouldRedirectToBody centralizes the decision of whether the next
+		// stretch of input should be parsed as body content rather than as
+		// the start of a footer trailer. Keeping the predicate in Go (and
+		// the fgoto in Ragel) means the action body Ragel emits at every
+		// callsite stays one line of conditional + fgoto, so the generated
+		// machine.go does not multiply the predicate logic across callsites.
+		if m.shouldRedirectToBody() {
+			m.emitDebug("redirecting to body parsing", "pos", m.p)
+			{
+				goto st34
+			}
+		}
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
 		{
 			goto st127
@@ -858,6 +903,18 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		m.lastNewline = m.p
 		m.emitDebug("found a newline", "pos", m.p)
 
+		// shouldRedirectToBody centralizes the decision of whether the next
+		// stretch of input should be parsed as body content rather than as
+		// the start of a footer trailer. Keeping the predicate in Go (and
+		// the fgoto in Ragel) means the action body Ragel emits at every
+		// callsite stays one line of conditional + fgoto, so the generated
+		// machine.go does not multiply the predicate logic across callsites.
+		if m.shouldRedirectToBody() {
+			m.emitDebug("redirecting to body parsing", "pos", m.p)
+			{
+				goto st34
+			}
+		}
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
 		{
 			goto st127
@@ -871,6 +928,18 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		m.lastNewline = m.p
 		m.emitDebug("found a newline", "pos", m.p)
 
+		// shouldRedirectToBody centralizes the decision of whether the next
+		// stretch of input should be parsed as body content rather than as
+		// the start of a footer trailer. Keeping the predicate in Go (and
+		// the fgoto in Ragel) means the action body Ragel emits at every
+		// callsite stays one line of conditional + fgoto, so the generated
+		// machine.go does not multiply the predicate logic across callsites.
+		if m.shouldRedirectToBody() {
+			m.emitDebug("redirecting to body parsing", "pos", m.p)
+			{
+				goto st34
+			}
+		}
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
 		{
 			goto st127
@@ -1125,6 +1194,18 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		m.emitDebug("found a blank line", "pos", m.p)
 
+		// shouldRedirectToBody centralizes the decision of whether the next
+		// stretch of input should be parsed as body content rather than as
+		// the start of a footer trailer. Keeping the predicate in Go (and
+		// the fgoto in Ragel) means the action body Ragel emits at every
+		// callsite stays one line of conditional + fgoto, so the generated
+		// machine.go does not multiply the predicate logic across callsites.
+		if m.shouldRedirectToBody() {
+			m.emitDebug("redirecting to body parsing", "pos", m.p)
+			{
+				goto st34
+			}
+		}
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
 		{
 			goto st127
@@ -1785,6 +1866,18 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		m.emitDebug("found a blank line", "pos", m.p)
 
+		// shouldRedirectToBody centralizes the decision of whether the next
+		// stretch of input should be parsed as body content rather than as
+		// the start of a footer trailer. Keeping the predicate in Go (and
+		// the fgoto in Ragel) means the action body Ragel emits at every
+		// callsite stays one line of conditional + fgoto, so the generated
+		// machine.go does not multiply the predicate logic across callsites.
+		if m.shouldRedirectToBody() {
+			m.emitDebug("redirecting to body parsing", "pos", m.p)
+			{
+				goto st34
+			}
+		}
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
 		{
 			goto st127
@@ -2358,6 +2451,18 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 
 		m.emitDebug("found a blank line", "pos", m.p)
 
+		// shouldRedirectToBody centralizes the decision of whether the next
+		// stretch of input should be parsed as body content rather than as
+		// the start of a footer trailer. Keeping the predicate in Go (and
+		// the fgoto in Ragel) means the action body Ragel emits at every
+		// callsite stays one line of conditional + fgoto, so the generated
+		// machine.go does not multiply the predicate logic across callsites.
+		if m.shouldRedirectToBody() {
+			m.emitDebug("redirecting to body parsing", "pos", m.p)
+			{
+				goto st34
+			}
+		}
 		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
 		{
 			goto st127
@@ -3423,6 +3528,18 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 				output.body += string(m.text())
 				m.emitInfo("valid commit message body content", "body", string(m.text()))
 
+				// shouldRedirectToBody centralizes the decision of whether the next
+				// stretch of input should be parsed as body content rather than as
+				// the start of a footer trailer. Keeping the predicate in Go (and
+				// the fgoto in Ragel) means the action body Ragel emits at every
+				// callsite stays one line of conditional + fgoto, so the generated
+				// machine.go does not multiply the predicate logic across callsites.
+				if m.shouldRedirectToBody() {
+					m.emitDebug("redirecting to body parsing", "pos", m.p)
+					{
+						goto st34
+					}
+				}
 				m.emitDebug("try to parse a footer trailer token", "pos", m.p)
 				{
 					goto st127
