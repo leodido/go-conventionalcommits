@@ -24,10 +24,10 @@ jobs:
 
     steps:
       - name: Check out the source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: ${{ matrix.go }}
           check-latest: true
@@ -40,7 +40,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: matrix.go == '1.24' && github.ref == 'refs/heads/develop'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
         with:
           files: ./coverage.out
           fail_ci_if_error: false
