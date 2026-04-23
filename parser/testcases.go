@@ -3775,153 +3775,214 @@ BREAKING CHANGE #5`),
 		"",
 		nil,
 	},
-	// INVALID / invalid BREAKING CHANGE trailer separator after valid trailers
-	// VALID / until the last valid footer trailer
+	// VALID / per spec clause 10 a multi-line trailer value MAY contain
+	// arbitrary text including lines that look like a malformed
+	// BREAKING-CHANGE trailer; parsing only terminates at a real
+	// trailer line, a blank line, or EOF. See issue #48.
 	{
-		"invalid-breaking-change-invalid-separator-after-trailers",
+		"valid-issue-48-trailer-then-non-trailer-breaking-change-line",
 		[]byte(`fix: description
 
 Tested-by: Leo
 BREAKING CHANGE #5`),
-		false,
-		nil,
+		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "description",
 			Footers: map[string][]string{
-				"tested-by": {"Leo"},
+				"tested-by": {"Leo\nBREAKING CHANGE #5"},
 			},
 			TypeConfig: 3,
 		},
-		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, " ", 48),
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo\nBREAKING CHANGE #5"},
+			},
+			TypeConfig: 3,
+		},
+		"",
 		nil,
 	},
-	// INVALID / incomplete BREAKING CHANGE trailer
-	// VALID / until the last valid footer trailer
+	// VALID / per spec clause 10: a `BREAKING CHANG: XYZ` line is
+	// not a trailer (typo in the token); it continues the previous
+	// trailer's value. See issue #48.
 	{
-		"invalid-breaking-change-incomplete-after-trailers",
+		"valid-issue-48-trailer-then-mistyped-breaking-change-line",
 		[]byte(`fix: description
 
 Tested-by: Leo
 BREAKING CHANG: XYZ`),
-		false,
-		nil,
+		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "description",
 			Footers: map[string][]string{
-				"tested-by": {"Leo"},
+				"tested-by": {"Leo\nBREAKING CHANG: XYZ"},
 			},
 			TypeConfig: 3,
 		},
-		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, ":", 47),
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo\nBREAKING CHANG: XYZ"},
+			},
+			TypeConfig: 3,
+		},
+		"",
 		nil,
 	},
-	// INVALID / lowercase (space separated) BREAKING CHANGE trailer
-	// VALID / until the last valid footer trailer
+	// VALID / per spec clause 10: lowercase `breaking change` is not
+	// a real trailer token; the line continues the previous value.
+	// See issue #48.
 	{
-		"invalid-lowercase-space-separated-breaking-change-after-trailers",
+		"valid-issue-48-trailer-then-lowercase-breaking-change-line",
 		[]byte(`fix: description
 
 Tested-by: Leo
 breaking change: xyz`),
-		false,
-		nil,
+		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "description",
 			Footers: map[string][]string{
-				"tested-by": {"Leo"},
+				"tested-by": {"Leo\nbreaking change: xyz"},
 			},
 			TypeConfig: 3,
 		},
-		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "c", 42),
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo\nbreaking change: xyz"},
+			},
+			TypeConfig: 3,
+		},
+		"",
 		nil,
 	},
-	// INVALID / illegal trailer after valid trailer
-	// VALID / until the last valid footer trailer
+	// VALID / per spec clause 10: a continuation line beginning with
+	// `!` is not a trailer; it is part of the previous trailer's
+	// value. See issue #48.
 	{
-		"invalid-illegal-trailer-after-valid-trailer",
+		"valid-issue-48-trailer-then-bang-only-continuation",
 		[]byte(`fix: description
 
 Tested-by: Leo
 !`),
-		false,
-		nil,
+		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "description",
 			Footers: map[string][]string{
-				"tested-by": {"Leo"},
+				"tested-by": {"Leo\n!"},
 			},
 			TypeConfig: 3,
 		},
-		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "!", 33),
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo\n!"},
+			},
+			TypeConfig: 3,
+		},
+		"",
 		nil,
 	},
-	// INVALID / illegal trailer after valid trailer with an ending newline
-	// VALID / until the last valid footer trailer
+	// VALID / per spec clause 10: a continuation line of a single
+	// alphabetic char (here `a`) is not trailer-shaped; the trailing
+	// newline is dropped per the existing trailer-block contract.
+	// See issue #48.
 	{
-		"invalid-illegal-trailer-after-valid-trailer-with-ending-newline",
+		"valid-issue-48-trailer-then-alpha-continuation-with-trailing-newline",
 		[]byte(`fix: description
 
 Tested-by: Leo
 a
 `),
-		false,
-		nil,
+		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "description",
 			Footers: map[string][]string{
-				"tested-by": {"Leo"},
+				"tested-by": {"Leo\na"},
 			},
 			TypeConfig: 3,
 		},
-		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "\n", 34),
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo\na"},
+			},
+			TypeConfig: 3,
+		},
+		"",
 		nil,
 	},
-	// INVALID / incomplete trailer after valid trailer with an ending newline
-	// VALID / until the last valid footer trailer
+	// VALID / per spec clause 10: same as above but without the
+	// trailing newline (EOF mid-continuation). See issue #48.
 	{
-		"invalid-incomplete-trailer-after-valid-trailer-with-ending-newline",
+		"valid-issue-48-trailer-then-alpha-continuation-eof",
 		[]byte(`fix: description
 
 Tested-by: Leo
 a`),
-		false,
-		nil,
+		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "description",
 			Footers: map[string][]string{
-				"tested-by": {"Leo"},
+				"tested-by": {"Leo\na"},
 			},
 			TypeConfig: 3,
 		},
-		fmt.Sprintf(ErrTrailerIncomplete+ColumnPositionTemplate, "a", 34),
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by": {"Leo\na"},
+			},
+			TypeConfig: 3,
+		},
+		"",
 		nil,
 	},
-	// INVALID / incomplete trailer after valid trailer
-	// VALID / until the last valid footer trailer
+	// VALID / per spec clause 10: `X-` is not trailer-shaped (a
+	// trailer token cannot end in a dash; trailer_init requires
+	// `alnum+ (- alnum+)*`), so it folds into the previous trailer's
+	// value; `Another-trailer: x` IS a real trailer line and starts
+	// a new trailer. See issue #48.
 	{
-		"invalid-incomplete-trailer-after-valid-trailer",
+		"valid-issue-48-trailer-then-dash-trailing-continuation-then-real-trailer",
 		[]byte(`fix: description
 
 Tested-by: Leo
 X-
 Another-trailer: x`),
-		false,
-		nil,
+		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "fix",
 			Description: "description",
 			Footers: map[string][]string{
-				"tested-by": {"Leo"},
+				"tested-by":       {"Leo\nX-"},
+				"another-trailer": {"x"},
 			},
 			TypeConfig: 3,
 		},
-		fmt.Sprintf(ErrTrailer+ColumnPositionTemplate, "\n", 35),
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "description",
+			Footers: map[string][]string{
+				"tested-by":       {"Leo\nX-"},
+				"another-trailer": {"x"},
+			},
+			TypeConfig: 3,
+		},
+		"",
 		nil,
 	},
 }
