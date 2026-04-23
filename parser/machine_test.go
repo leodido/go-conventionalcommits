@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMachineParse(t *testing.T) {
@@ -54,9 +55,13 @@ func runner(t *testing.T, label string, cases []testCase, machineOpts ...convent
 				assert.Equal(t, tc.partialValue, partial)
 				assert.EqualError(t, partialErr, tc.errorString)
 			} else {
-				// We expect the test case intput to be a valid commit message
+				// We expect the test case input to be a valid commit message.
+				// require.NotNil aborts the subtest cleanly so a regression
+				// surfaces as a clear test failure instead of a panic that
+				// crashes the test binary and hides every subsequent case.
 				assert.Nil(t, messageErr)
-				assert.NotEmpty(t, message)
+				require.NotNil(t, message, "expected a non-nil message for valid input %q", tc.input)
+				require.NotNil(t, partial, "expected a non-nil partial message for valid input %q", tc.input)
 				assert.True(t, message.Ok())
 				assert.Equal(t, message, partial)
 				assert.Equal(t, tc.partialValue, partial)
