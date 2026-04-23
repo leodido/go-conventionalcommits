@@ -183,6 +183,16 @@ action append_body_before_blank_line {
 # Jumps
 
 action start_trailer_parsing {
+	// shouldRedirectToBody centralizes the decision of whether the next
+	// stretch of input should be parsed as body content rather than as
+	// the start of a footer trailer. Keeping the predicate in Go (and
+	// the fgoto in Ragel) means the action body Ragel emits at every
+	// callsite stays one line of conditional + fgoto, so the generated
+	// machine.go does not multiply the predicate logic across callsites.
+	if m.shouldRedirectToBody() {
+		m.emitDebug("redirecting to body parsing", "pos", m.p)
+		fgoto body;
+	}
 	m.emitDebug("try to parse a footer trailer token", "pos", m.p)
 	fgoto trailer_beg;
 }
@@ -318,6 +328,15 @@ type machine struct {
 
 func (m *machine) text() []byte {
 	return m.data[m.pb:m.p]
+}
+
+// shouldRedirectToBody is consulted by the start_trailer_parsing Ragel
+// action to decide whether the next stretch of input should be parsed
+// as body content rather than the start of a footer trailer. Returning
+// false preserves the historical behavior (always enter trailer
+// parsing). The fix for issue #38 plugs its decision logic in here.
+func (m *machine) shouldRedirectToBody() bool {
+	return false
 }
 
 func (m *machine) emitInfo(s string, args... interface{}) {
