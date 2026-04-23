@@ -4,11 +4,30 @@
 package parser
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/leodido/go-conventionalcommits"
 	cctesting "github.com/leodido/go-conventionalcommits/testing"
 )
+
+// makeFakeTrailerHeavyBody returns a body section composed of `paragraphs`
+// paragraphs, each ending in a trailer-shaped line that is NOT actually a
+// trailer (it lives mid-body). Used to exercise the issue #38 pre-scan
+// path under the worst realistic shape.
+func makeFakeTrailerHeavyBody(paragraphs int) string {
+	var b strings.Builder
+	for i := 0; i < paragraphs; i++ {
+		b.WriteString("paragraph prose line one for context\n")
+		b.WriteString("paragraph prose line two with detail\n")
+		b.WriteString("Looks-Like-Trailer: but-it-is-body\n")
+		if i != paragraphs-1 {
+			b.WriteString("\n")
+		}
+	}
+
+	return b.String()
+}
 
 // Avoid compiler optimizations that could remove the actual call we are benchmarking during benchmarks.
 var benchParseResult conventionalcommits.Message
@@ -95,6 +114,25 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 	{
 		label: "[no] missing whitespace in description",
 		input: []byte("feat(scope):a"),
+	},
+	// --- issue #38 pre-scan stress: bodies whose paragraphs end in
+	// trailer-shaped lines force the pre-scan to traverse many false
+	// candidates before locking onto the real trailer block.
+	{
+		label: "[ok] 10-fake-trailer-paragraphs then real trailer",
+		input: []byte("fix: x\n\n" + makeFakeTrailerHeavyBody(10) + "\n\nReviewed-by: X"),
+	},
+	{
+		label: "[ok] 100-fake-trailer-paragraphs then real trailer",
+		input: []byte("fix: x\n\n" + makeFakeTrailerHeavyBody(100) + "\n\nReviewed-by: X"),
+	},
+	{
+		label: "[ok] 10-fake-trailer-paragraphs no real trailer",
+		input: []byte("fix: x\n\n" + makeFakeTrailerHeavyBody(10)),
+	},
+	{
+		label: "[ok] 100-fake-trailer-paragraphs no real trailer",
+		input: []byte("fix: x\n\n" + makeFakeTrailerHeavyBody(100)),
 	},
 }
 
