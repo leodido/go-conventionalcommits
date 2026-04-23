@@ -957,6 +957,111 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 		"",
 		nil,
 	},
+	// --- Reproducers for issue #38 (trailer-looking lines abort parsing).
+	// See https://github.com/leodido/go-conventionalcommits/issues/38
+
+	// VALID / fake trailer at the start of body, followed by body prose.
+	{
+		"valid-fake-trailer-then-body-paragraph-issue38",
+		[]byte("feat: x\n\nFixes #15\n\nLorem ipsum dolor sit amet"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("Fixes #15\n\nLorem ipsum dolor sit amet"),
+			TypeConfig:  0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("Fixes #15\n\nLorem ipsum dolor sit amet"),
+			TypeConfig:  0,
+		},
+		"",
+		nil,
+	},
+	// VALID / verbatim issue #38 input.
+	{
+		"valid-issue-38-verbatim",
+		[]byte("feat: some thing (hz/fl!144)\n\nFixes #15\n\nLorem ipsum dolor sit amet\n\nBREAKING CHANGE: Some explanation\nReviewed-by: XX <xx@example.com>"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "some thing (hz/fl!144)",
+			Body:        cctesting.StringAddress("Fixes #15\n\nLorem ipsum dolor sit amet"),
+			Footers: map[string][]string{
+				"breaking-change": {"Some explanation"},
+				"reviewed-by":     {"XX <xx@example.com>"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "some thing (hz/fl!144)",
+			Body:        cctesting.StringAddress("Fixes #15\n\nLorem ipsum dolor sit amet"),
+			Footers: map[string][]string{
+				"breaking-change": {"Some explanation"},
+				"reviewed-by":     {"XX <xx@example.com>"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
+	// VALID / body paragraph whose LAST line is trailer-shaped, followed
+	// by a real trailer block. Must not regress.
+	{
+		"valid-body-ending-trailer-shape-then-real-trailer",
+		[]byte("feat: x\n\nbody1\nFake: trail\n\nReviewed-by: X"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("body1\nFake: trail"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("body1\nFake: trail"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
+	// VALID / two body paragraphs each ending in a trailer-shaped line,
+	// followed by a real trailer block. Must not regress.
+	{
+		"valid-multi-paragraph-body-each-ending-trailer-shape-then-real-trailer",
+		[]byte("feat: x\n\npara1\nFake: a\n\npara2\nFake: b\n\nReviewed-by: X"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("para1\nFake: a\n\npara2\nFake: b"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("para1\nFake: a\n\npara2\nFake: b"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
 }
 
 var testCasesForFalcoTypes = []testCase{
@@ -2580,6 +2685,111 @@ see the issue for details.`),
 			Type:        "fix",
 			Description: "correct something",
 			TypeConfig:  1,
+		},
+		"",
+		nil,
+	},
+	// --- Reproducers for issue #38 (trailer-looking lines abort parsing).
+	// See https://github.com/leodido/go-conventionalcommits/issues/38
+
+	// VALID / fake trailer at the start of body, followed by body prose.
+	{
+		"valid-fake-trailer-then-body-paragraph-issue38",
+		[]byte("feat: x\n\nFixes #15\n\nLorem ipsum dolor sit amet"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("Fixes #15\n\nLorem ipsum dolor sit amet"),
+			TypeConfig:  1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("Fixes #15\n\nLorem ipsum dolor sit amet"),
+			TypeConfig:  1,
+		},
+		"",
+		nil,
+	},
+	// VALID / verbatim issue #38 input.
+	{
+		"valid-issue-38-verbatim",
+		[]byte("feat: some thing (hz/fl!144)\n\nFixes #15\n\nLorem ipsum dolor sit amet\n\nBREAKING CHANGE: Some explanation\nReviewed-by: XX <xx@example.com>"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "some thing (hz/fl!144)",
+			Body:        cctesting.StringAddress("Fixes #15\n\nLorem ipsum dolor sit amet"),
+			Footers: map[string][]string{
+				"breaking-change": {"Some explanation"},
+				"reviewed-by":     {"XX <xx@example.com>"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "some thing (hz/fl!144)",
+			Body:        cctesting.StringAddress("Fixes #15\n\nLorem ipsum dolor sit amet"),
+			Footers: map[string][]string{
+				"breaking-change": {"Some explanation"},
+				"reviewed-by":     {"XX <xx@example.com>"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+	// VALID / body paragraph whose LAST line is trailer-shaped, followed
+	// by a real trailer block. Must not regress.
+	{
+		"valid-body-ending-trailer-shape-then-real-trailer",
+		[]byte("feat: x\n\nbody1\nFake: trail\n\nReviewed-by: X"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("body1\nFake: trail"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("body1\nFake: trail"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+	// VALID / two body paragraphs each ending in a trailer-shaped line,
+	// followed by a real trailer block. Must not regress.
+	{
+		"valid-multi-paragraph-body-each-ending-trailer-shape-then-real-trailer",
+		[]byte("feat: x\n\npara1\nFake: a\n\npara2\nFake: b\n\nReviewed-by: X"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("para1\nFake: a\n\npara2\nFake: b"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Body:        cctesting.StringAddress("para1\nFake: a\n\npara2\nFake: b"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 1,
 		},
 		"",
 		nil,
