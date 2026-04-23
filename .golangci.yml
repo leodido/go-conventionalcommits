@@ -1,59 +1,79 @@
-linters:
-  disable-all: true
-  enable:
-  - bodyclose
-  - durationcheck
-  - errcheck
-  - errname
-  - exportloopref
-  - goconst
-  - gocritic
-  - gocyclo
-  - godot
-  - gofmt
-  - goheader
-  - goimports
-  # - gosec
-  - gosimple
-  - govet
-  - ineffassign
-  - makezero
-  - nakedret
-  - nilerr
-  - nilnil
-  - nlreturn
-  - noctx
-  - nolintlint
-  - predeclared
-  - revive
-  - staticcheck
-  - stylecheck
-  - typecheck
-  - unconvert
-  - unused
-  - whitespace
+version: "2"
 
-linters-settings:
-  gofmt:
-    simplify: false
-  govet:
-    check-shadowing: true
-  goconst:
-    ignore-tests: true
-  nolintlint:
-    allow-unused: false # report any unused nolint directives
-    require-explanation: true # require an explanation for nolint directives
-    require-specific: true # require nolint directives to mention the specific linter being suppressed
-  goheader:
-    template-path: '.github/.golangci.goheader.template'
-    values:
-      regexp:
-        copyright-year: 20[2-9]\d
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - durationcheck
+    - errcheck
+    - errname
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - goheader
+    - govet
+    - ineffassign
+    - makezero
+    - nakedret
+    - nilerr
+    - nilnil
+    - nlreturn
+    - noctx
+    - nolintlint
+    - predeclared
+    - revive
+    - staticcheck
+    - unconvert
+    - unused
+    - whitespace
+  settings:
+    govet:
+      enable:
+        - shadow
+    goheader:
+      template-path: .github/.golangci.goheader.template
+      values:
+        regexp:
+          copyright-year: 20[2-9]\d
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      # goconst is noisy in tests where literal repetition is intentional
+      - linters:
+          - goconst
+        path: (.+)_test\.go
+    paths:
+      # Ragel-generated parser; do not lint
+      - parser/machine\.go
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: false
+  exclusions:
+    generated: lax
+    paths:
+      - parser/machine\.go
+      - third_party$
+      - builtin$
+      - examples$
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-
-run:
-  skip-files:
-    - "parser/machine.go"
