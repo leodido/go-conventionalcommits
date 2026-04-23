@@ -70,6 +70,14 @@ type machine struct {
 	// >startTrailerParsing entry should fall through to the body
 	// machine instead. See issue #38.
 	trailerBlockStart int
+	// trailerLineStarts is the sorted list of byte offsets within data
+	// at which a real trailer line begins (the first line of the block
+	// plus every continuation that is itself trailerInit-shaped).
+	// Empty when no trailer block is present. It is consulted by
+	// trailerValueContinues to enforce spec clause-10 termination of
+	// multi-line trailer values: a value continues across a newline
+	// iff the next line is NOT registered here. See issue #48.
+	trailerLineStarts []int
 }
 
 func (m *machine) text() []byte {
@@ -132,6 +140,49 @@ func (m *machine) shouldRedirectToBody() bool {
 	// trailer token's first byte and the historical trailerBeg path
 	// is what we want.
 	return pos < m.trailerBlockStart
+}
+
+// trailerValueContinues is consulted by the trailerVal Ragel
+// production to decide whether the in-progress multi-line trailer
+// value should continue past the newline at m.p (clause-10
+// termination predicate).
+//
+// The newline is consumed iff:
+//   - the byte right after it is NOT the start of a real trailer line
+//     per the pre-scan (otherwise the next line is the next trailer
+//     and the value must terminate here), AND
+//   - the next byte pair is not the start of a blank-line gap
+//     (a blank line terminates the trailer block per the standard
+//     FSM contract; nothing about clause-10 changes that).
+//
+// The first condition is the new clause-10 behavior. The second
+// condition preserves pre-existing semantics. See issue #48.
+func (m *machine) trailerValueContinues() bool {
+	// Reject if we're at or past EOF: nothing to continue into.
+	if m.p+1 >= m.pe {
+		return false
+	}
+	// Reject if a blank line follows: the trailer block ends there.
+	if m.p+2 < m.pe && m.data[m.p+1] == '\n' && m.data[m.p+2] == '\n' {
+		return false
+	}
+	// Reject if the next line is itself a real trailer line per the
+	// pre-scan. Binary search keeps this O(log n) per call.
+	next := m.p + 1
+	lo, hi := 0, len(m.trailerLineStarts)
+	for lo < hi {
+		mid := int(uint(lo+hi) >> 1)
+		if m.trailerLineStarts[mid] < next {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	if lo < len(m.trailerLineStarts) && m.trailerLineStarts[lo] == next {
+		return false
+	}
+
+	return true
 }
 
 func (m *machine) emitInfo(s string, args ...interface{}) {
@@ -202,11 +253,14 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.currentFooterKey = ""
 	m.countNewlines = 0
 	// Pre-compute the start offset of the trailing trailer block (or -1)
-	// once per Parse() call. The FSM consults this (via
-	// shouldRedirectToBody) to keep body parsing going past any
+	// AND the sorted offsets of every real-trailer line within that
+	// block, once per Parse() call. The FSM consults trailerBlockStart
+	// (via shouldRedirectToBody) to keep body parsing going past any
 	// trailer-shaped line that does not belong to the real trailer
-	// block. See issue #38.
-	m.trailerBlockStart = findTrailerBlockStart(input)
+	// block (issue #38), and trailerLineStarts (via
+	// trailerValueContinues) to enforce spec clause-10 termination of
+	// multi-line trailer values (issue #48).
+	m.trailerBlockStart, m.trailerLineStarts = findTrailerBlock(input)
 	output := &conventionalCommit{}
 	output.footers = make(map[string][]string)
 	output.typeconfig = m.typeConfig
@@ -641,7 +695,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 
 		goto st0
-	tr151:
+	tr150:
 
 		// Append newlines
 		for m.countNewlines > 0 {
@@ -955,7 +1009,17 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof33
 		}
 	stCase33:
-		if 32 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 126 {
+		_widec = int16((m.data)[(m.p)])
+		if 10 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 10 {
+			_widec = 256 + (int16((m.data)[(m.p)]) - 0)
+			if m.trailerValueContinues() {
+				_widec += 256
+			}
+		}
+		if _widec == 522 {
+			goto tr42
+		}
+		if 32 <= _widec && _widec <= 126 {
 			goto tr42
 		}
 		goto st0
@@ -969,49 +1033,27 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof130
 		}
 	stCase130:
-		if (m.data)[(m.p)] == 10 {
-			goto tr148
+		_widec = int16((m.data)[(m.p)])
+		if 10 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 10 {
+			_widec = 256 + (int16((m.data)[(m.p)]) - 0)
+			if m.trailerValueContinues() {
+				_widec += 256
+			}
 		}
-		if 32 <= (m.data)[(m.p)] && (m.data)[(m.p)] <= 126 {
+		switch _widec {
+		case 266:
+			goto tr149
+		case 522:
+			goto st130
+		}
+		if 32 <= _widec && _widec <= 126 {
 			goto st130
 		}
 		goto st0
-	tr148:
+	tr149:
 
 		output.footers[m.currentFooterKey] = append(output.footers[m.currentFooterKey], string(m.text()))
 		m.emitInfo("valid commit message footer trailer", m.currentFooterKey, string(m.text()))
-
-		// Increment number of newlines to use in case we're still in the body
-		m.countNewlines++
-		m.lastNewline = m.p
-		m.emitDebug("found a newline", "pos", m.p)
-
-		// shouldRedirectToBody centralizes the decision of whether the next
-		// stretch of input should be parsed as body content rather than as
-		// the start of a footer trailer. Keeping the predicate in Go (and
-		// the fgoto in Ragel) means the action body Ragel emits at every
-		// callsite stays one line of conditional + fgoto, so the generated
-		// machine.go does not multiply the predicate logic across callsites.
-		if m.shouldRedirectToBody() {
-			// Snap the marker forward so body's appendBody window starts
-			// fresh on the upcoming line instead of replaying any stale
-			// >mark from earlier productions (description, last footer val,
-			// etc.). m.p currently points at the newline that terminated
-			// the previous production, so m.p + 1 is the first byte of the
-			// line we are about to treat as body content.
-			m.pb = m.p + 1
-			m.emitDebug("redirecting to body parsing", "pos", m.p)
-			{
-				goto st34
-			}
-		}
-		m.emitDebug("try to parse a footer trailer token", "pos", m.p)
-		{
-			goto st127
-		}
-
-		goto st131
-	tr150:
 
 		// Increment number of newlines to use in case we're still in the body
 		m.countNewlines++
@@ -1048,9 +1090,6 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			goto _testEof131
 		}
 	stCase131:
-		if (m.data)[(m.p)] == 10 {
-			goto tr150
-		}
 		goto st0
 	st34:
 		if (m.p)++; (m.p) == (m.pe) {
@@ -1058,11 +1097,11 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	stCase34:
 		_widec = int16((m.data)[(m.p)])
-		_widec = 256 + (int16((m.data)[(m.p)]) - 0)
+		_widec = 768 + (int16((m.data)[(m.p)]) - 0)
 		if m.p+2 < m.pe && m.data[m.p+1] == 10 && m.data[m.p+2] == 10 {
 			_widec += 256
 		}
-		if 256 <= _widec && _widec <= 511 {
+		if 768 <= _widec && _widec <= 1023 {
 			goto tr45
 		}
 		goto tr44
@@ -1071,7 +1110,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		m.pb = m.p
 
 		goto st132
-	tr152:
+	tr151:
 
 		// Append newlines
 		for m.countNewlines > 0 {
@@ -1092,14 +1131,14 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	stCase132:
 		_widec = int16((m.data)[(m.p)])
-		_widec = 256 + (int16((m.data)[(m.p)]) - 0)
+		_widec = 768 + (int16((m.data)[(m.p)]) - 0)
 		if m.p+2 < m.pe && m.data[m.p+1] == 10 && m.data[m.p+2] == 10 {
 			_widec += 256
 		}
-		if 256 <= _widec && _widec <= 511 {
-			goto tr152
+		if 768 <= _widec && _widec <= 1023 {
+			goto tr151
 		}
-		goto tr151
+		goto tr150
 	stCase35:
 		switch (m.data)[(m.p)] {
 		case 66:
@@ -1269,10 +1308,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	stCase133:
 		if (m.data)[(m.p)] == 10 {
-			goto tr154
+			goto tr153
 		}
 		goto st133
-	tr154:
+	tr153:
 
 		output.descr = string(m.text())
 		m.emitInfo("valid commit message description", "description", output.descr)
@@ -1948,10 +1987,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	stCase135:
 		if (m.data)[(m.p)] == 10 {
-			goto tr156
+			goto tr155
 		}
 		goto st135
-	tr156:
+	tr155:
 
 		output.descr = string(m.text())
 		m.emitInfo("valid commit message description", "description", output.descr)
@@ -2540,10 +2579,10 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	stCase137:
 		if (m.data)[(m.p)] == 10 {
-			goto tr158
+			goto tr157
 		}
 		goto st137
-	tr158:
+	tr157:
 
 		output.descr = string(m.text())
 		m.emitInfo("valid commit message description", "description", output.descr)
@@ -3566,7 +3605,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 				output.descr = string(m.text())
 				m.emitInfo("valid commit message description", "description", output.descr)
 
-			case 130:
+			case 33, 130:
 
 				output.footers[m.currentFooterKey] = append(output.footers[m.currentFooterKey], string(m.text()))
 				m.emitInfo("valid commit message footer trailer", m.currentFooterKey, string(m.text()))
