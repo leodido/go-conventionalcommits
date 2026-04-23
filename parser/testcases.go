@@ -1094,6 +1094,118 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 		"",
 		nil,
 	},
+
+	// --- Reproducers for issue #48 (multi-line trailer values per spec
+	// clause 10: "A footer's value MAY contain spaces and newlines, and
+	// parsing MUST terminate when the next valid footer token/separator
+	// pair is observed").
+	// See https://github.com/leodido/go-conventionalcommits/issues/48
+
+	// VALID / single trailer with a multi-line value terminated by EOF.
+	{
+		"valid-issue-48-breaking-change-multiline-value-eof",
+		[]byte("fix: x\n\nBREAKING CHANGE: this wraps\nacross two lines"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"breaking-change": {"this wraps\nacross two lines"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"breaking-change": {"this wraps\nacross two lines"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
+	// VALID / multi-line trailer value followed by another single-line trailer.
+	{
+		"valid-issue-48-multiline-trailer-then-single-trailer",
+		[]byte("feat: x\n\nBREAKING CHANGE: long\nexplanation continues here\nReviewed-by: X"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"breaking-change": {"long\nexplanation continues here"},
+				"reviewed-by":     {"X"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"breaking-change": {"long\nexplanation continues here"},
+				"reviewed-by":     {"X"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
+	// VALID / multi-line trailer value where the continuation line begins
+	// with whitespace. Continuation must be retained verbatim, including
+	// the leading space, since a leading space disqualifies the line from
+	// being a trailer_init.
+	{
+		"valid-issue-48-multiline-trailer-value-indented-continuation",
+		[]byte("fix: x\n\nRefs: #123\n  also fixes #124"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"refs": {"#123\n  also fixes #124"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"refs": {"#123\n  also fixes #124"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
+	// VALID / continuation line that visually resembles a trailer but
+	// has a leading space (so it is NOT trailer-init-shaped) is part of
+	// the value of the trailer above; the real trailer below terminates.
+	{
+		"valid-issue-48-fake-trailer-continuation-then-real-trailer",
+		[]byte("fix: x\n\nCo-authored-by: Alice\n Co-authored-by: Bob\nReviewed-by: Carol"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"co-authored-by": {"Alice\n Co-authored-by: Bob"},
+				"reviewed-by":    {"Carol"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"co-authored-by": {"Alice\n Co-authored-by: Bob"},
+				"reviewed-by":    {"Carol"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
 }
 
 var testCasesForFalcoTypes = []testCase{
@@ -2852,6 +2964,105 @@ see the issue for details.`),
 			Body:        cctesting.StringAddress("body1\nRefs: 123"),
 			Footers: map[string][]string{
 				"reviewed-by": {"X"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+
+	// --- Reproducers for issue #48 (multi-line trailer values per spec
+	// clause 10). See https://github.com/leodido/go-conventionalcommits/issues/48
+	{
+		"valid-issue-48-breaking-change-multiline-value-eof",
+		[]byte("fix: x\n\nBREAKING CHANGE: this wraps\nacross two lines"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"breaking-change": {"this wraps\nacross two lines"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"breaking-change": {"this wraps\nacross two lines"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+	{
+		"valid-issue-48-multiline-trailer-then-single-trailer",
+		[]byte("feat: x\n\nBREAKING CHANGE: long\nexplanation continues here\nReviewed-by: X"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"breaking-change": {"long\nexplanation continues here"},
+				"reviewed-by":     {"X"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"breaking-change": {"long\nexplanation continues here"},
+				"reviewed-by":     {"X"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+	{
+		"valid-issue-48-multiline-trailer-value-indented-continuation",
+		[]byte("fix: x\n\nRefs: #123\n  also fixes #124"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"refs": {"#123\n  also fixes #124"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"refs": {"#123\n  also fixes #124"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+	{
+		"valid-issue-48-fake-trailer-continuation-then-real-trailer",
+		[]byte("fix: x\n\nCo-authored-by: Alice\n Co-authored-by: Bob\nReviewed-by: Carol"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"co-authored-by": {"Alice\n Co-authored-by: Bob"},
+				"reviewed-by":    {"Carol"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Footers: map[string][]string{
+				"co-authored-by": {"Alice\n Co-authored-by: Bob"},
+				"reviewed-by":    {"Carol"},
 			},
 			TypeConfig: 1,
 		},
