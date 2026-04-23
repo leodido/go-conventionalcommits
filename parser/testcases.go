@@ -1062,6 +1062,38 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 		"",
 		nil,
 	},
+	// VALID / minimised: body's last line is itself trailer-shaped
+	// (`Refs: 123`) and is followed by a blank line and a real trailer
+	// (`Reviewed-by: X`). The pre-scan must commit the trailer block
+	// at the gap above `Reviewed-by:` rather than extending the
+	// candidate run upward across the `Refs: 123` continuation. Catches
+	// the second-pass review's §2 shape (body1\nRefs: 123 / Reviewed-by:)
+	// which lives between the two cases above and would otherwise drift.
+	{
+		"valid-body-ending-trailer-shape-refs-then-real-trailer",
+		[]byte("fix: x\n\nbody1\nRefs: 123\n\nReviewed-by: X"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Body:        cctesting.StringAddress("body1\nRefs: 123"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Body:        cctesting.StringAddress("body1\nRefs: 123"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
 }
 
 var testCasesForFalcoTypes = []testCase{
@@ -2786,6 +2818,38 @@ see the issue for details.`),
 			Type:        "feat",
 			Description: "x",
 			Body:        cctesting.StringAddress("para1\nFake: a\n\npara2\nFake: b"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+	// VALID / minimised: body's last line is itself trailer-shaped
+	// (`Refs: 123`) and is followed by a blank line and a real trailer
+	// (`Reviewed-by: X`). The pre-scan must commit the trailer block
+	// at the gap above `Reviewed-by:` rather than extending the
+	// candidate run upward across the `Refs: 123` continuation. Catches
+	// the second-pass review's §2 shape (body1\nRefs: 123 / Reviewed-by:)
+	// which lives between the two cases above and would otherwise drift.
+	{
+		"valid-body-ending-trailer-shape-refs-then-real-trailer",
+		[]byte("fix: x\n\nbody1\nRefs: 123\n\nReviewed-by: X"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Body:        cctesting.StringAddress("body1\nRefs: 123"),
+			Footers: map[string][]string{
+				"reviewed-by": {"X"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "fix",
+			Description: "x",
+			Body:        cctesting.StringAddress("body1\nRefs: 123"),
 			Footers: map[string][]string{
 				"reviewed-by": {"X"},
 			},
