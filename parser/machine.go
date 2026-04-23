@@ -3683,6 +3683,29 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 			// An error occurred but partial parsing is on and partial message is minimally valid
 			return output.export(), m.err
 		}
+		// Defensive: a few FSM error transitions (e.g. a trailing CR
+		// after an otherwise-complete trailer) leave m.cs < firstFinal
+		// without ever assigning m.err. Returning (nil, nil) at this
+		// point silently violates Parse's contract and nil-derefs the
+		// canonical caller pattern:
+		//
+		//   m, err := p.Parse(in)
+		//   if err != nil { return err }
+		//   if !m.Ok() { ... }            // <- NPE here on (nil, nil)
+		//
+		// Synthesize an early-exit error from the current cursor so
+		// strict-mode Parse always returns either a message or an
+		// error, never both nil. The cursor may be at EOF (m.p == m.pe)
+		// when this fires, so report against the previous byte when one
+		// exists and against an empty character otherwise. See PR #47
+		// second-pass review (§3) and TestParseNeverReturnsNilNil.
+		if m.err == nil {
+			if m.p > 0 && m.p-1 < len(m.data) {
+				m.err = m.emitErrorOnPreviousCharacter(ErrEarly)
+			} else {
+				m.err = m.emitError(ErrEarly, "", m.p)
+			}
+		}
 		return nil, m.err
 	}
 
