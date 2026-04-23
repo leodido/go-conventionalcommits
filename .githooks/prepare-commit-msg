@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Intentionally empty.
+#
+# This hook exists to neutralize any prepare-commit-msg hook that an editor,
+# IDE plugin, or AI tool may try to install (for example, by appending a
+# trailer to the commit message or rewriting its content).
+#
+# core.hooksPath is set to .githooks (see the devcontainer postCreateCommand),
+# which makes Git look here instead of .git/hooks/, so anything dropped into
+# .git/hooks/prepare-commit-msg is bypassed entirely.
+#
+# Do not add logic here. If you need a real prepare-commit-msg hook, create
+# a new repo-tracked one with a clear, intentional purpose.
+exit 0
