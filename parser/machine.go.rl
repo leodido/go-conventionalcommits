@@ -190,6 +190,13 @@ action start_trailer_parsing {
 	// callsite stays one line of conditional + fgoto, so the generated
 	// machine.go does not multiply the predicate logic across callsites.
 	if m.shouldRedirectToBody() {
+		// Snap the marker forward so body's append_body window starts
+		// fresh on the upcoming line instead of replaying any stale
+		// >mark from earlier productions (description, last footer val,
+		// etc.). m.p currently points at the newline that terminated
+		// the previous production, so m.p + 1 is the first byte of the
+		// line we are about to treat as body content.
+		m.pb = m.p + 1
 		m.emitDebug("redirecting to body parsing", "pos", m.p)
 		fgoto body;
 	}
@@ -324,6 +331,13 @@ type machine struct {
 	currentFooterKey string
 	countNewlines    int
 	lastNewline      int
+	// trailerBlockStart is the byte offset (within data) at which the
+	// trailing footer trailer block begins, or -1 when no such block
+	// exists. It is computed exactly once at the start of Parse() and
+	// is consulted by shouldRedirectToBody to decide whether a given
+	// >start_trailer_parsing entry should fall through to the body
+	// machine instead. See issue #38.
+	trailerBlockStart int
 }
 
 func (m *machine) text() []byte {
@@ -332,11 +346,60 @@ func (m *machine) text() []byte {
 
 // shouldRedirectToBody is consulted by the start_trailer_parsing Ragel
 // action to decide whether the next stretch of input should be parsed
-// as body content rather than the start of a footer trailer. Returning
-// false preserves the historical behavior (always enter trailer
-// parsing). The fix for issue #38 plugs its decision logic in here.
+// as body content rather than as the start of a footer trailer.
+//
+// The decision is anchored on a single pre-scan (findTrailerBlockStart)
+// that is computed once per Parse() call and stored on the machine.
+// When the FSM is currently positioned strictly before that pre-scanned
+// trailer-block boundary, the upcoming line is body content (a
+// trailer-shaped paragraph head, a fake-trailer line in the middle of
+// a body paragraph, or trailing prose); otherwise it is — by
+// construction of the pre-scan — the start of the real trailer block
+// and the FSM should keep its historical behavior (enter trailer_beg).
+//
+// When the pre-scan found no trailer block at all (trailerBlockStart
+// is -1) the predicate returns false: there is nothing to redirect to,
+// trailer_beg can consume any trailing newlines on its own, and the
+// existing rewind action handles the case where the FSM mistakenly
+// ventured into trailer_beg with body content still ahead.
+//
+// The reason the predicate uses strict `<` (not `<=`) is that at
+// `m.p == m.trailerBlockStart - 1` the FSM is already sitting on the
+// final newline of the blank line that separates body from trailer; on
+// the next byte (m.p+1 == trailerBlockStart) the trailer-token first
+// character is the next thing the FSM will read. Letting trailer_beg
+// take over from that byte is exactly what we want.
 func (m *machine) shouldRedirectToBody() bool {
-	return false
+	// Find the position of the next non-newline byte starting from
+	// m.p+1. At every callsite of start_trailer_parsing the FSM is
+	// positioned such that m.p still belongs to the current production
+	// (last byte of body consumed, or last byte of a footer value, or
+	// last byte of the description). The relevant question is: does
+	// the NEXT non-newline byte (start of the next line) live before
+	// the pre-scanned trailer block?
+	pos := m.p + 1
+	for pos < m.pe && m.data[pos] == '\n' {
+		pos++
+	}
+	if pos >= m.pe {
+		// Only newlines/EOF remain. Nothing for body to do; let the
+		// trailer_beg path absorb the trailing newlines on its own.
+		return false
+	}
+	if m.trailerBlockStart < 0 {
+		// Pre-scan found no trailing trailer block at all. The bytes
+		// ahead must be body content (or input the FSM later rejects
+		// as a malformed trailer; the existing rewind action handles
+		// that case by demoting back to body).
+		return true
+	}
+
+	// Redirect to body iff the next non-newline byte still lives
+	// strictly before the start of the pre-scanned trailer block. When
+	// pos == trailerBlockStart the FSM is positioned exactly on the
+	// trailer token's first byte and the historical trailer_beg path
+	// is what we want.
+	return pos < m.trailerBlockStart
 }
 
 func (m *machine) emitInfo(s string, args... interface{}) {
@@ -412,6 +475,12 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.err = nil
 	m.currentFooterKey = ""
 	m.countNewlines = 0
+	// Pre-compute the start offset of the trailing trailer block (or -1)
+	// once per Parse() call. The FSM consults this (via
+	// shouldRedirectToBody) to keep body parsing going past any
+	// trailer-shaped line that does not belong to the real trailer
+	// block. See issue #38.
+	m.trailerBlockStart = findTrailerBlockStart(input)
 	output := &conventionalCommit{}
 	output.footers = make(map[string][]string)
 	output.typeconfig = m.typeConfig
