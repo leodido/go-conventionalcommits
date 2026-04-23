@@ -15,5 +15,6 @@
 				"golang.go"
 			]
 		}
-	}
+	},
+	"postCreateCommand": "git config core.hooksPath .githooks && go mod download"
 }
