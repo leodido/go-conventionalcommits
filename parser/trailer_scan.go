@@ -7,6 +7,78 @@ import (
 	"bytes"
 )
 
+// findTrailerBlock returns both the start offset of the trailing
+// trailer block (or -1 if absent) AND the sorted list of byte offsets
+// of every line within that block whose first line is itself
+// trailer_init-shaped (the "real trailer lines"). The line-starts
+// table is empty when there is no trailer block.
+//
+// The line-starts table is what the FSM consults at runtime via
+// trailerValueContinues to enforce spec clause-10 termination of
+// multi-line trailer values: a value continues across a newline iff
+// the line right after the newline is NOT registered here. See issue
+// #48.
+//
+// findTrailerBlock is the canonical entry point for the parser; the
+// older findTrailerBlockStart is preserved as a thin wrapper for the
+// existing trailer_scan unit tests.
+func findTrailerBlock(data []byte) (start int, lineStarts []int) {
+	if len(data) == 0 {
+		return -1, nil
+	}
+
+	// Drop trailing newlines so they don't get mis-attributed.
+	end := len(data)
+	for end > 0 && data[end-1] == '\n' {
+		end--
+	}
+	if end == 0 {
+		return -1, nil
+	}
+
+	// Forward pass: record offsets of every non-blank line's first
+	// byte and whether each line is preceded by a blank-line gap.
+	allLineStart, blankBefore := scanLines(data, end)
+	if len(allLineStart) == 0 {
+		return -1, nil
+	}
+
+	// Reverse pass: walk from the bottom, extending the candidate
+	// trailer block across blank-line gaps when the line above the
+	// gap is itself trailer-shaped. This locates the block start.
+	candidate := -1
+	candidateLineIdx := -1
+	for i := len(allLineStart) - 1; i >= 0; i-- {
+		if !blankBefore[i] {
+			continue
+		}
+		if i == 0 {
+			break
+		}
+		if !isTrailerStartLine(lineAt(data, allLineStart[i], end)) {
+			break
+		}
+		candidate = allLineStart[i]
+		candidateLineIdx = i
+	}
+	if candidate < 0 {
+		return -1, nil
+	}
+
+	// Forward pass over just the lines inside the trailer block:
+	// classify each as a real-trailer line or a continuation line of
+	// the previous trailer's value. Only real-trailer lines go into
+	// the lineStarts table.
+	lineStarts = make([]int, 0, len(allLineStart)-candidateLineIdx)
+	for i := candidateLineIdx; i < len(allLineStart); i++ {
+		if isTrailerStartLine(lineAt(data, allLineStart[i], end)) {
+			lineStarts = append(lineStarts, allLineStart[i])
+		}
+	}
+
+	return candidate, lineStarts
+}
+
 // findTrailerBlockStart returns the byte offset, within data, at which
 // the trailing footer trailer block begins, or -1 if no such block is
 // present.
@@ -39,62 +111,16 @@ import (
 // Trailing newlines/whitespace at the end of the input are ignored
 // when locating the block.
 //
-// Performance: the implementation is one forward pass over data to
-// build the per-line offset table, plus one reverse pass over that
-// table that does at most one isTrailerStartLine check per blank-line
-// gap. Both passes are O(n) where n = len(data); no quadratic
-// LastIndex behavior, even on inputs with many trailer-shaped
-// paragraphs.
+// Performance: one forward pass over data to build the per-line
+// offset table, plus one reverse pass over that table that does at
+// most one isTrailerStartLine check per blank-line gap, plus one final
+// forward pass over the in-block lines. All three are O(n) where n =
+// len(data); no quadratic LastIndex behavior, even on inputs with
+// many trailer-shaped paragraphs.
 func findTrailerBlockStart(data []byte) int {
-	if len(data) == 0 {
-		return -1
-	}
+	start, _ := findTrailerBlock(data)
 
-	// Drop trailing newlines so they don't get mis-attributed.
-	end := len(data)
-	for end > 0 && data[end-1] == '\n' {
-		end--
-	}
-	if end == 0 {
-		return -1
-	}
-
-	// Forward pass: record the byte offset of the first byte of every
-	// non-blank line in data[:end] and whether that line is preceded
-	// by a blank-line gap. The first line (i == 0) is the description,
-	// blankBefore[0] is always false by convention.
-	lineStart, blankBefore := scanLines(data, end)
-	if len(lineStart) == 0 {
-		return -1
-	}
-
-	// Reverse pass: walk lines from the bottom up. Each blank-line gap
-	// either extends the trailer block (when the line right after the
-	// gap, i.e. the line at lineStart[i], is trailer-shaped) or
-	// terminates it. Continuation lines (no blank gap above them) are
-	// part of whatever block the line above them belongs to, so we
-	// don't classify them.
-	candidate := -1
-	for i := len(lineStart) - 1; i >= 0; i-- {
-		if !blankBefore[i] {
-			continue
-		}
-		if i == 0 {
-			// Would extend up to the description line; never classify
-			// the description as part of the trailer block.
-			return candidate
-		}
-		if !isTrailerStartLine(lineAt(data, lineStart[i], end)) {
-			// The line at lineStart[i] is not trailer-shaped. The
-			// previous candidate (set at a deeper line) is the answer.
-			return candidate
-		}
-		// Trailer-shaped first line of a sub-block: extend the block
-		// up to here and look for an even deeper gap.
-		candidate = lineStart[i]
-	}
-
-	return candidate
+	return start
 }
 
 // scanLines walks data[:end] once and returns:
