@@ -38,6 +38,13 @@ import (
 //
 // Trailing newlines/whitespace at the end of the input are ignored
 // when locating the block.
+//
+// Performance: the implementation is one forward pass over data to
+// build the per-line offset table, plus one reverse pass over that
+// table that does at most one isTrailerStartLine check per blank-line
+// gap. Both passes are O(n) where n = len(data); no quadratic
+// LastIndex behavior, even on inputs with many trailer-shaped
+// paragraphs.
 func findTrailerBlockStart(data []byte) int {
 	if len(data) == 0 {
 		return -1
@@ -52,52 +59,82 @@ func findTrailerBlockStart(data []byte) int {
 		return -1
 	}
 
-	// Walk bottom-up across blank-line gaps. A gap may extend the
-	// trailer block iff the line above the gap is itself trailer-
-	// shaped. Otherwise the gap is the body/trailer separator and the
-	// block (if any) starts at the first trailer-shaped line below the
-	// gap.
-	//
-	// To enter the loop with a candidate block, the first trailer-
-	// shaped line above the bottom-most blank-line gap must exist and
-	// must NOT be the description line.
-	candidate := -1
-	gapEnd := end
-	for {
-		// Find the previous `\n\n` (blank-line separator) inside
-		// data[:gapEnd]. The line that starts immediately after the
-		// `\n\n` is the candidate first line of a (possibly extended)
-		// trailer block.
-		idx := bytes.LastIndex(data[:gapEnd], []byte("\n\n"))
-		if idx < 0 {
-			// No blank-line separator above; whatever we have so far
-			// is the answer.
-			return candidate
-		}
-		// Skip extra newlines: a run of three or more newlines is one
-		// gap. The first line after the run starts at `lineStart`.
-		lineStart := idx + 2
-		for lineStart < end && data[lineStart] == '\n' {
-			lineStart++
-		}
-		if lineStart >= end {
-			// All newlines up to EOF; nothing classifiable.
-			return candidate
-		}
-		if lineStart == 0 {
-			// Would start at the description line.
-			return candidate
-		}
-		if !isTrailerStartLine(lineAt(data, lineStart, end)) {
-			// First line after the gap isn't trailer-shaped: this gap
-			// terminates the block at the previous candidate.
-			return candidate
-		}
-		// This gap is inside a trailer block: extend the block up to
-		// `lineStart` and look for an even earlier gap.
-		candidate = lineStart
-		gapEnd = idx
+	// Forward pass: record the byte offset of the first byte of every
+	// non-blank line in data[:end] and whether that line is preceded
+	// by a blank-line gap. The first line (i == 0) is the description,
+	// blankBefore[0] is always false by convention.
+	lineStart, blankBefore := scanLines(data, end)
+	if len(lineStart) == 0 {
+		return -1
 	}
+
+	// Reverse pass: walk lines from the bottom up. Each blank-line gap
+	// either extends the trailer block (when the line right after the
+	// gap, i.e. the line at lineStart[i], is trailer-shaped) or
+	// terminates it. Continuation lines (no blank gap above them) are
+	// part of whatever block the line above them belongs to, so we
+	// don't classify them.
+	candidate := -1
+	for i := len(lineStart) - 1; i >= 0; i-- {
+		if !blankBefore[i] {
+			continue
+		}
+		if i == 0 {
+			// Would extend up to the description line; never classify
+			// the description as part of the trailer block.
+			return candidate
+		}
+		if !isTrailerStartLine(lineAt(data, lineStart[i], end)) {
+			// The line at lineStart[i] is not trailer-shaped. The
+			// previous candidate (set at a deeper line) is the answer.
+			return candidate
+		}
+		// Trailer-shaped first line of a sub-block: extend the block
+		// up to here and look for an even deeper gap.
+		candidate = lineStart[i]
+	}
+
+	return candidate
+}
+
+// scanLines walks data[:end] once and returns:
+//   - lineStart: the byte offset (within data) of the first byte of
+//     each non-blank line, in order;
+//   - blankBefore: a parallel slice where blankBefore[i] is true iff
+//     the line starting at lineStart[i] is preceded by at least one
+//     blank-line gap (i.e., a run of two or more consecutive newlines).
+//
+// blankBefore[0] is always false (the description has nothing before
+// it).
+func scanLines(data []byte, end int) ([]int, []bool) {
+	// A typical Conventional Commit has between 1 and ~30 lines; pre-
+	// allocating a small backing array avoids the first few growths
+	// without overshooting on small inputs.
+	lineStart := make([]int, 0, 16)
+	blankBefore := make([]bool, 0, 16)
+
+	pos := 0
+	consecutiveNL := 0
+	atLineStart := true
+	for pos < end {
+		b := data[pos]
+		if b == '\n' {
+			consecutiveNL++
+			atLineStart = true
+			pos++
+
+			continue
+		}
+		if atLineStart {
+			lineStart = append(lineStart, pos)
+			blankBefore = append(blankBefore, pos != 0 && consecutiveNL >= 2)
+			atLineStart = false
+			consecutiveNL = 0
+		}
+		pos++
+	}
+
+	return lineStart, blankBefore
 }
 
 // lineAt returns the slice of data starting at start and ending at the
