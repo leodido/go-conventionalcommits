@@ -237,6 +237,16 @@ action rewind {
 
 action blank_line_ahead { m.p + 2 < m.pe && m.data[m.p + 1] == 10 && m.data[m.p + 2] == 10 }
 
+# trailer_val_continues reports whether the FSM, currently poised to
+# consume the newline at m.p, should continue the in-progress trailer
+# value past that newline. The newline is consumed iff:
+#   - the line right after it is NOT a real trailer line (per the
+#     pre-scan), AND
+#   - the next byte pair is not a blank-line gap (which terminates the
+#     trailer block per the standard FSM contract).
+# This is the clause-10 termination predicate. See issue #48.
+action trailer_val_continues { m.trailerValueContinues() }
+
 # Machine definitions
 
 minimal_types = ('fix'i | 'feat'i);
@@ -264,7 +274,13 @@ trailer_tok = alnum+ (dash alnum+)*;
 
 trailer_sep = trailer_sep_breaking | (ws '#');
 
-trailer_val = print+;
+# A trailer value MAY contain spaces and newlines; parsing terminates
+# when the next line is a real trailer (per the pre-scan), or when a
+# blank line is encountered, or at EOF. The `when` guard on the nl
+# transition is what enforces clause-10 termination: the newline is
+# only consumed iff the in-progress value should continue past it.
+# See issue #48.
+trailer_val = (print | (nl when trailer_val_continues))+;
 
 trailer_init = trailer_tok_breaking >mark @err(rewind) trailer_sep_breaking >set_current_footer_key @err(rewind) |
                trailer_tok >mark @err(rewind) trailer_sep >set_current_footer_key @err(rewind);
@@ -277,7 +293,13 @@ trailer_beg := nl* $count_nl (trailer_init @complete_trailer_parsing)?;
 
 # Match a trailer value.
 # Then, ignoring newlines, continue trying to detect other trailers.
-trailer_end := trailer_val >mark %set_footer nl* $count_nl @start_trailer_parsing;
+# set_footer is fired explicitly on the terminating boundary (a non-
+# continuing newline OR EOF) instead of as a leaving action on
+# trailer_val itself, because Ragel's `%`-style leaving actions fire
+# on every loop-back transition inside `(...)+ ` — which would emit
+# the value after every consumed continuation newline (issue #48).
+trailer_end := (trailer_val >mark) $eof(set_footer)
+               ((nl when !trailer_val_continues) @set_footer $count_nl @start_trailer_parsing)?;
 
 # Match anything until two newlines (ie., a blank line).
 # Then, try detect a footer looking for a trailer token.
@@ -338,6 +360,14 @@ type machine struct {
 	// >start_trailer_parsing entry should fall through to the body
 	// machine instead. See issue #38.
 	trailerBlockStart int
+	// trailerLineStarts is the sorted list of byte offsets within data
+	// at which a real trailer line begins (the first line of the block
+	// plus every continuation that is itself trailer_init-shaped).
+	// Empty when no trailer block is present. It is consulted by
+	// trailerValueContinues to enforce spec clause-10 termination of
+	// multi-line trailer values: a value continues across a newline
+	// iff the next line is NOT registered here. See issue #48.
+	trailerLineStarts []int
 }
 
 func (m *machine) text() []byte {
@@ -400,6 +430,49 @@ func (m *machine) shouldRedirectToBody() bool {
 	// trailer token's first byte and the historical trailer_beg path
 	// is what we want.
 	return pos < m.trailerBlockStart
+}
+
+// trailerValueContinues is consulted by the trailer_val Ragel
+// production to decide whether the in-progress multi-line trailer
+// value should continue past the newline at m.p (clause-10
+// termination predicate).
+//
+// The newline is consumed iff:
+//   - the byte right after it is NOT the start of a real trailer line
+//     per the pre-scan (otherwise the next line is the next trailer
+//     and the value must terminate here), AND
+//   - the next byte pair is not the start of a blank-line gap
+//     (a blank line terminates the trailer block per the standard
+//     FSM contract; nothing about clause-10 changes that).
+//
+// The first condition is the new clause-10 behavior. The second
+// condition preserves pre-existing semantics. See issue #48.
+func (m *machine) trailerValueContinues() bool {
+	// Reject if we're at or past EOF: nothing to continue into.
+	if m.p+1 >= m.pe {
+		return false
+	}
+	// Reject if a blank line follows: the trailer block ends there.
+	if m.p+2 < m.pe && m.data[m.p+1] == '\n' && m.data[m.p+2] == '\n' {
+		return false
+	}
+	// Reject if the next line is itself a real trailer line per the
+	// pre-scan. Binary search keeps this O(log n) per call.
+	next := m.p + 1
+	lo, hi := 0, len(m.trailerLineStarts)
+	for lo < hi {
+		mid := int(uint(lo+hi) >> 1)
+		if m.trailerLineStarts[mid] < next {
+			lo = mid + 1
+		} else {
+			hi = mid
+		}
+	}
+	if lo < len(m.trailerLineStarts) && m.trailerLineStarts[lo] == next {
+		return false
+	}
+
+	return true
 }
 
 func (m *machine) emitInfo(s string, args... interface{}) {
@@ -476,11 +549,14 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.currentFooterKey = ""
 	m.countNewlines = 0
 	// Pre-compute the start offset of the trailing trailer block (or -1)
-	// once per Parse() call. The FSM consults this (via
-	// shouldRedirectToBody) to keep body parsing going past any
+	// AND the sorted offsets of every real-trailer line within that
+	// block, once per Parse() call. The FSM consults trailerBlockStart
+	// (via shouldRedirectToBody) to keep body parsing going past any
 	// trailer-shaped line that does not belong to the real trailer
-	// block. See issue #38.
-	m.trailerBlockStart = findTrailerBlockStart(input)
+	// block (issue #38), and trailerLineStarts (via
+	// trailerValueContinues) to enforce spec clause-10 termination of
+	// multi-line trailer values (issue #48).
+	m.trailerBlockStart, m.trailerLineStarts = findTrailerBlock(input)
 	output := &conventionalCommit{}
 	output.footers = make(map[string][]string)
 	output.typeconfig = m.typeConfig
