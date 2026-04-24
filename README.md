@@ -127,11 +127,11 @@ The parser will still return the error (with the position information), so that 
 
 ## Trailer parsing
 
-The parser implements [Conventional Commits v1.0 clauses 8–10](https://www.conventionalcommits.org/en/v1.0.0/#specification) for trailers (a.k.a. footers). A few behaviors are worth calling out explicitly.
+The parser implements [Conventional Commits v1.0 clauses 8 to 10](https://www.conventionalcommits.org/en/v1.0.0/#specification) for trailers (also called footers). A few behaviors are worth calling out.
 
-### Trailer-shaped lines in the body are kept as body content
+### Trailer-shaped lines in the body stay in the body
 
-A line in the body that happens to look like a trailer (e.g. `Fixes #123`) is not promoted to a trailer. Only the contiguous run of trailer lines at the end of the message — separated from the body by at least one blank line — forms the trailer block.
+A line in the body that looks like a trailer (say, `Fixes #123`) is not picked up as one. The trailer block is only the run of trailer lines at the end of the message, with a blank line between it and the body.
 
 Given this commit message:
 
@@ -169,7 +169,7 @@ m, _ := parser.NewMachine(parser.WithTypes(conventionalcommits.TypesFreeForm)).P
 
 ### Multi-line trailer values
 
-Per clause 10, a trailer's value MAY contain spaces and newlines. Parsing terminates at the next valid trailer token-separator pair or a blank line.
+Clause 10 says a trailer's value can contain spaces and newlines. The value keeps going until the parser sees the next trailer (a `Token: value` line) or a blank line.
 
 Given this commit message:
 
@@ -193,7 +193,7 @@ m, _ := parser.NewMachine(parser.WithTypes(conventionalcommits.TypesFreeForm)).P
 
 ### Blank-separated trailers
 
-Per clause 8, trailers within the trailer block may be separated by a single blank line. Both forms parse identically.
+Clause 8 lets you put a blank line between trailers. Both layouts parse the same way.
 
 Blank-separated:
 
@@ -220,14 +220,16 @@ parser.NewMachine(...).Parse([]byte("feat: x\n\nFixes #1\nReviewed-by: X"))
 // Both yield: footers == map[fixes:[1] reviewed-by:[X]]
 ```
 
-### `Parse` return contract
+### What `Parse` returns
 
 In strict mode (best-effort off), `Parse` returns one of:
 
 - `(*ConventionalCommit, nil)` on success
 - `(nil, error)` on failure
 
-It never returns `(nil, nil)`. Best-effort mode may additionally return `(*ConventionalCommit, error)` when partial structure was recovered before the error position.
+It never returns `(nil, nil)`, so a `nil` first value always means the second value is the real error.
+
+In best-effort mode you can also get `(*ConventionalCommit, error)`: a partial commit recovered before the parser ran into the problem, plus the error telling you where it stopped.
 
 ## Performances
 
