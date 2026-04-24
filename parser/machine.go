@@ -3,6 +3,7 @@ package parser
 import (
 	"bytes"
 	"fmt"
+	"sort"
 
 	"github.com/leodido/go-conventionalcommits"
 	"github.com/sirupsen/logrus"
@@ -147,38 +148,39 @@ func (m *machine) shouldRedirectToBody() bool {
 // value should continue past the newline at m.p (clause-10
 // termination predicate).
 //
-// The newline is consumed iff:
+// At call time m.p is the index of the '\n' under consideration for
+// consumption into the value (data[m.p] == '\n'). The newline is
+// consumed iff ALL of:
+//   - there is at least one byte after it (else we are at EOF and
+//     there is nothing to continue into);
+//   - the byte right after it is NOT itself '\n' (a '\n' immediately
+//     after this one means data[m.p:m.p+2] is the blank-line gap that
+//     terminates the trailer block per the standard FSM contract);
 //   - the byte right after it is NOT the start of a real trailer line
 //     per the pre-scan (otherwise the next line is the next trailer
-//     and the value must terminate here), AND
-//   - the next byte pair is not the start of a blank-line gap
-//     (a blank line terminates the trailer block per the standard
-//     FSM contract; nothing about clause-10 changes that).
+//     and the value must terminate here per spec clause 10).
 //
-// The first condition is the new clause-10 behavior. The second
-// condition preserves pre-existing semantics. See issue #48.
+// See issue #48 and the §B.2 finding in PR #49's third-pass review:
+// previously the blank-line check looked at data[m.p+1] and
+// data[m.p+2], which is "is there a blank-line gap STARTING at the
+// next byte" — wrong question. The right question is "is the current
+// byte the FIRST half of a blank-line gap", i.e. data[m.p+1] == '\n'.
 func (m *machine) trailerValueContinues() bool {
 	// Reject if we're at or past EOF: nothing to continue into.
 	if m.p+1 >= m.pe {
 		return false
 	}
-	// Reject if a blank line follows: the trailer block ends there.
-	if m.p+2 < m.pe && m.data[m.p+1] == '\n' && m.data[m.p+2] == '\n' {
+	// Reject if the next byte is also '\n': data[m.p:m.p+2] is the
+	// blank-line gap that terminates the trailer block.
+	if m.data[m.p+1] == '\n' {
 		return false
 	}
 	// Reject if the next line is itself a real trailer line per the
-	// pre-scan. Binary search keeps this O(log n) per call.
+	// pre-scan. sort.SearchInts is the same O(log n) binary search,
+	// just shorter to read than the hand-rolled loop.
 	next := m.p + 1
-	lo, hi := 0, len(m.trailerLineStarts)
-	for lo < hi {
-		mid := int(uint(lo+hi) >> 1)
-		if m.trailerLineStarts[mid] < next {
-			lo = mid + 1
-		} else {
-			hi = mid
-		}
-	}
-	if lo < len(m.trailerLineStarts) && m.trailerLineStarts[lo] == next {
+	i := sort.SearchInts(m.trailerLineStarts, next)
+	if i < len(m.trailerLineStarts) && m.trailerLineStarts[i] == next {
 		return false
 	}
 
