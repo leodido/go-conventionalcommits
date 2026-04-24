@@ -125,6 +125,62 @@ The result will contain a `ConventionalCommit` struct instance with the `Type` a
 
 The parser will still return the error (with the position information), so that you can eventually use it.
 
+## Trailer parsing
+
+The parser implements [Conventional Commits v1.0 clauses 8–10](https://www.conventionalcommits.org/en/v1.0.0/#specification) for trailers (a.k.a. footers). A few behaviors are worth calling out explicitly.
+
+### Trailer-shaped lines in the body are kept as body content
+
+A line in the body that happens to look like a trailer (e.g. `Fixes #123`) is not promoted to a trailer. Only the contiguous run of trailer lines at the end of the message — separated from the body by at least one blank line — forms the trailer block.
+
+```go
+in := []byte("fix: x\n\nThis paragraph mentions\nFixes #123 in passing.\n\nReviewed-by: X")
+m, _ := parser.NewMachine(parser.WithTypes(conventionalcommits.TypesFreeForm)).Parse(in)
+// m.Body    == "This paragraph mentions\nFixes #123 in passing."
+// m.Footers == map[reviewed-by:[X]]
+```
+
+A message whose body ends with a trailer-shaped line but has no real trailer block keeps the line as body content:
+
+```go
+in := []byte("fix: x\n\nThis paragraph mentions\nFixes #123 in passing.")
+m, _ := parser.NewMachine(parser.WithTypes(conventionalcommits.TypesFreeForm)).Parse(in)
+// m.Body    == "This paragraph mentions\nFixes #123 in passing."
+// m.Footers == map[]
+```
+
+### Multi-line trailer values
+
+Per clause 10, a trailer's value MAY contain spaces and newlines. Parsing terminates at the next valid trailer token-separator pair or a blank line:
+
+```go
+in := []byte("fix: x\n\nBREAKING CHANGE: this is a long\n  explanation that wraps\n  across several lines\nReviewed-by: X")
+m, _ := parser.NewMachine(parser.WithTypes(conventionalcommits.TypesFreeForm)).Parse(in)
+// m.Footers == map[
+//   breaking-change: ["this is a long\n  explanation that wraps\n  across several lines"]
+//   reviewed-by:     ["X"]
+// ]
+```
+
+### Blank-separated trailers
+
+Per clause 8, trailers within the trailer block may be separated by a single blank line. Both forms parse identically:
+
+```go
+parser.NewMachine(...).Parse([]byte("feat: x\n\nFixes #1\n\nReviewed-by: X"))
+parser.NewMachine(...).Parse([]byte("feat: x\n\nFixes #1\nReviewed-by: X"))
+// Both yield: footers == map[fixes:[1] reviewed-by:[X]]
+```
+
+### `Parse` return contract
+
+In strict mode (best-effort off), `Parse` returns one of:
+
+- `(*ConventionalCommit, nil)` on success
+- `(nil, error)` on failure
+
+It never returns `(nil, nil)`. Best-effort mode may additionally return `(*ConventionalCommit, error)` when partial structure was recovered before the error position.
+
 ## Performances
 
 To run the benchmark suite execute the following command.
