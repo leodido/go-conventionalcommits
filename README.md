@@ -133,6 +133,17 @@ The parser implements [Conventional Commits v1.0 clauses 8–10](https://www.con
 
 A line in the body that happens to look like a trailer (e.g. `Fixes #123`) is not promoted to a trailer. Only the contiguous run of trailer lines at the end of the message — separated from the body by at least one blank line — forms the trailer block.
 
+Given this commit message:
+
+```console
+fix: x
+
+This paragraph mentions
+Fixes #123 in passing.
+
+Reviewed-by: X
+```
+
 ```go
 in := []byte("fix: x\n\nThis paragraph mentions\nFixes #123 in passing.\n\nReviewed-by: X")
 m, _ := parser.NewMachine(parser.WithTypes(conventionalcommits.TypesFreeForm)).Parse(in)
@@ -141,6 +152,13 @@ m, _ := parser.NewMachine(parser.WithTypes(conventionalcommits.TypesFreeForm)).P
 ```
 
 A message whose body ends with a trailer-shaped line but has no real trailer block keeps the line as body content:
+
+```console
+fix: x
+
+This paragraph mentions
+Fixes #123 in passing.
+```
 
 ```go
 in := []byte("fix: x\n\nThis paragraph mentions\nFixes #123 in passing.")
@@ -151,7 +169,18 @@ m, _ := parser.NewMachine(parser.WithTypes(conventionalcommits.TypesFreeForm)).P
 
 ### Multi-line trailer values
 
-Per clause 10, a trailer's value MAY contain spaces and newlines. Parsing terminates at the next valid trailer token-separator pair or a blank line:
+Per clause 10, a trailer's value MAY contain spaces and newlines. Parsing terminates at the next valid trailer token-separator pair or a blank line.
+
+Given this commit message:
+
+```console
+fix: x
+
+BREAKING CHANGE: this is a long
+  explanation that wraps
+  across several lines
+Reviewed-by: X
+```
 
 ```go
 in := []byte("fix: x\n\nBREAKING CHANGE: this is a long\n  explanation that wraps\n  across several lines\nReviewed-by: X")
@@ -164,7 +193,26 @@ m, _ := parser.NewMachine(parser.WithTypes(conventionalcommits.TypesFreeForm)).P
 
 ### Blank-separated trailers
 
-Per clause 8, trailers within the trailer block may be separated by a single blank line. Both forms parse identically:
+Per clause 8, trailers within the trailer block may be separated by a single blank line. Both forms parse identically.
+
+Blank-separated:
+
+```console
+feat: x
+
+Fixes #1
+
+Reviewed-by: X
+```
+
+Adjacent:
+
+```console
+feat: x
+
+Fixes #1
+Reviewed-by: X
+```
 
 ```go
 parser.NewMachine(...).Parse([]byte("feat: x\n\nFixes #1\n\nReviewed-by: X"))
