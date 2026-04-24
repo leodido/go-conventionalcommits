@@ -1206,6 +1206,124 @@ Signed-off-by: Leonardo Di Donato <some@email.com>`),
 		"",
 		nil,
 	},
+	// VALID / clause-8 shape: trailers separated by a blank line. The
+	// trailer_val_continues guard MUST treat the current \n as the
+	// first half of the blank-line gap and stop the value before it,
+	// rather than consuming this \n into the value and only stopping
+	// at the next one. Pins the §B.2 regression from PR #49's
+	// third-pass review.
+	{
+		"valid-issue-48-trailers-separated-by-blank-line",
+		[]byte("feat: x\n\nA: 1\n\nB: 2"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+				"b": {"2"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+				"b": {"2"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
+	// VALID / three trailers each separated by blank lines (clause 8).
+	// The leak surfaces on every trailer that is itself the last of a
+	// paragraph followed by a blank line — i.e. all but the last
+	// trailer in this shape.
+	{
+		"valid-issue-48-three-trailers-each-separated-by-blank-line",
+		[]byte("feat: x\n\nA: 1\n\nB: 2\n\nC: 3"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+				"b": {"2"},
+				"c": {"3"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+				"b": {"2"},
+				"c": {"3"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
+	// VALID / value followed by EXACTLY one trailing blank line at EOF.
+	// Mirrors `A: 1\n\n` — the blank-line gap before EOF must NOT be
+	// folded into the value. Pins the EOF-asymmetry sub-case of §B.2.
+	{
+		"valid-issue-48-trailer-then-trailing-blank-line-at-eof",
+		[]byte("feat: x\n\nA: 1\n\n"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
+	// VALID / Git-canonical shape: real-world commit message with a
+	// `Fixes #N` paragraph followed by a `Signed-off-by:` paragraph.
+	// This is the exact shape spec clause 8 documents and the one
+	// PR #49's third-pass review identified as silently-broken in the
+	// wild. Worth pinning verbatim.
+	{
+		"valid-issue-48-git-canonical-fixes-then-signed-off-by",
+		[]byte("feat: add new widget\n\nFixes #123\n\nSigned-off-by: Alice <alice@example.com>"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "add new widget",
+			Footers: map[string][]string{
+				"fixes":         {"123"},
+				"signed-off-by": {"Alice <alice@example.com>"},
+			},
+			TypeConfig: 0,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "add new widget",
+			Footers: map[string][]string{
+				"fixes":         {"123"},
+				"signed-off-by": {"Alice <alice@example.com>"},
+			},
+			TypeConfig: 0,
+		},
+		"",
+		nil,
+	},
 }
 
 var testCasesForFalcoTypes = []testCase{
@@ -3063,6 +3181,112 @@ see the issue for details.`),
 			Footers: map[string][]string{
 				"co-authored-by": {"Alice\n Co-authored-by: Bob"},
 				"reviewed-by":    {"Carol"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+	// VALID / clause-8 shape: trailers separated by a blank line. The
+	// trailer_val_continues guard MUST treat the current \n as the
+	// first half of the blank-line gap and stop the value before it,
+	// rather than consuming this \n into the value and only stopping
+	// at the next one. Pins the §B.2 regression from PR #49's
+	// third-pass review.
+	{
+		"valid-issue-48-trailers-separated-by-blank-line",
+		[]byte("feat: x\n\nA: 1\n\nB: 2"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+				"b": {"2"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+				"b": {"2"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+	{
+		"valid-issue-48-three-trailers-each-separated-by-blank-line",
+		[]byte("feat: x\n\nA: 1\n\nB: 2\n\nC: 3"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+				"b": {"2"},
+				"c": {"3"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+				"b": {"2"},
+				"c": {"3"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+	{
+		"valid-issue-48-trailer-then-trailing-blank-line-at-eof",
+		[]byte("feat: x\n\nA: 1\n\n"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "x",
+			Footers: map[string][]string{
+				"a": {"1"},
+			},
+			TypeConfig: 1,
+		},
+		"",
+		nil,
+	},
+	{
+		"valid-issue-48-git-canonical-fixes-then-signed-off-by",
+		[]byte("feat: add new widget\n\nFixes #123\n\nSigned-off-by: Alice <alice@example.com>"),
+		true,
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "add new widget",
+			Footers: map[string][]string{
+				"fixes":         {"123"},
+				"signed-off-by": {"Alice <alice@example.com>"},
+			},
+			TypeConfig: 1,
+		},
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Description: "add new widget",
+			Footers: map[string][]string{
+				"fixes":         {"123"},
+				"signed-off-by": {"Alice <alice@example.com>"},
 			},
 			TypeConfig: 1,
 		},
