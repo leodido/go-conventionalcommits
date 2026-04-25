@@ -1,0 +1,49 @@
+# Pull request labels driven by changed file paths.
+#
+# Consumed by actions/labeler in .github/workflows/label.yml.
+# Labels assigned here complement (and may overlap with) labels
+# assigned by Conventional Commit type in the same workflow.
+#
+# Schema reference: https://github.com/actions/labeler
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**
+          - .goreleaser.yml
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - go.mod
+          - go.sum
+          - Makefile
+          - makefile
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - go.mod
+          - go.sum
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - docs/**
+
+test:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*_test.go"
+          - parser/testcases.go
+
+parser:
+  - changed-files:
+      - any-glob-to-any-file:
+          - parser/**
+
+tools:
+  - changed-files:
+      - any-glob-to-any-file:
+          - tools/**

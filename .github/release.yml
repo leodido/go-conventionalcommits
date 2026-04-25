@@ -2,18 +2,38 @@ changelog:
   exclude:
     labels:
       - no-releasenotes
-      - dependencies
   categories:
-    - title: Breaking Changes 🛠
+    - title: 💥 Breaking Changes
       labels:
         - breaking-change
-    - title: Features & Enhancements 🎉
+    - title: 🚀 Features
       labels:
         - enhancement
-    - title: Bug Fixes 🪤
+    - title: 🪲 Bug Fixes
       labels:
         - bug
-    - title: Other Changes 🫶
+    - title: 🏎️ Performance
       labels:
-        # Catch-all for pull requests that didn't match any of the previous categories
+        - performance
+    - title: 🧹 Refactors
+      labels:
+        - refactor
+    - title: 📚 Documentation
+      labels:
+        - documentation
+    - title: 🧪 Tests
+      labels:
+        - test
+    - title: 📦 Dependencies
+      labels:
+        - dependencies
+    - title: 🛠️ Build & CI
+      labels:
+        - build
+        - ci
+    - title: 🧽 Chore
+      labels:
+        - chore
+    - title: 🫶 Other Changes
+      labels:
         - "*"
