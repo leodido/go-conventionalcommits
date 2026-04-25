@@ -1,0 +1,62 @@
+# Reconcile the repo's labels with .github/labels.yml.
+#
+# Runs in dry-run on PRs that touch .github/labels.yml (so the diff
+# is visible in the check output before merge) and in apply mode on
+# pushes to develop.
+#
+# Why declarative: GitHub silently drops `gh pr edit --add-label` for
+# unknown label names. Without a mechanism to create missing labels,
+# every new category here becomes a footgun where the first PR of
+# that kind just lands without its label and silently bucketed into
+# "Other Changes" in release notes.
+#
+# This workflow does NOT delete labels not in the YAML — drop a
+# label by removing it from labels.yml AND deleting it manually, or
+# add `dry-run: false` and `extra-args: -r` once you're sure.
+
+name: labels-bootstrap
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - .github/labels.yml
+      - .github/workflows/labels-bootstrap.yml
+  pull_request:
+    paths:
+      - .github/labels.yml
+      - .github/workflows/labels-bootstrap.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: labels-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: reconcile labels
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write       # labels live on the issues API
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Apply labels.yml
+        uses: crazy-max/ghaction-github-labeler@24d110aa46a59976b8a7f35518cb7f14f434c916 # v5.3.0
+        with:
+          yaml-file: .github/labels.yml
+          # On PRs: dry-run, just print the diff. On push to develop:
+          # apply for real.
+          dry-run: ${{ github.event_name == 'pull_request' }}
+          # Don't delete labels that aren't in the YAML — the project
+          # has historical labels (size markers, etc.) we want to keep
+          # while migrating off reviewpad.
+          skip-delete: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}

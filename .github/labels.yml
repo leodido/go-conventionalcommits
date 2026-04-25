@@ -1,0 +1,115 @@
+# Declarative source of truth for the repo's labels.
+#
+# Reconciled by .github/workflows/labels-bootstrap.yml, which runs
+# crazy-max/ghaction-github-labeler in dry-run on PRs (so changes
+# surface in CI) and in apply mode on pushes to develop.
+#
+# Adding a label here -> it gets created.
+# Renaming requires `from_name:` so the renamer follows the trail.
+# Removing a label here without `--allow-removed-labels` will not
+# delete it (the workflow uses the safer "do not delete" mode by
+# default).
+
+# ---------- categories driven by Conventional Commits prefix ----------
+# These are referenced by .github/workflows/label.yml's whitelist and
+# by .github/release.yml. Keep colour palette consistent (semantic
+# meaning encoded in hue: red=bug, green=feat/perf, blue=refactor/docs,
+# yellow=test, grey=chore/breaking).
+
+- name: enhancement
+  color: "a2eeef"
+  description: New feature or request
+
+- name: bug
+  color: "d73a4a"
+  description: Something isn't working
+
+- name: performance
+  color: "0e8a16"
+  description: "Performance improvement (perf:)"
+
+- name: refactor
+  color: "1d76db"
+  description: "Code refactor without behavior change (refactor:)"
+
+- name: documentation
+  color: "0075ca"
+  description: Improvements or additions to documentation
+
+- name: test
+  color: "fbca04"
+  description: "Test-only changes (test:)"
+
+- name: build
+  color: "FCEA0F"
+  description: Marks issues or pull requests regarding changes to the build tool
+
+- name: ci
+  color: "ededed"
+  description: Continuous integration changes
+
+- name: chore
+  color: "cfd3d7"
+  description: "Routine maintenance with no user impact (chore:)"
+
+- name: breaking-change
+  color: "b3c9c9"
+  description: Marks a pull request as introducing breaking changes
+
+# ---------- subsystem labels driven by changed files ----------
+
+- name: dependencies
+  color: "ff8722"
+  description: Something about our dependencies
+
+- name: parser
+  color: "5319e7"
+  description: Affects the conventionalcommits parser
+
+- name: tools
+  color: "bfd4f2"
+  description: Affects tooling under tools/
+
+# ---------- workflow control labels ----------
+
+- name: no-releasenotes
+  color: "333635"
+  description: To not include a pull request in the changelog
+
+- name: no-conventional-title
+  color: "d4c5f9"
+  description: Skip the Conventional Commits title check for this PR
+
+# ---------- triage labels (manual) ----------
+
+- name: needs-review
+  color: "aa2297"
+  description: Marks a pull request as waiting for review
+
+- name: good first issue
+  color: "7057ff"
+  description: Good for newcomers
+
+- name: help wanted
+  color: "008672"
+  description: Extra attention is needed
+
+- name: duplicate
+  color: "cfd3d7"
+  description: This issue or pull request already exists
+
+- name: invalid
+  color: "e4e669"
+  description: This doesn't seem right
+
+- name: question
+  color: "d876e3"
+  description: Further information is requested
+
+- name: wontfix
+  color: "ffffff"
+  description: This will not be worked on
+
+- name: hacktoberfest-accepted
+  color: "D4AD2E"
+  description: ""
