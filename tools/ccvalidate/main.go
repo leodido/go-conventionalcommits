@@ -71,6 +71,7 @@ func run() error {
 	if _, perr := m.Parse([]byte(header)); perr != nil {
 		return fmt.Errorf("invalid Conventional Commits header %q: %w", header, perr)
 	}
+
 	return nil
 }
 
@@ -90,6 +91,7 @@ func readHeader() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("read CC_INPUT_FILE: %w", err)
 		}
+
 		return string(b), nil
 	}
 
@@ -106,5 +108,6 @@ func readHeader() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read stdin: %w", err)
 	}
+
 	return string(b), nil
 }
