@@ -30,10 +30,19 @@ on:
 permissions:
   contents: read
 
+# Cancel an in-flight run when the same PR fires another label event
+# (rapid title edits, force-pushes). Without this, runs interleave and
+# whichever finishes last "wins" the label state — which becomes a
+# correctness problem now that cc-title removes stale labels.
+concurrency:
+  group: label-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   file-globs:
     name: file-glob labels
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: write
@@ -46,6 +55,12 @@ jobs:
   cc-title:
     name: conventional-commits title labels
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Run after file-globs finishes so the two jobs never race on the
+    # PR's label state. Vocabularies are disjoint (see labeler.yml), so
+    # this is mostly belt-and-suspenders, but it also means a labeler
+    # failure surfaces before cc-title runs.
+    needs: file-globs
     permissions:
       contents: read
       pull-requests: write
