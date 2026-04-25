@@ -39,10 +39,11 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          # Check out the BASE ref (default), not the PR head. We only
-          # need the validator code, which lives in the base branch.
-          # Any PR can't change the validator behavior used to validate
-          # itself.
+          # Default actions/checkout ref on pull_request is the merge
+          # commit (PR head merged onto base) — running go code from it
+          # would execute PR-head changes. Pin to the BASE sha so the
+          # validator is always the version on the target branch.
+          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
 
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
