@@ -256,9 +256,9 @@ conventional_types = ('build'i | 'ci'i | 'chore'i | 'docs'i | 'feat'i | 'fix'i |
 
 falco_types = ('build'i | 'ci'i | 'chore'i | 'docs'i | 'feat'i | 'fix'i | 'perf'i | 'new'i | 'revert'i | 'update'i | 'test'i | 'rule'i);
 
-free_form_types = print+;
+free_form_types = high_byte+;
 
-scope = lpar ((print* -- lpar) -- rpar) >mark %err(err_malformed_scope) %eof(err_malformed_scope_closing) %set_scope rpar;
+scope = lpar ((high_byte* -- lpar) -- rpar) >mark %err(err_malformed_scope) %eof(err_malformed_scope_closing) %set_scope rpar;
 
 breaking = exclamation >set_exclamation;
 
@@ -281,7 +281,7 @@ trailer_sep = trailer_sep_breaking | (ws '#');
 # transition is what enforces clause-10 termination: the newline is
 # only consumed iff the in-progress value should continue past it.
 # See issue #48.
-trailer_val = (print | (nl when trailer_val_continues))+;
+trailer_val = (high_byte | (nl when trailer_val_continues))+;
 
 trailer_init = trailer_tok_breaking >mark @err(rewind) trailer_sep_breaking >set_current_footer_key @err(rewind) |
                trailer_tok >mark @err(rewind) trailer_sep >set_current_footer_key @err(rewind);
