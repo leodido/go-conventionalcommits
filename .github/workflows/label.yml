@@ -130,7 +130,11 @@ jobs:
 
           # BREAKING CHANGE footer in body is also a breaking change per spec
           # clauses 12/13. Title "!" alone is brittle; check body too.
-          if printf '%s' "${PR_BODY:-}" | grep -qE '^[[:space:]]*BREAKING[ -]CHANGE:[[:space:]]'; then
+          # The footer must start at column 0 (no leading whitespace) to
+          # match what parser.NewMachine() in this repo accepts —
+          # otherwise the labeler would label PRs as breaking that
+          # ccvalidate would reject if it scanned the body.
+          if printf '%s' "${PR_BODY:-}" | grep -qE '^BREAKING[ -]CHANGE:[[:space:]]'; then
             desired+=("breaking-change")
           fi
 
