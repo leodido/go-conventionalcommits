@@ -115,10 +115,35 @@ jobs:
             chore:*|chore\(*\):*)           desired+=("chore") ;;
           esac
 
+          # Revert PRs. Both the GitHub-default "Revert \"...\"" form and a
+          # CC-flavoured "revert: ..." prefix get bucketed under chore —
+          # the spec doesn't mandate a category, and chore matches the
+          # repo's historical reviewpad rule for revert/perf/test/etc.
+          case "$PR_TITLE" in
+            Revert\ \"*|revert:*|revert\(*\):*) desired+=("chore") ;;
+          esac
+
           # BREAKING CHANGE footer in body is also a breaking change per spec
           # clauses 12/13. Title "!" alone is brittle; check body too.
           if printf '%s' "${PR_BODY:-}" | grep -qE '^[[:space:]]*BREAKING[ -]CHANGE:[[:space:]]'; then
             desired+=("breaking-change")
+          fi
+
+          # Soft signal when nothing matched. Surfaces as a yellow
+          # annotation on the PR's checks tab so contributors who skip
+          # CC don't slip through silently. We do NOT fail the job —
+          # blocking would be a behaviour change vs the prior reviewpad
+          # config and would punish maintainers landing PRs with non-CC
+          # titles (e.g. "Initial release"). An authoritative check
+          # using the repo's own parser is added by validate-title.yml.
+          #
+          # SECURITY: $PR_TITLE is attacker-controlled. Echoing it into
+          # a ::warning:: line would let a title containing literal
+          # workflow-command syntax (e.g. "%0A::set-output name=x::y")
+          # inject commands. The fixed string below carries the signal
+          # without interpolating the title.
+          if [ ${#desired[@]} -eq 0 ]; then
+            echo "::warning title=Non-Conventional-Commits PR title::This PR's title has no recognized Conventional Commits prefix; release notes will categorize it under \"Other Changes\". See https://www.conventionalcommits.org/."
           fi
 
           # ---------- whitelist gate ----------
