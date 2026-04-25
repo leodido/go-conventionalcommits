@@ -74,67 +74,107 @@ jobs:
       PR_TITLE: ${{ github.event.pull_request.title }}
       PR_BODY: ${{ github.event.pull_request.body }}
     steps:
-      - name: Map CC type to label
+      - name: Sync CC category labels with PR title and body
         run: |
           set -euo pipefail
 
-          labels=()
+          # MANAGED: the complete set of category labels this job owns.
+          # Anything in this set on the PR but not in the desired set
+          # below is removed; anything in the desired set but not on the
+          # PR is added. This makes the job *sync* labels, not just add
+          # them — fixes stale-label-after-retitle and the
+          # breaking-change-once-set-always-set problem.
+          managed=(
+            enhancement bug performance refactor documentation
+            test build ci chore breaking-change
+          )
+
+          # ---------- compute desired labels from title + body ----------
+          desired=()
 
           # Conventional Commits prefix in title -> category label.
           # Matches "type:" or "type(scope):", optionally with "!" before the colon.
           case "$PR_TITLE" in
-            feat\!:*|feat\(*\)\!:*)         labels+=("enhancement" "breaking-change") ;;
-            fix\!:*|fix\(*\)\!:*)           labels+=("bug" "breaking-change") ;;
-            perf\!:*|perf\(*\)\!:*)         labels+=("performance" "breaking-change") ;;
-            refactor\!:*|refactor\(*\)\!:*) labels+=("refactor" "breaking-change") ;;
-            docs\!:*|docs\(*\)\!:*)         labels+=("documentation" "breaking-change") ;;
-            test\!:*|test\(*\)\!:*)         labels+=("test" "breaking-change") ;;
-            build\!:*|build\(*\)\!:*)       labels+=("build" "breaking-change") ;;
-            ci\!:*|ci\(*\)\!:*)             labels+=("ci" "breaking-change") ;;
-            chore\!:*|chore\(*\)\!:*)       labels+=("chore" "breaking-change") ;;
-            feat:*|feat\(*\):*)             labels+=("enhancement") ;;
-            fix:*|fix\(*\):*)               labels+=("bug") ;;
-            perf:*|perf\(*\):*)             labels+=("performance") ;;
-            refactor:*|refactor\(*\):*)     labels+=("refactor") ;;
-            docs:*|docs\(*\):*)             labels+=("documentation") ;;
-            test:*|test\(*\):*)             labels+=("test") ;;
-            build:*|build\(*\):*)           labels+=("build") ;;
-            ci:*|ci\(*\):*)                 labels+=("ci") ;;
-            chore:*|chore\(*\):*)           labels+=("chore") ;;
+            feat\!:*|feat\(*\)\!:*)         desired+=("enhancement" "breaking-change") ;;
+            fix\!:*|fix\(*\)\!:*)           desired+=("bug" "breaking-change") ;;
+            perf\!:*|perf\(*\)\!:*)         desired+=("performance" "breaking-change") ;;
+            refactor\!:*|refactor\(*\)\!:*) desired+=("refactor" "breaking-change") ;;
+            docs\!:*|docs\(*\)\!:*)         desired+=("documentation" "breaking-change") ;;
+            test\!:*|test\(*\)\!:*)         desired+=("test" "breaking-change") ;;
+            build\!:*|build\(*\)\!:*)       desired+=("build" "breaking-change") ;;
+            ci\!:*|ci\(*\)\!:*)             desired+=("ci" "breaking-change") ;;
+            chore\!:*|chore\(*\)\!:*)       desired+=("chore" "breaking-change") ;;
+            feat:*|feat\(*\):*)             desired+=("enhancement") ;;
+            fix:*|fix\(*\):*)               desired+=("bug") ;;
+            perf:*|perf\(*\):*)             desired+=("performance") ;;
+            refactor:*|refactor\(*\):*)     desired+=("refactor") ;;
+            docs:*|docs\(*\):*)             desired+=("documentation") ;;
+            test:*|test\(*\):*)             desired+=("test") ;;
+            build:*|build\(*\):*)           desired+=("build") ;;
+            ci:*|ci\(*\):*)                 desired+=("ci") ;;
+            chore:*|chore\(*\):*)           desired+=("chore") ;;
           esac
 
           # BREAKING CHANGE footer in body is also a breaking change per spec
           # clauses 12/13. Title "!" alone is brittle; check body too.
           if printf '%s' "${PR_BODY:-}" | grep -qE '^[[:space:]]*BREAKING[ -]CHANGE:[[:space:]]'; then
-            labels+=("breaking-change")
+            desired+=("breaking-change")
           fi
 
-          if [ ${#labels[@]} -eq 0 ]; then
-            echo "No conventional-commits prefix matched in title: $PR_TITLE"
-            exit 0
-          fi
-
-          # Whitelist: only labels in this set may ever be applied. Even if
-          # the case statement above is later edited to introduce a label
-          # that takes its name from $PR_TITLE/$PR_BODY, this gate keeps
-          # untrusted strings out of `gh pr edit`.
+          # ---------- whitelist gate ----------
+          # Only labels in this set may ever be applied. Even if the case
+          # statement above is later edited to derive a label name from
+          # $PR_TITLE/$PR_BODY, this gate keeps untrusted strings out of
+          # `gh pr edit`.
           allowed='^(enhancement|bug|performance|refactor|documentation|test|build|ci|chore|breaking-change)$'
 
-          # De-duplicate, then filter through the whitelist.
-          mapfile -t unique < <(printf '%s\n' "${labels[@]}" | sort -u)
-          safe=()
-          for l in "${unique[@]}"; do
+          mapfile -t desired_uniq < <(printf '%s\n' "${desired[@]:-}" | sort -u | sed '/^$/d')
+          safe_desired=()
+          for l in "${desired_uniq[@]}"; do
             if [[ "$l" =~ $allowed ]]; then
-              safe+=("$l")
+              safe_desired+=("$l")
             else
-              echo "rejected non-whitelisted label: $l" >&2
+              echo "rejected non-whitelisted desired label: $l" >&2
             fi
           done
 
-          if [ ${#safe[@]} -eq 0 ]; then
-            echo "No whitelisted labels to apply"
+          # ---------- compute the current label set on the PR ----------
+          # gh pr view emits one label name per line via the JQ template.
+          mapfile -t current < <(
+            gh pr view "$PR_NUMBER" --json labels \
+              --jq '.labels[].name' \
+              | sort -u
+          )
+
+          # ---------- diff: to_add = desired - current, to_remove = (managed ∩ current) - desired ----------
+          declare -A in_current=()
+          for l in "${current[@]}"; do in_current["$l"]=1; done
+          declare -A in_desired=()
+          for l in "${safe_desired[@]}"; do in_desired["$l"]=1; done
+
+          to_add=()
+          for l in "${safe_desired[@]}"; do
+            [ -z "${in_current[$l]:-}" ] && to_add+=("$l")
+          done
+
+          to_remove=()
+          for l in "${managed[@]}"; do
+            if [ -n "${in_current[$l]:-}" ] && [ -z "${in_desired[$l]:-}" ]; then
+              to_remove+=("$l")
+            fi
+          done
+
+          # ---------- apply ----------
+          if [ ${#to_add[@]} -eq 0 ] && [ ${#to_remove[@]} -eq 0 ]; then
+            echo "No label changes for PR #$PR_NUMBER (title: $PR_TITLE)"
             exit 0
           fi
 
-          echo "Adding labels: ${safe[*]}"
-          gh pr edit "$PR_NUMBER" --add-label "$(IFS=,; echo "${safe[*]}")"
+          if [ ${#to_add[@]} -gt 0 ]; then
+            echo "Adding: ${to_add[*]}"
+            gh pr edit "$PR_NUMBER" --add-label "$(IFS=,; echo "${to_add[*]}")"
+          fi
+          if [ ${#to_remove[@]} -gt 0 ]; then
+            echo "Removing stale: ${to_remove[*]}"
+            gh pr edit "$PR_NUMBER" --remove-label "$(IFS=,; echo "${to_remove[*]}")"
+          fi
