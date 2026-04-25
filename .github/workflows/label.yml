@@ -1,26 +1,42 @@
-name: label
-
-# Apply labels to PRs based on:
-#   1. Files changed (via .github/labeler.yml)
-#   2. Conventional Commits PR title (and BREAKING CHANGE footer in body)
+# SECURITY: This workflow runs on pull_request_target, which exposes a
+# write-scoped GITHUB_TOKEN to events from forks. To keep that safe, the
+# following invariants MUST hold for every step in this file:
 #
-# Labels feed .github/release.yml so GitHub's auto-generated release notes
-# group commits by category. Run on pull_request_target so we get write
-# access to PRs from forks; we never check out PR head code, only read
-# pull_request metadata, so this stays safe.
+#   1. NEVER add `actions/checkout` of the PR head
+#      (refs/pull/N/merge or pull_request.head.sha). Checking out base is
+#      OK, but this workflow doesn't need any checkout at all.
+#   2. NEVER run a build, install, or test against PR content
+#      (no `go build`, `npm install`, `make`, `pip install`, etc.).
+#   3. NEVER interpolate ${{ github.event.pull_request.* }} (or any other
+#      attacker-controlled value) directly into a `run:` script. Always
+#      pass them through `env:` so they become shell variables, not
+#      lexical script content. Shell injection lives here.
+#   4. Only known, hardcoded label names may be passed to `gh pr edit`.
+#      The whitelist below enforces this. Do NOT remove it.
+#   5. Pin every third-party action to a full commit SHA, never a tag.
+#
+# Background:
+#   https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+#   https://docs.github.com/actions/security-guides/automatic-token-authentication
+
+name: label
 
 on:
   pull_request_target:
     types: [opened, edited, synchronize, reopened]
 
+# Default to read-only at the workflow level. Each job that needs write
+# scope opts in explicitly; new jobs added later inherit read-only.
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   file-globs:
     name: file-glob labels
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/labeler@8558fd74291d67161a8a78ce36a881fa63b766a9 # v5.0.0
         with:
@@ -30,10 +46,16 @@ jobs:
   cc-title:
     name: conventional-commits title labels
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
+      # PR_TITLE / PR_BODY are attacker-controlled. They MUST stay in env
+      # (where they're shell variables) and never appear inside ${{ }}
+      # interpolated into the run: block.
       PR_TITLE: ${{ github.event.pull_request.title }}
       PR_BODY: ${{ github.event.pull_request.body }}
     steps:
@@ -77,8 +99,27 @@ jobs:
             exit 0
           fi
 
-          # De-duplicate
-          mapfile -t unique < <(printf '%s\n' "${labels[@]}" | sort -u)
+          # Whitelist: only labels in this set may ever be applied. Even if
+          # the case statement above is later edited to introduce a label
+          # that takes its name from $PR_TITLE/$PR_BODY, this gate keeps
+          # untrusted strings out of `gh pr edit`.
+          allowed='^(enhancement|bug|performance|refactor|documentation|test|build|ci|chore|breaking-change)$'
 
-          echo "Adding labels: ${unique[*]}"
-          gh pr edit "$PR_NUMBER" --add-label "$(IFS=,; echo "${unique[*]}")"
+          # De-duplicate, then filter through the whitelist.
+          mapfile -t unique < <(printf '%s\n' "${labels[@]}" | sort -u)
+          safe=()
+          for l in "${unique[@]}"; do
+            if [[ "$l" =~ $allowed ]]; then
+              safe+=("$l")
+            else
+              echo "rejected non-whitelisted label: $l" >&2
+            fi
+          done
+
+          if [ ${#safe[@]} -eq 0 ]; then
+            echo "No whitelisted labels to apply"
+            exit 0
+          fi
+
+          echo "Adding labels: ${safe[*]}"
+          gh pr edit "$PR_NUMBER" --add-label "$(IFS=,; echo "${safe[*]}")"
