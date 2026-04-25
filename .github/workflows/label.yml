@@ -94,33 +94,38 @@ jobs:
 
           # Conventional Commits prefix in title -> category label.
           # Matches "type:" or "type(scope):", optionally with "!" before the colon.
+          # Bang ("!") arms come first so they take precedence over the
+          # plain arms.
           case "$PR_TITLE" in
-            feat\!:*|feat\(*\)\!:*)         desired+=("enhancement" "breaking-change") ;;
-            fix\!:*|fix\(*\)\!:*)           desired+=("bug" "breaking-change") ;;
-            perf\!:*|perf\(*\)\!:*)         desired+=("performance" "breaking-change") ;;
-            refactor\!:*|refactor\(*\)\!:*) desired+=("refactor" "breaking-change") ;;
-            docs\!:*|docs\(*\)\!:*)         desired+=("documentation" "breaking-change") ;;
-            test\!:*|test\(*\)\!:*)         desired+=("test" "breaking-change") ;;
-            build\!:*|build\(*\)\!:*)       desired+=("build" "breaking-change") ;;
-            ci\!:*|ci\(*\)\!:*)             desired+=("ci" "breaking-change") ;;
-            chore\!:*|chore\(*\)\!:*)       desired+=("chore" "breaking-change") ;;
-            feat:*|feat\(*\):*)             desired+=("enhancement") ;;
-            fix:*|fix\(*\):*)               desired+=("bug") ;;
-            perf:*|perf\(*\):*)             desired+=("performance") ;;
-            refactor:*|refactor\(*\):*)     desired+=("refactor") ;;
-            docs:*|docs\(*\):*)             desired+=("documentation") ;;
-            test:*|test\(*\):*)             desired+=("test") ;;
-            build:*|build\(*\):*)           desired+=("build") ;;
-            ci:*|ci\(*\):*)                 desired+=("ci") ;;
-            chore:*|chore\(*\):*)           desired+=("chore") ;;
-          esac
-
-          # Revert PRs. Both the GitHub-default "Revert \"...\"" form and a
-          # CC-flavoured "revert: ..." prefix get bucketed under chore —
-          # the spec doesn't mandate a category, and chore matches the
-          # repo's historical reviewpad rule for revert/perf/test/etc.
-          case "$PR_TITLE" in
-            Revert\ \"*|revert:*|revert\(*\):*) desired+=("chore") ;;
+            feat\!:*|feat\(*\)\!:*)             desired+=("enhancement" "breaking-change") ;;
+            fix\!:*|fix\(*\)\!:*)               desired+=("bug" "breaking-change") ;;
+            perf\!:*|perf\(*\)\!:*)             desired+=("performance" "breaking-change") ;;
+            refactor\!:*|refactor\(*\)\!:*)     desired+=("refactor" "breaking-change") ;;
+            docs\!:*|docs\(*\)\!:*)             desired+=("documentation" "breaking-change") ;;
+            test\!:*|test\(*\)\!:*)             desired+=("test" "breaking-change") ;;
+            build\!:*|build\(*\)\!:*)           desired+=("build" "breaking-change") ;;
+            ci\!:*|ci\(*\)\!:*)                 desired+=("ci" "breaking-change") ;;
+            chore\!:*|chore\(*\)\!:*)           desired+=("chore" "breaking-change") ;;
+            style\!:*|style\(*\)\!:*)           desired+=("chore" "breaking-change") ;;
+            revert\!:*|revert\(*\)\!:*)         desired+=("chore" "breaking-change") ;;
+            feat:*|feat\(*\):*)                 desired+=("enhancement") ;;
+            fix:*|fix\(*\):*)                   desired+=("bug") ;;
+            perf:*|perf\(*\):*)                 desired+=("performance") ;;
+            refactor:*|refactor\(*\):*)         desired+=("refactor") ;;
+            docs:*|docs\(*\):*)                 desired+=("documentation") ;;
+            test:*|test\(*\):*)                 desired+=("test") ;;
+            build:*|build\(*\):*)               desired+=("build") ;;
+            ci:*|ci\(*\):*)                     desired+=("ci") ;;
+            chore:*|chore\(*\):*)               desired+=("chore") ;;
+            # style and revert have no dedicated release-notes category
+            # in .github/release.yml; bucket under chore. Matches the
+            # parser's TypesConventional set so what validate-title
+            # accepts is also what the labeler labels.
+            style:*|style\(*\):*)               desired+=("chore") ;;
+            revert:*|revert\(*\):*)             desired+=("chore") ;;
+            # GitHub's default revert-PR title shape ("Revert \"...\"")
+            # is not Conventional Commits but is common enough to label.
+            "Revert \""*)                       desired+=("chore") ;;
           esac
 
           # BREAKING CHANGE footer in body is also a breaking change per spec
