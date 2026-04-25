@@ -1,0 +1,59 @@
+# Authoritative Conventional Commits check on PR titles.
+#
+# Runs on `pull_request` (NOT pull_request_target). The token is
+# read-only by default for fork PRs, and we don't need write scope —
+# we only check out the base branch (to build the validator with the
+# repo's pinned go.mod) and run the validator on a string passed
+# through the environment.
+#
+# This complements the bash-based labeler in label.yml:
+#   - label.yml gives a soft ::warning:: when a title doesn't match a
+#     known prefix; it still labels best-effort and never blocks.
+#   - This workflow uses the repo's own parser as the source of truth.
+#     A red check here is the signal that the title is not valid CC.
+#
+# Maintainers may override on a case-by-case basis with the
+# `no-conventional-title` label (e.g. for "Initial release"-style PRs).
+
+name: validate-title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-title-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  conventional-commits:
+    name: PR title is Conventional Commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-conventional-title') }}
+    env:
+      PR_TITLE: ${{ github.event.pull_request.title }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          # Check out the BASE ref (default), not the PR head. We only
+          # need the validator code, which lives in the base branch.
+          # Any PR can't change the validator behavior used to validate
+          # itself.
+          persist-credentials: false
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Validate
+        run: |
+          set -euo pipefail
+          # Pass the title through a file so shell quoting can never
+          # interpret it. The Go program reads via $CC_INPUT_FILE.
+          printf '%s' "$PR_TITLE" > "$RUNNER_TEMP/pr_title.txt"
+          CC_INPUT_FILE="$RUNNER_TEMP/pr_title.txt" go run ./tools/ccvalidate
