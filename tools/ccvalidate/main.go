@@ -60,6 +60,15 @@ func run() error {
 	if err != nil {
 		return err
 	}
+
+	return validate(header)
+}
+
+// validate parses header with the conventional type set, returning a
+// non-nil error if the header is empty or fails to parse. Trailing CR
+// and LF are trimmed first so file/stdin input with a trailing newline
+// is accepted.
+func validate(header string) error {
 	header = strings.TrimRight(header, "\r\n")
 	if header == "" {
 		return fmt.Errorf("empty header")
