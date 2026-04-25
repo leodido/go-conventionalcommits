@@ -15,6 +15,20 @@
 #      The whitelist below enforces this. Do NOT remove it.
 #   5. Pin every third-party action to a full commit SHA, never a tag.
 #
+# DESIGN: cc-title is the single source of truth for category labels
+# (enhancement, bug, performance, refactor, documentation, test, build,
+# ci, chore, breaking-change). It SYNCS — adds the labels implied by
+# the title/body, and removes any label in the managed set that is no
+# longer implied. As a consequence:
+#
+#   - To recategorize a PR, edit the title. Manually adding (e.g.) the
+#     "bug" label to a "chore: ..." PR will be undone on the next
+#     synchronize/edit event.
+#   - File-globs and manual triage labels live outside the managed set
+#     and are never touched by this workflow. See labeler.yml.
+#   - To exclude a PR from release notes entirely, use the
+#     "no-releasenotes" label (configured in .github/release.yml).
+#
 # Background:
 #   https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
 #   https://docs.github.com/actions/security-guides/automatic-token-authentication
