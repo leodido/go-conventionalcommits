@@ -30,9 +30,12 @@ on:
 permissions:
   contents: read
 
+# Per-event-and-ref keying: PR runs (dry-run) cancel themselves on
+# rapid pushes; the apply path (push to develop) stays serialized so
+# concurrent applies can never trample each other.
 concurrency:
-  group: labels-bootstrap
-  cancel-in-progress: false
+  group: labels-bootstrap-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   reconcile:
@@ -41,8 +44,10 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      issues: write       # labels live on the issues API
-      pull-requests: write
+      # Labels live on the issues API. ghaction-github-labeler only
+      # reads/writes labels — it doesn't edit PRs — so pull-requests
+      # write scope would be dead privilege.
+      issues: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
