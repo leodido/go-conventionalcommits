@@ -1,42 +1,26 @@
 # Pull request labels driven by changed file paths.
 #
-# Consumed by actions/labeler in .github/workflows/label.yml.
-# Labels assigned here complement (and may overlap with) labels
-# assigned by Conventional Commit type in the same workflow.
+# Consumed by actions/labeler in .github/workflows/label.yml with
+# sync-labels: true, so labels here are added when files match and
+# removed when they no longer match.
+#
+# DESIGN: this file owns *subsystem* labels — "what part of the codebase
+# does this PR touch". The cc-title job in label.yml owns *category*
+# labels — "what kind of change is this" (feat/fix/docs/test/ci/build/
+# perf/refactor/chore/breaking-change), driven by the Conventional
+# Commits prefix in the PR title.
+#
+# Subsystem and category vocabularies are kept disjoint so the two
+# label sources never argue. Adding a CC-category label here would let
+# sync-labels strip a label that cc-title legitimately added.
 #
 # Schema reference: https://github.com/actions/labeler
-
-ci:
-  - changed-files:
-      - any-glob-to-any-file:
-          - .github/**
-          - .goreleaser.yml
-
-build:
-  - changed-files:
-      - any-glob-to-any-file:
-          - go.mod
-          - go.sum
-          - Makefile
-          - makefile
 
 dependencies:
   - changed-files:
       - any-glob-to-any-file:
           - go.mod
           - go.sum
-
-documentation:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "**/*.md"
-          - docs/**
-
-test:
-  - changed-files:
-      - any-glob-to-any-file:
-          - "**/*_test.go"
-          - parser/testcases.go
 
 parser:
   - changed-files:
