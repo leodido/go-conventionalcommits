@@ -41,11 +41,11 @@
   description: "Test-only changes (test:)"
 
 - name: build
-  color: "FCEA0F"
+  color: "fcea0f"
   description: Marks issues or pull requests regarding changes to the build tool
 
 - name: ci
-  color: "ededed"
+  color: "0366d6"
   description: Continuous integration changes
 
 - name: chore
@@ -111,5 +111,5 @@
   description: This will not be worked on
 
 - name: hacktoberfest-accepted
-  color: "D4AD2E"
+  color: "d4ad2e"
   description: ""
