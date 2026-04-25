@@ -1,0 +1,84 @@
+name: label
+
+# Apply labels to PRs based on:
+#   1. Files changed (via .github/labeler.yml)
+#   2. Conventional Commits PR title (and BREAKING CHANGE footer in body)
+#
+# Labels feed .github/release.yml so GitHub's auto-generated release notes
+# group commits by category. Run on pull_request_target so we get write
+# access to PRs from forks; we never check out PR head code, only read
+# pull_request metadata, so this stays safe.
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  file-globs:
+    name: file-glob labels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@8558fd74291d67161a8a78ce36a881fa63b766a9 # v5.0.0
+        with:
+          configuration-path: .github/labeler.yml
+          sync-labels: true
+
+  cc-title:
+    name: conventional-commits title labels
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+    steps:
+      - name: Map CC type to label
+        run: |
+          set -euo pipefail
+
+          labels=()
+
+          # Conventional Commits prefix in title -> category label.
+          # Matches "type:" or "type(scope):", optionally with "!" before the colon.
+          case "$PR_TITLE" in
+            feat\!:*|feat\(*\)\!:*)         labels+=("enhancement" "breaking-change") ;;
+            fix\!:*|fix\(*\)\!:*)           labels+=("bug" "breaking-change") ;;
+            perf\!:*|perf\(*\)\!:*)         labels+=("performance" "breaking-change") ;;
+            refactor\!:*|refactor\(*\)\!:*) labels+=("refactor" "breaking-change") ;;
+            docs\!:*|docs\(*\)\!:*)         labels+=("documentation" "breaking-change") ;;
+            test\!:*|test\(*\)\!:*)         labels+=("test" "breaking-change") ;;
+            build\!:*|build\(*\)\!:*)       labels+=("build" "breaking-change") ;;
+            ci\!:*|ci\(*\)\!:*)             labels+=("ci" "breaking-change") ;;
+            chore\!:*|chore\(*\)\!:*)       labels+=("chore" "breaking-change") ;;
+            feat:*|feat\(*\):*)             labels+=("enhancement") ;;
+            fix:*|fix\(*\):*)               labels+=("bug") ;;
+            perf:*|perf\(*\):*)             labels+=("performance") ;;
+            refactor:*|refactor\(*\):*)     labels+=("refactor") ;;
+            docs:*|docs\(*\):*)             labels+=("documentation") ;;
+            test:*|test\(*\):*)             labels+=("test") ;;
+            build:*|build\(*\):*)           labels+=("build") ;;
+            ci:*|ci\(*\):*)                 labels+=("ci") ;;
+            chore:*|chore\(*\):*)           labels+=("chore") ;;
+          esac
+
+          # BREAKING CHANGE footer in body is also a breaking change per spec
+          # clauses 12/13. Title "!" alone is brittle; check body too.
+          if printf '%s' "${PR_BODY:-}" | grep -qE '^[[:space:]]*BREAKING[ -]CHANGE:[[:space:]]'; then
+            labels+=("breaking-change")
+          fi
+
+          if [ ${#labels[@]} -eq 0 ]; then
+            echo "No conventional-commits prefix matched in title: $PR_TITLE"
+            exit 0
+          fi
+
+          # De-duplicate
+          mapfile -t unique < <(printf '%s\n' "${labels[@]}" | sort -u)
+
+          echo "Adding labels: ${unique[*]}"
+          gh pr edit "$PR_NUMBER" --add-label "$(IFS=,; echo "${unique[*]}")"
