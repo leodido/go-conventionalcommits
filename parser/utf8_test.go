@@ -31,93 +31,89 @@ type utf8Case struct {
 // pins:
 //   - which input shape (trailer value, scope, free-form type),
 //   - which type config it runs under,
-//   - the exact default-mode error today (RED), or the expected
-//     payload once the FSM is widened (GREEN).
-//
-// The RED commit registers these with expectOk == false and the
-// captured error string. The fix commit flips expectOk to true and
-// replaces expectErr with an expectMsg payload check. Bisecting the
-// branch shows exactly one commit per assertion flip.
+//   - the expected payload (GREEN), or the rejection message for the
+//     two negative cases that MUST continue to be rejected after the
+//     widening (DEL and SOH).
 var utf8Cases = []utf8Case{
 	// AC1: Latin-1 UTF-8 in trailer value (TypesMinimal).
 	{
 		title:     "trailer-value-utf8-latin/minimal",
 		input:     []byte("feat: x\n\nReviewed-by: léodido"),
 		types:     cc.TypesMinimal,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "l", 23),
+		expectOk:  true,
+		expectMsg: expectFooter("reviewed-by", "léodido"),
 	},
 	// AC1: Latin-1 UTF-8 in trailer value (TypesConventional).
 	{
 		title:     "trailer-value-utf8-latin/conventional",
 		input:     []byte("feat: x\n\nReviewed-by: léodido"),
 		types:     cc.TypesConventional,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "l", 23),
+		expectOk:  true,
+		expectMsg: expectFooter("reviewed-by", "léodido"),
 	},
 	// AC1: Latin-1 UTF-8 in trailer value (TypesFreeForm).
 	{
 		title:     "trailer-value-utf8-latin/freeform",
 		input:     []byte("feat: x\n\nReviewed-by: léodido"),
 		types:     cc.TypesFreeForm,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "l", 23),
+		expectOk:  true,
+		expectMsg: expectFooter("reviewed-by", "léodido"),
 	},
 	// AC2: 4-byte UTF-8 (emoji) in trailer value.
 	{
 		title:     "trailer-value-utf8-emoji/minimal",
 		input:     []byte("feat: x\n\nReviewed-by: 👍"),
 		types:     cc.TypesMinimal,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrEarly+ColumnPositionTemplate, " ", 22),
+		expectOk:  true,
+		expectMsg: expectFooter("reviewed-by", "👍"),
 	},
 	// AC3: UTF-8 in scope (TypesMinimal).
 	{
 		title:     "scope-utf8/minimal",
 		input:     []byte("feat(scôpe): x"),
 		types:     cc.TypesMinimal,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrScope+ColumnPositionTemplate, "Ã", 7),
+		expectOk:  true,
+		expectMsg: expectScope("scôpe"),
 	},
 	// AC3: UTF-8 in scope (TypesConventional).
 	{
 		title:     "scope-utf8/conventional",
 		input:     []byte("feat(scôpe): x"),
 		types:     cc.TypesConventional,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrScope+ColumnPositionTemplate, "Ã", 7),
+		expectOk:  true,
+		expectMsg: expectScope("scôpe"),
 	},
 	// AC3: UTF-8 in scope (TypesFreeForm).
 	{
 		title:     "scope-utf8/freeform",
 		input:     []byte("feat(scôpe): x"),
 		types:     cc.TypesFreeForm,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrScope+ColumnPositionTemplate, "Ã", 7),
+		expectOk:  true,
+		expectMsg: expectScope("scôpe"),
 	},
 	// AC4: UTF-8 inside a free-form type (`féat`).
 	{
 		title:     "free-form-type-utf8-mid/freeform",
 		input:     []byte("féat: x"),
 		types:     cc.TypesFreeForm,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrColon+ColumnPositionTemplate, "Ã", 1),
+		expectOk:  true,
+		expectMsg: expectType("féat"),
 	},
 	// AC4: free-form type made entirely of UTF-8 bytes (`中文`).
 	{
 		title:     "free-form-type-utf8-all/freeform",
 		input:     []byte("中文: x"),
 		types:     cc.TypesFreeForm,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrType+ColumnPositionTemplate, "ä", 0),
+		expectOk:  true,
+		expectMsg: expectType("中文"),
 	},
 	// AC5: mixed ASCII + UTF-8 in trailer value.
 	{
 		title:     "trailer-value-mixed-ascii-utf8/minimal",
 		input:     []byte("feat: x\n\nReviewed-by: leo & léo"),
 		types:     cc.TypesMinimal,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "l", 29),
+		expectOk:  true,
+		expectMsg: expectFooter("reviewed-by", "leo & léo"),
 	},
 	// AC6: multi-line trailer value with CJK UTF-8 across the line
 	// boundary.
@@ -125,22 +121,24 @@ var utf8Cases = []utf8Case{
 		title:     "trailer-value-multiline-cjk/minimal",
 		input:     []byte("feat: x\n\nBREAKING CHANGE: 中文\n  说明"),
 		types:     cc.TypesMinimal,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrEarly+ColumnPositionTemplate, " ", 26),
+		expectOk:  true,
+		expectMsg: expectFooter("breaking-change", "中文\n  说明"),
 	},
 	// AC7: trailer value ending mid-multibyte at EOF (truncated UTF-8
-	// leader byte). Today this is rejected; after #50 the byte is
-	// captured opaquely and the parser does not panic.
+	// leader byte). The byte is captured opaquely; the parser does
+	// not panic. Validating UTF-8 well-formedness is the caller's
+	// responsibility (an opt-in option for that lives in a follow-up
+	// PR).
 	{
 		title:     "trailer-value-mid-multibyte-eof/minimal",
 		input:     []byte("feat: x\n\nReviewed-by: \xc3"),
 		types:     cc.TypesMinimal,
-		expectOk:  false,
-		expectErr: fmt.Sprintf(ErrEarly+ColumnPositionTemplate, " ", 22),
+		expectOk:  true,
+		expectMsg: expectFooter("reviewed-by", "\xc3"),
 	},
-	// AC8: DEL (\x7f) in a trailer value MUST continue to be rejected
-	// after #50: the widened class is `(print | 0x80..0xff)`, which
-	// still excludes \x7f.
+	// AC8: DEL (\x7f) in a trailer value MUST continue to be rejected:
+	// the widened class is `(print | 0x80..0xff)`, which still
+	// excludes \x7f.
 	{
 		title:     "trailer-value-del-still-rejected/minimal",
 		input:     []byte("feat: x\n\nReviewed-by: a\x7fb"),
@@ -148,8 +146,8 @@ var utf8Cases = []utf8Case{
 		expectOk:  false,
 		expectErr: fmt.Sprintf(ErrEarly+ColumnPositionTemplate, "a", 23),
 	},
-	// AC9: SOH (\x01) in a trailer value MUST continue to be rejected
-	// after #50: control bytes are not in `(print | 0x80..0xff)`.
+	// AC9: SOH (\x01) in a trailer value MUST continue to be rejected:
+	// control bytes are not in `(print | 0x80..0xff)`.
 	{
 		title:     "trailer-value-control-still-rejected/minimal",
 		input:     []byte("feat: x\n\nReviewed-by: a\x01b"),
@@ -160,8 +158,7 @@ var utf8Cases = []utf8Case{
 }
 
 // TestUTF8ByteTransparency exercises the issue-#50 reproducer set in
-// default mode (no options). RED at the test-only commit, GREEN after
-// the FSM is widened.
+// default mode (no options).
 //
 // Best-effort mode is intentionally NOT covered here because it
 // swallows trailer-block errors and returns the description-only
@@ -223,5 +220,36 @@ func TestUTF8MidMultibyteEOFNoPanic(t *testing.T) {
 				_, _ = NewMachine(WithTypes(tc), WithBestEffort()).Parse(in)
 			}()
 		}
+	}
+}
+
+// expectFooter returns a payload check that asserts the parsed
+// commit has a footer with the given key whose first value equals
+// want.
+func expectFooter(key, want string) func(t *testing.T, m cc.Message) {
+	return func(t *testing.T, m cc.Message) {
+		c := m.(*cc.ConventionalCommit)
+		require.Contains(t, c.Footers, key, "missing footer %q", key)
+		require.NotEmpty(t, c.Footers[key], "footer %q has no values", key)
+		assert.Equal(t, want, c.Footers[key][0])
+	}
+}
+
+// expectScope returns a payload check that asserts the parsed commit
+// has the given scope.
+func expectScope(want string) func(t *testing.T, m cc.Message) {
+	return func(t *testing.T, m cc.Message) {
+		c := m.(*cc.ConventionalCommit)
+		require.NotNil(t, c.Scope, "expected scope, got nil")
+		assert.Equal(t, want, *c.Scope)
+	}
+}
+
+// expectType returns a payload check that asserts the parsed commit
+// has the given type.
+func expectType(want string) func(t *testing.T, m cc.Message) {
+	return func(t *testing.T, m cc.Message) {
+		c := m.(*cc.ConventionalCommit)
+		assert.Equal(t, want, c.Type)
 	}
 }
