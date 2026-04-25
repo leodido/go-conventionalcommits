@@ -74,3 +74,64 @@ func TestParseNeverReturnsNilNil(t *testing.T) {
 	assert.NotNil(t, m)
 	assert.NoError(t, err)
 }
+
+// TestParseAcceptsUTF8 sweeps the byte-transparency contract added
+// by issue #50 across:
+//
+//	{TypeConfig: minimal, conventional, falco, freeform}
+//	x {input shape: trailer value, scope, free-form type}
+//	x {UTF-8 family: Latin-1, CJK, emoji, mid-multibyte truncation}
+//
+// The matrix exists in addition to the per-shape reproducers in
+// utf8_test.go to guarantee that NO type config silently regresses
+// the byte-transparency contract: e.g. if a future change hard-codes
+// `print` in one production but not another, this sweep notices.
+//
+// Falco-types is included because it shares the trailer / scope
+// productions with the other configs, so byte-transparency in those
+// productions must hold there too. Free-form-type-utf8 is only run
+// under TypesFreeForm because the other configs use literal-string
+// type alternations that intentionally reject anything but their
+// allow-list.
+func TestParseAcceptsUTF8(t *testing.T) {
+	type shape struct {
+		name             string
+		input            []byte
+		freeFormTypeOnly bool
+	}
+	shapes := []shape{
+		{"trailer-value-latin", []byte("feat: x\n\nReviewed-by: léodido"), false},
+		{"trailer-value-cjk", []byte("feat: x\n\nReviewed-by: 中文"), false},
+		{"trailer-value-emoji", []byte("feat: x\n\nReviewed-by: 👍"), false},
+		{"trailer-value-mid-multibyte-eof", []byte("feat: x\n\nReviewed-by: \xc3"), false},
+		{"scope-latin", []byte("feat(scôpe): x"), false},
+		{"scope-cjk", []byte("feat(中文): x"), false},
+		{"free-form-type-latin", []byte("féat: x"), true},
+		{"free-form-type-cjk", []byte("中文: x"), true},
+	}
+	configs := []struct {
+		name string
+		opt  conventionalcommits.MachineOption
+		t    conventionalcommits.TypeConfig
+	}{
+		{"minimal", WithTypes(conventionalcommits.TypesMinimal), conventionalcommits.TypesMinimal},
+		{"conventional", WithTypes(conventionalcommits.TypesConventional), conventionalcommits.TypesConventional},
+		{"falco", WithTypes(conventionalcommits.TypesFalco), conventionalcommits.TypesFalco},
+		{"freeform", WithTypes(conventionalcommits.TypesFreeForm), conventionalcommits.TypesFreeForm},
+	}
+	for _, cfg := range configs {
+		for _, s := range shapes {
+			if s.freeFormTypeOnly && cfg.t != conventionalcommits.TypesFreeForm {
+				continue
+			}
+			cfg, s := cfg, s
+			t.Run(cfg.name+"/"+s.name, func(t *testing.T) {
+				m, err := NewMachine(cfg.opt).Parse(s.input)
+				assert.NoError(t, err, "byte-transparency: input %q must parse", s.input)
+				if assert.NotNil(t, m, "byte-transparency: input %q must yield a message", s.input) {
+					assert.True(t, m.Ok(), "byte-transparency: input %q must produce an Ok() commit", s.input)
+				}
+			})
+		}
+	}
+}
