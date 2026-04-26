@@ -37,3 +37,32 @@ func WithLogger(l *logrus.Logger) conventionalcommits.MachineOption {
 		return m
 	}
 }
+
+// WithStrictUTF8 enables opt-in UTF-8 well-formedness validation of
+// trailer values, scope, and free-form types.
+//
+// When enabled, after a successful parse the captured slices are
+// checked with utf8.Valid. The first ill-formed slice produces an
+// error whose column is the byte offset (in the ORIGINAL input) of
+// the first invalid byte; trailer-value errors also include the
+// failing footer key.
+//
+// Body and description are intentionally NOT covered by this option.
+// Use WithStrictUTF8Body for those.
+func WithStrictUTF8() conventionalcommits.MachineOption {
+	return conventionalcommits.WithStrictUTF8()
+}
+
+// WithStrictUTF8Body enables opt-in UTF-8 well-formedness validation
+// of body and description slices.
+//
+// When enabled, after a successful parse the captured slices are
+// checked with utf8.Valid. The first ill-formed slice produces an
+// error whose column is the byte offset (in the ORIGINAL input) of
+// the first invalid byte.
+//
+// Trailer values, scope, and free-form types are intentionally NOT
+// covered by this option. Use WithStrictUTF8 for those.
+func WithStrictUTF8Body() conventionalcommits.MachineOption {
+	return conventionalcommits.WithStrictUTF8Body()
+}
