@@ -153,6 +153,13 @@ jobs:
           # Bang ("!") arms come first so they take precedence over the
           # plain arms.
           #
+          # The parser at parser/machine.go.rl uses Ragel's 'i flag on
+          # type tokens, making validate-title accept "FEAT: x", "Feat:
+          # x" etc. To keep the labeler in lockstep with the validator,
+          # we run the case statement under `shopt -s nocasematch`. The
+          # shopt is scoped to a subshell so it does NOT bleed into the
+          # whitelist regex below — that gate must stay case-sensitive
+          # so a label of "ENHANCEMENT" cannot pass.
           # Run the case statement in a subshell with `shopt -s
           # nocasematch` so it accepts "FEAT: x" the same way the
           # parser does. The subshell scopes the shopt: it does not
@@ -160,18 +167,17 @@ jobs:
           # case-sensitive so a label of "ENHANCEMENT" cannot pass.
           # Output is captured via $(...) (not `mapfile < <(...)`) so
           # the subshell's exit status propagates under `set -e`.
-          #
-          # Patterns require ": " (colon + literal space) followed
-          # by at least one character. The parser rejects "feat:",
-          # "feat: " and "feat:x" (it requires exactly one space
-          # between the colon and the description). Mirroring that
-          # here keeps the labeler from labelling titles that the
-          # validator will reject — the corpus in
-          # .github/scripts/test-labeler-agreement.sh pins this
-          # contract case-by-case.
           desired_lines=$(
             shopt -s nocasematch
             out=()
+            # Patterns require ": " (colon + literal space) followed
+            # by at least one character. The parser rejects "feat:",
+            # "feat: " and "feat:x" (it requires exactly one space
+            # between the colon and the description). Mirroring that
+            # here keeps the labeler from labelling titles that the
+            # validator will reject — the corpus in
+            # .github/scripts/test-labeler-agreement.sh pins this
+            # contract case-by-case.
             case "$PR_TITLE" in
               feat\!:\ ?*|feat\(*\)\!:\ ?*)             out+=("enhancement" "breaking-change") ;;
               fix\!:\ ?*|fix\(*\)\!:\ ?*)               out+=("bug" "breaking-change") ;;
@@ -333,11 +339,65 @@ jobs:
             exit 0
           fi
 
-          if [ ${#to_add[@]} -gt 0 ]; then
-            echo "Adding: ${to_add[*]}"
-            gh pr edit "$PR_NUMBER" --add-label "$(IFS=,; echo "${to_add[*]}")"
-          fi
-          if [ ${#to_remove[@]} -gt 0 ]; then
-            echo "Removing stale: ${to_remove[*]}"
-            gh pr edit "$PR_NUMBER" --remove-label "$(IFS=,; echo "${to_remove[*]}")"
+          # Build the final desired label set. The GitHub API
+          # `PUT /repos/{owner}/{repo}/issues/{number}/labels` replaces
+          # the entire label set in a single call. To keep that safe,
+          # we must include EVERY label the PR should retain — not
+          # only the labels this job manages, but also unrelated ones
+          # (file-glob labels, manual triage labels, "no-releasenotes",
+          # etc.) — otherwise the PUT would wipe them.
+          #
+          # Why a single PUT rather than two `gh pr edit` calls:
+          #   - Atomic: subscribers (webhooks, projects, automations)
+          #     see one transition, never an intermediate state where
+          #     "enhancement" has been removed but "chore" hasn't been
+          #     added yet.
+          #   - Halves the API budget (one HTTP call, one rate-limit
+          #     decrement) on every title edit.
+          declare -A in_remove=()
+          for l in "${to_remove[@]:-}"; do [ -n "$l" ] && in_remove["$l"]=1; done
+
+          final=()
+          # Keep current labels that we are NOT removing.
+          for l in "${current[@]:-}"; do
+            [ -z "$l" ] && continue
+            if [ -z "${in_remove[$l]:-}" ]; then
+              final+=("$l")
+            fi
+          done
+          # Add desired labels that aren't already in `final`.
+          declare -A in_final=()
+          for l in "${final[@]:-}"; do [ -n "$l" ] && in_final["$l"]=1; done
+          for l in "${safe_desired[@]:-}"; do
+            if [ -n "$l" ] && [ -z "${in_final[$l]:-}" ]; then
+              final+=("$l")
+              in_final["$l"]=1
+            fi
+          done
+
+          echo "Final label set for PR #$PR_NUMBER:"
+          printf '  %s\n' "${final[@]:-(none)}"
+          if [ ${#to_add[@]} -gt 0 ];    then echo "  (adding:   ${to_add[*]})"; fi
+          if [ ${#to_remove[@]} -gt 0 ]; then echo "  (removing: ${to_remove[*]})"; fi
+
+          # Build `-f labels[]=…` flags. gh api repeats the field for
+          # each value, which the GitHub REST API interprets as a JSON
+          # array. `set -e` will abort the run on a failed PUT.
+          api_args=()
+          for l in "${final[@]:-}"; do
+            [ -n "$l" ] && api_args+=(-f "labels[]=$l")
+          done
+          # When `final` is empty, GitHub's API needs the JSON `[]`
+          # rather than no `labels` field at all. The `-f labels[]=`
+          # idiom doesn't produce that, so fall back to a raw body.
+          if [ ${#api_args[@]} -eq 0 ]; then
+            gh api \
+              -X PUT \
+              "repos/$GH_REPO/issues/$PR_NUMBER/labels" \
+              --input - <<<'{"labels":[]}'
+          else
+            gh api \
+              -X PUT \
+              "repos/$GH_REPO/issues/$PR_NUMBER/labels" \
+              "${api_args[@]}"
           fi
