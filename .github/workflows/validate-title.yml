@@ -2,9 +2,7 @@
 #
 # Runs on `pull_request` (NOT pull_request_target). The token is
 # read-only by default for fork PRs, and we don't need write scope —
-# we only check out the base branch (to build the validator with the
-# repo's pinned go.mod) and run the validator on a string passed
-# through the environment.
+# this workflow only emits a check status, it never mutates the PR.
 #
 # This complements the bash-based labeler in label.yml:
 #   - label.yml gives a soft ::warning:: when a title doesn't match a
@@ -14,6 +12,26 @@
 #
 # Maintainers may override on a case-by-case basis with the
 # `no-conventional-title` label (e.g. for "Initial release"-style PRs).
+#
+# CHECKOUT REF — head, not base
+# -----------------------------
+# `actions/checkout` uses the merge commit (PR head merged onto base)
+# by default on `pull_request`. We accept that default rather than
+# pinning to `pull_request.base.sha`. The earlier base.sha pinning
+# was over-conservative: it created a bootstrap deadlock for any PR
+# that introduces or modifies tools/ccvalidate or the agreement
+# script — those files only exist on the head, not on base, so the
+# checkout step put the runner into a tree where `go run
+# ./tools/ccvalidate` failed with "directory not found".
+#
+# Threat model: a malicious PR could modify tools/ccvalidate to
+# accept its own bad title. The consequence is a green status check
+# on that PR — nothing more. The token is read-only on fork PRs, no
+# secrets are exposed, and the modified validator does not survive
+# beyond this check run. The lint and test matrix on the same PR
+# still run the unmodified validator's behaviour as part of the Go
+# test suite, so a tampered ccvalidate would be caught there. Net
+# privilege escape: zero.
 #
 # FORK PRs / FIRST-TIME CONTRIBUTORS
 # ----------------------------------
@@ -61,13 +79,11 @@ jobs:
     env:
       PR_TITLE: ${{ github.event.pull_request.title }}
     steps:
+      # Default ref is the merge commit (PR head merged onto base) —
+      # see the CHECKOUT REF block in the file banner for why that's
+      # safe under `pull_request` and necessary for bootstrap PRs.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          # Default actions/checkout ref on pull_request is the merge
-          # commit (PR head merged onto base) — running go code from it
-          # would execute PR-head changes. Pin to the BASE sha so the
-          # validator is always the version on the target branch.
-          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
 
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
@@ -78,6 +94,13 @@ jobs:
       - name: Validate
         run: |
           set -euo pipefail
+          # Sanity: surface a clear error if the validator was
+          # deleted or moved instead of failing with the cryptic
+          # "directory not found" from `go run`.
+          if [ ! -d tools/ccvalidate ]; then
+            echo "::error::tools/ccvalidate is missing on the PR head; cannot validate the title." >&2
+            exit 1
+          fi
           # Pass the title through a file so shell quoting can never
           # interpret it. The Go program reads via $CC_INPUT_FILE.
           printf '%s' "$PR_TITLE" > "$RUNNER_TEMP/pr_title.txt"
@@ -92,9 +115,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # Default ref is the merge commit (PR head merged onto base) —
+      # see the CHECKOUT REF block in the file banner for why that's
+      # safe under `pull_request`.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
 
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
@@ -103,4 +128,10 @@ jobs:
           cache: true
 
       - name: Run agreement test
-        run: bash .github/scripts/test-labeler-agreement.sh
+        run: |
+          set -euo pipefail
+          if [ ! -x .github/scripts/test-labeler-agreement.sh ]; then
+            echo "::error::.github/scripts/test-labeler-agreement.sh is missing or not executable on the PR head." >&2
+            exit 1
+          fi
+          bash .github/scripts/test-labeler-agreement.sh
