@@ -19,7 +19,19 @@
 # (enhancement, bug, performance, refactor, documentation, test, build,
 # ci, chore, breaking-change). It SYNCS — adds the labels implied by
 # the title/body, and removes any label in the managed set that is no
-# longer implied. As a consequence:
+# longer implied.
+#
+# AGREEMENT WITH THE PARSER: the title patterns matched here are kept
+# in lockstep with what tools/ccvalidate accepts (parser strict mode,
+# TypesConventional). Specifically:
+#
+#   - Case-insensitive type match: the parser uses Ragel's 'i flag, so
+#     "FEAT: x" parses; we use `shopt -s nocasematch` to match.
+#   - GitHub's default revert-PR shape ("Revert \"...\"") is NOT
+#     matched here, because validate-title would reject it. To revert
+#     via the GitHub button, rewrite the title to "revert: <subject>".
+#
+# As a consequence:
 #
 #   - To recategorize a PR, edit the title. Manually adding (e.g.) the
 #     "bug" label to a "chore: ..." PR will be undone on the next
@@ -110,37 +122,66 @@ jobs:
           # Matches "type:" or "type(scope):", optionally with "!" before the colon.
           # Bang ("!") arms come first so they take precedence over the
           # plain arms.
-          case "$PR_TITLE" in
-            feat\!:*|feat\(*\)\!:*)             desired+=("enhancement" "breaking-change") ;;
-            fix\!:*|fix\(*\)\!:*)               desired+=("bug" "breaking-change") ;;
-            perf\!:*|perf\(*\)\!:*)             desired+=("performance" "breaking-change") ;;
-            refactor\!:*|refactor\(*\)\!:*)     desired+=("refactor" "breaking-change") ;;
-            docs\!:*|docs\(*\)\!:*)             desired+=("documentation" "breaking-change") ;;
-            test\!:*|test\(*\)\!:*)             desired+=("test" "breaking-change") ;;
-            build\!:*|build\(*\)\!:*)           desired+=("build" "breaking-change") ;;
-            ci\!:*|ci\(*\)\!:*)                 desired+=("ci" "breaking-change") ;;
-            chore\!:*|chore\(*\)\!:*)           desired+=("chore" "breaking-change") ;;
-            style\!:*|style\(*\)\!:*)           desired+=("chore" "breaking-change") ;;
-            revert\!:*|revert\(*\)\!:*)         desired+=("chore" "breaking-change") ;;
-            feat:*|feat\(*\):*)                 desired+=("enhancement") ;;
-            fix:*|fix\(*\):*)                   desired+=("bug") ;;
-            perf:*|perf\(*\):*)                 desired+=("performance") ;;
-            refactor:*|refactor\(*\):*)         desired+=("refactor") ;;
-            docs:*|docs\(*\):*)                 desired+=("documentation") ;;
-            test:*|test\(*\):*)                 desired+=("test") ;;
-            build:*|build\(*\):*)               desired+=("build") ;;
-            ci:*|ci\(*\):*)                     desired+=("ci") ;;
-            chore:*|chore\(*\):*)               desired+=("chore") ;;
-            # style and revert have no dedicated release-notes category
-            # in .github/release.yml; bucket under chore. Matches the
-            # parser's TypesConventional set so what validate-title
-            # accepts is also what the labeler labels.
-            style:*|style\(*\):*)               desired+=("chore") ;;
-            revert:*|revert\(*\):*)             desired+=("chore") ;;
-            # GitHub's default revert-PR title shape ("Revert \"...\"")
-            # is not Conventional Commits but is common enough to label.
-            "Revert \""*)                       desired+=("chore") ;;
-          esac
+          #
+          # Run the case statement in a subshell with `shopt -s
+          # nocasematch` so it accepts "FEAT: x" the same way the
+          # parser does. The subshell scopes the shopt: it does not
+          # bleed into the whitelist regex below, which MUST remain
+          # case-sensitive so a label of "ENHANCEMENT" cannot pass.
+          # Output is captured via $(...) (not `mapfile < <(...)`) so
+          # the subshell's exit status propagates under `set -e`.
+          #
+          # Patterns require ": " (colon + literal space) followed
+          # by at least one character. The parser rejects "feat:",
+          # "feat: " and "feat:x" (it requires exactly one space
+          # between the colon and the description). Mirroring that
+          # here keeps the labeler from labelling titles that the
+          # validator will reject — the corpus in
+          # .github/scripts/test-labeler-agreement.sh pins this
+          # contract case-by-case.
+          desired_lines=$(
+            shopt -s nocasematch
+            out=()
+            case "$PR_TITLE" in
+              feat\!:\ ?*|feat\(*\)\!:\ ?*)             out+=("enhancement" "breaking-change") ;;
+              fix\!:\ ?*|fix\(*\)\!:\ ?*)               out+=("bug" "breaking-change") ;;
+              perf\!:\ ?*|perf\(*\)\!:\ ?*)             out+=("performance" "breaking-change") ;;
+              refactor\!:\ ?*|refactor\(*\)\!:\ ?*)     out+=("refactor" "breaking-change") ;;
+              docs\!:\ ?*|docs\(*\)\!:\ ?*)             out+=("documentation" "breaking-change") ;;
+              test\!:\ ?*|test\(*\)\!:\ ?*)             out+=("test" "breaking-change") ;;
+              build\!:\ ?*|build\(*\)\!:\ ?*)           out+=("build" "breaking-change") ;;
+              ci\!:\ ?*|ci\(*\)\!:\ ?*)                 out+=("ci" "breaking-change") ;;
+              chore\!:\ ?*|chore\(*\)\!:\ ?*)           out+=("chore" "breaking-change") ;;
+              style\!:\ ?*|style\(*\)\!:\ ?*)           out+=("chore" "breaking-change") ;;
+              revert\!:\ ?*|revert\(*\)\!:\ ?*)         out+=("chore" "breaking-change") ;;
+              feat:\ ?*|feat\(*\):\ ?*)                 out+=("enhancement") ;;
+              fix:\ ?*|fix\(*\):\ ?*)                   out+=("bug") ;;
+              perf:\ ?*|perf\(*\):\ ?*)                 out+=("performance") ;;
+              refactor:\ ?*|refactor\(*\):\ ?*)         out+=("refactor") ;;
+              docs:\ ?*|docs\(*\):\ ?*)                 out+=("documentation") ;;
+              test:\ ?*|test\(*\):\ ?*)                 out+=("test") ;;
+              build:\ ?*|build\(*\):\ ?*)               out+=("build") ;;
+              ci:\ ?*|ci\(*\):\ ?*)                     out+=("ci") ;;
+              chore:\ ?*|chore\(*\):\ ?*)               out+=("chore") ;;
+              # style and revert have no dedicated release-notes category
+              # in .github/release.yml; bucket under chore. Matches the
+              # parser's TypesConventional set so what validate-title
+              # accepts is also what the labeler labels.
+              style:\ ?*|style\(*\):\ ?*)               out+=("chore") ;;
+              revert:\ ?*|revert\(*\):\ ?*)             out+=("chore") ;;
+            esac
+            printf '%s\n' "${out[@]:-}"
+          )
+          while IFS= read -r line; do
+            [ -n "$line" ] && desired+=("$line")
+          done <<< "$desired_lines"
+          # NOTE: GitHub's default revert-PR title shape ("Revert \"...\"")
+          # is intentionally NOT matched. It is not Conventional Commits
+          # and validate-title would reject it; matching it here would
+          # reintroduce the labeler/validator divergence this workflow
+          # is structured to avoid. Maintainers reverting via the GitHub
+          # button must rewrite the title to "revert: <subject>" before
+          # merge.
 
           # BREAKING CHANGE footer in body is also a breaking change per spec
           # clauses 12/13. Title "!" alone is brittle; check body too.
