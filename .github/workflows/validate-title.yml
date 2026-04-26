@@ -14,6 +14,30 @@
 #
 # Maintainers may override on a case-by-case basis with the
 # `no-conventional-title` label (e.g. for "Initial release"-style PRs).
+#
+# FORK PRs / FIRST-TIME CONTRIBUTORS
+# ----------------------------------
+# Because this workflow runs on `pull_request`, GitHub gates fork PRs
+# from first-time contributors behind an "Approve and run" button on
+# the Actions tab — the workflow won't run until a maintainer clicks
+# it. This is GitHub's default policy ("Require approval for first-
+# time contributors") and is intentional: it prevents an attacker
+# from running arbitrary workflow code against a fork PR without
+# review. Once a maintainer has approved one workflow run, subsequent
+# runs from the same author go through automatically.
+#
+# Symptoms when this gate is active:
+#   - The "validate-title / PR title is Conventional Commits" check
+#     stays in "Expected — Waiting for status to be reported" forever.
+#   - No logs appear in the Actions tab; the workflow row says
+#     "<contributor> wants to run this workflow".
+#
+# Resolution: a maintainer opens the Actions tab, finds the queued
+# run for this PR, and clicks "Approve and run".
+#
+# Maintainers can change the policy at
+#   Settings → Actions → General → Fork pull request workflows from
+#   outside collaborators.
 
 name: validate-title
 
@@ -58,3 +82,25 @@ jobs:
           # interpret it. The Go program reads via $CC_INPUT_FILE.
           printf '%s' "$PR_TITLE" > "$RUNNER_TEMP/pr_title.txt"
           CC_INPUT_FILE="$RUNNER_TEMP/pr_title.txt" go run ./tools/ccvalidate
+
+  agreement:
+    # Asserts the cc-title case statement in label.yml stays in
+    # lockstep with what tools/ccvalidate accepts, across a fixed
+    # corpus of titles and bodies. Catches drift when either is
+    # edited without the other.
+    name: labeler/validator agreement
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run agreement test
+        run: bash .github/scripts/test-labeler-agreement.sh
