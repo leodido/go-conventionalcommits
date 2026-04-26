@@ -229,11 +229,26 @@ jobs:
 
           # ---------- compute the current label set on the PR ----------
           # gh pr view emits one label name per line via the JQ template.
-          mapfile -t current < <(
-            gh pr view "$PR_NUMBER" --json labels \
-              --jq '.labels[].name' \
-              | sort -u
-          )
+          #
+          # We deliberately use $(...) capture, NOT `mapfile -t current
+          # < <(gh ...)`. Process substitution `<(...)` runs gh in a
+          # subshell whose exit status is invisible to mapfile, so a
+          # transient gh/API failure would surface as an *empty*
+          # `current` array. Combined with the diff logic below, that
+          # turns into a silent regression: nothing gets removed, and
+          # stale category labels (e.g. "enhancement" left over after a
+          # title is edited from "feat:" to "chore:") survive forever.
+          # Capturing via $(...) propagates the gh exit code into the
+          # surrounding `set -e` script, so a failure aborts the run
+          # loudly instead of corrupting the label state.
+          if ! current_raw=$(gh pr view "$PR_NUMBER" --json labels --jq '.labels[].name' | sort -u); then
+            echo "::error::gh pr view failed; refusing to mutate labels with an unknown current state" >&2
+            exit 1
+          fi
+          current=()
+          while IFS= read -r line; do
+            [ -n "$line" ] && current+=("$line")
+          done <<< "$current_raw"
 
           # ---------- diff: to_add = desired - current, to_remove = (managed ∩ current) - desired ----------
           declare -A in_current=()
