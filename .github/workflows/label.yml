@@ -2,11 +2,16 @@
 # write-scoped GITHUB_TOKEN to events from forks. To keep that safe, the
 # following invariants MUST hold for every step in this file:
 #
-#   1. NEVER add `actions/checkout` of the PR head
-#      (refs/pull/N/merge or pull_request.head.sha). Checking out base is
-#      OK, but this workflow doesn't need any checkout at all.
-#   2. NEVER run a build, install, or test against PR content
-#      (no `go build`, `npm install`, `make`, `pip install`, etc.).
+#   1. NEVER check out the PR head (refs/pull/N/merge or
+#      pull_request.head.sha). The cc-title job DOES check out
+#      `pull_request.base.sha` so it can build tools/ccvalidate from
+#      the target branch — that is safe, since the source tree at
+#      base.sha is already-merged code. Checking out the head, the
+#      merge ref, or any branch the PR can move would let attacker
+#      code run with the workflow's write-scoped token.
+#   2. NEVER run a build, install, or test against PR content. Building
+#      tools/ccvalidate from base.sha is fine for the same reason as
+#      (1). Building from PR content (head or merge ref) is not.
 #   3. NEVER interpolate ${{ github.event.pull_request.* }} (or any other
 #      attacker-controlled value) directly into a `run:` script. Always
 #      pass them through `env:` so they become shell variables, not
@@ -100,6 +105,31 @@ jobs:
       PR_TITLE: ${{ github.event.pull_request.title }}
       PR_BODY: ${{ github.event.pull_request.body }}
     steps:
+      # SECURITY: pin to base.sha (not base.ref). base.ref is a branch
+      # name and could be moved by a concurrent merge mid-run; base.sha
+      # is immutable for the lifetime of the event. We deliberately do
+      # NOT check out the PR head — see invariant #1 in the file
+      # banner. The checkout exists only so we can build ccvalidate
+      # (the breaking-change footer detector) from the target branch.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build ccvalidate
+        # Built from the checked-out base.sha; never from PR content.
+        # We pin the binary path so the labeler step below can't
+        # accidentally invoke a different `ccvalidate` from $PATH.
+        run: |
+          set -euo pipefail
+          go build -o "$RUNNER_TEMP/ccvalidate" ./tools/ccvalidate
+          echo "CCV=$RUNNER_TEMP/ccvalidate" >> "$GITHUB_ENV"
+
       - name: Sync CC category labels with PR title and body
         run: |
           set -euo pipefail
@@ -183,14 +213,43 @@ jobs:
           # button must rewrite the title to "revert: <subject>" before
           # merge.
 
-          # BREAKING CHANGE footer in body is also a breaking change per spec
-          # clauses 12/13. Title "!" alone is brittle; check body too.
-          # The footer must start at column 0 (no leading whitespace) to
-          # match what parser.NewMachine() in this repo accepts —
-          # otherwise the labeler would label PRs as breaking that
-          # ccvalidate would reject if it scanned the body.
-          if printf '%s' "${PR_BODY:-}" | grep -qE '^BREAKING[ -]CHANGE:[[:space:]]'; then
-            desired+=("breaking-change")
+          # BREAKING CHANGE footer detection. The earlier version of
+          # this workflow used a bash `grep -E '^BREAKING[ -]CHANGE:'`
+          # against PR_BODY, which produced false positives on
+          # documentation PRs that mention BREAKING CHANGE inside a
+          # fenced code block, in prose, or after indentation. The
+          # parser already implements the correct rule (CC spec
+          # clauses 12/13: footer at end of message, blank line above,
+          # no indentation, recognised token). We feed the full
+          # message through ccvalidate --describe so the labeler's
+          # notion of "breaking" matches what the parser accepts.
+          #
+          # SECURITY: PR_TITLE / PR_BODY are attacker-controlled. We
+          # pass them through a temp file (not argv) so shell quoting
+          # cannot interpret either, and ccvalidate reads via
+          # $CC_INPUT_FILE. The parser is a fixed Ragel state machine
+          # built from base.sha — PR content cannot influence it.
+          msg_file="$RUNNER_TEMP/pr_message.txt"
+          # Concatenate title and body with a blank line, the standard
+          # CC layout. If PR_BODY is empty, ccvalidate sees a header-
+          # only message and reports breaking=false (unless the title
+          # has "!"), which is correct.
+          {
+            printf '%s\n' "$PR_TITLE"
+            if [ -n "${PR_BODY:-}" ]; then
+              printf '\n%s' "$PR_BODY"
+            fi
+          } > "$msg_file"
+
+          # ccvalidate --describe exits non-zero on an invalid header.
+          # That's not a labeler failure: an unrecognised title is
+          # already surfaced by the soft warning below, and the
+          # authoritative check lives in validate-title.yml. We only
+          # consume the breaking flag when the parse succeeds.
+          if describe_out=$(CC_INPUT_FILE="$msg_file" "$CCV" --describe 2>/dev/null); then
+            if grep -qx 'breaking=true' <<< "$describe_out"; then
+              desired+=("breaking-change")
+            fi
           fi
 
           # Soft signal when nothing matched. Surfaces as a yellow
