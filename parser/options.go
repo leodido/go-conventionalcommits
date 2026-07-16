@@ -8,6 +8,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Machine is a Conventional Commits parser with parser-specific configuration.
+type Machine interface {
+	conventionalcommits.Machine
+
+	// WithStrictUTF8 requires the entire original input to be well-formed UTF-8.
+	// Malformed input returns a nil message and an error at the first invalid byte,
+	// including when best effort mode is enabled.
+	WithStrictUTF8()
+}
+
 // WithBestEffort enables the best effort mode.
 //
 // Best effort mode tells the parser to return what it found,
@@ -38,22 +48,6 @@ func WithLogger(l *logrus.Logger) conventionalcommits.MachineOption {
 	}
 }
 
-// WithStrictUTF8 requires the entire commit message to be well-formed UTF-8.
-//
-// Validation runs on the original input before parsing. Malformed input returns
-// a nil message and an error at the first invalid byte, including when best
-// effort mode is enabled.
-//
-// This option is specific to machines created by this parser package. Applying
-// it to another Machine implementation panics instead of silently doing nothing.
-func WithStrictUTF8() conventionalcommits.MachineOption {
-	return func(m conventionalcommits.Machine) conventionalcommits.Machine {
-		parserMachine, ok := m.(*machine)
-		if !ok || parserMachine == nil {
-			panic("parser.WithStrictUTF8 requires parser.NewMachine")
-		}
-		parserMachine.strictUTF8 = true
-
-		return parserMachine
-	}
+func (m *machine) WithStrictUTF8() {
+	m.strictUTF8 = true
 }

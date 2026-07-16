@@ -4,17 +4,13 @@
 package parser
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
 	cc "github.com/leodido/go-conventionalcommits"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-const strictUTF8UnsupportedMachinePanic = "parser.WithStrictUTF8 requires parser.NewMachine"
 
 func malformedUTF8(prefix string, invalid []byte, suffix string) []byte {
 	input := make([]byte, 0, len(prefix)+len(invalid)+len(suffix))
@@ -27,6 +23,13 @@ func malformedUTF8(prefix string, invalid []byte, suffix string) []byte {
 
 func strictUTF8ErrorAt(column int) string {
 	return fmt.Sprintf("invalid UTF-8"+ColumnPositionTemplate, column)
+}
+
+func newStrictUTF8Machine(options ...cc.MachineOption) Machine {
+	machine := NewMachine(options...)
+	machine.WithStrictUTF8()
+
+	return machine
 }
 
 func TestStrictUTF8RejectsFirstMalformedByteAnywhereInInput(t *testing.T) {
@@ -77,10 +80,7 @@ func TestStrictUTF8RejectsFirstMalformedByteAnywhereInInput(t *testing.T) {
 			require.NoError(t, defaultErr, "strict UTF-8 remains opt-in")
 			require.NotNil(t, defaultMessage, "default parsing behavior must remain byte-permissive")
 
-			message, err := NewMachine(
-				WithTypes(cc.TypesFreeForm),
-				WithStrictUTF8(),
-			).Parse(input)
+			message, err := newStrictUTF8Machine(WithTypes(cc.TypesFreeForm)).Parse(input)
 
 			assert.Nil(t, message)
 			require.EqualError(t, err, strictUTF8ErrorAt(len(tt.prefix)))
@@ -96,10 +96,7 @@ func TestStrictUTF8AcceptsWellFormedUTF8IncludingEncodedRuneError(t *testing.T) 
 	}
 
 	for _, input := range tests {
-		message, err := NewMachine(
-			WithTypes(cc.TypesFreeForm),
-			WithStrictUTF8(),
-		).Parse([]byte(input))
+		message, err := newStrictUTF8Machine(WithTypes(cc.TypesFreeForm)).Parse([]byte(input))
 
 		require.NoError(t, err)
 		require.NotNil(t, message)
@@ -111,7 +108,7 @@ func TestStrictUTF8ReportsFirstMalformedByte(t *testing.T) {
 	prefix := "feat: description\n\nbody "
 	input := malformedUTF8(prefix, []byte{0xff}, " later \xfe")
 
-	message, err := NewMachine(WithStrictUTF8()).Parse(input)
+	message, err := newStrictUTF8Machine().Parse(input)
 
 	assert.Nil(t, message)
 	require.EqualError(t, err, strictUTF8ErrorAt(len(prefix)))
@@ -121,7 +118,7 @@ func TestStrictUTF8PrecedesGrammarValidation(t *testing.T) {
 	prefix := "this is not a conventional commit "
 	input := malformedUTF8(prefix, []byte{0xff}, "")
 
-	message, err := NewMachine(WithStrictUTF8()).Parse(input)
+	message, err := newStrictUTF8Machine().Parse(input)
 
 	assert.Nil(t, message)
 	require.EqualError(t, err, strictUTF8ErrorAt(len(prefix)))
@@ -131,14 +128,14 @@ func TestStrictUTF8PrecedesBestEffort(t *testing.T) {
 	prefix := "feat: description\n\nbody "
 	input := malformedUTF8(prefix, []byte{0xff}, "")
 
-	message, err := NewMachine(WithBestEffort(), WithStrictUTF8()).Parse(input)
+	message, err := newStrictUTF8Machine(WithBestEffort()).Parse(input)
 
 	assert.Nil(t, message, "invalid UTF-8 is an input-precondition failure, not a partial parse")
 	require.EqualError(t, err, strictUTF8ErrorAt(len(prefix)))
 }
 
 func TestStrictUTF8PersistsAcrossParseCalls(t *testing.T) {
-	machine := NewMachine(WithStrictUTF8())
+	machine := newStrictUTF8Machine()
 
 	message, err := machine.Parse([]byte("feat: valid"))
 	require.NoError(t, err)
@@ -178,32 +175,10 @@ func TestStrictUTF8UsesOriginalInputColumnsForIssue56Scenarios(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			input := malformedUTF8(tt.prefix, []byte{0xff}, tt.suffix)
 
-			message, err := NewMachine(WithStrictUTF8()).Parse(input)
+			message, err := newStrictUTF8Machine().Parse(input)
 
 			assert.Nil(t, message)
 			require.EqualError(t, err, strictUTF8ErrorAt(len(tt.prefix)))
 		})
 	}
 }
-
-func TestStrictUTF8PanicsForUnsupportedMachine(t *testing.T) {
-	require.PanicsWithValue(t, strictUTF8UnsupportedMachinePanic, func() {
-		WithStrictUTF8()(&unsupportedMachine{})
-	})
-}
-
-type unsupportedMachine struct{}
-
-func (*unsupportedMachine) Parse([]byte) (cc.Message, error) {
-	return nil, errors.New("unsupported machine")
-}
-
-func (*unsupportedMachine) WithBestEffort() {}
-
-func (*unsupportedMachine) HasBestEffort() bool {
-	return false
-}
-
-func (*unsupportedMachine) WithTypes(cc.TypeConfig) {}
-
-func (*unsupportedMachine) WithLogger(*logrus.Logger) {}
