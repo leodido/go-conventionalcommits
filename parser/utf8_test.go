@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// utf8Case pins the per-shape parse contract for an issue-#50 input
-// across one type config, in default mode (no options).
+// utf8Case pins the per-shape acceptance contract for an issue-#50
+// input across one type config, in default mode (no options).
 //
 // When expectOk is true, expectMsg is invoked to check the parsed
 // payload. When expectOk is false, expectErr is asserted as the exact
@@ -157,8 +157,8 @@ var utf8Cases = []utf8Case{
 	},
 }
 
-// TestUTF8ByteTransparency exercises the issue-#50 reproducer set in
-// default mode (no options).
+// TestUTF8HighByteAcceptance exercises the issue-#50 reproducer set
+// in default mode (no options).
 //
 // Best-effort mode is intentionally NOT covered here because it
 // swallows trailer-block errors and returns the description-only
@@ -166,9 +166,9 @@ var utf8Cases = []utf8Case{
 // decision being asserted.
 //
 // Strict-mode validation (the WithStrictUTF8 option, follow-up PR)
-// is intentionally NOT covered here either. This test pins what the
-// FSM does on its own; option behavior lives in its own test file.
-func TestUTF8ByteTransparency(t *testing.T) {
+// is intentionally NOT covered here either. This test pins which
+// bytes the FSM accepts; option behavior lives in its own test file.
+func TestUTF8HighByteAcceptance(t *testing.T) {
 	for _, tc := range utf8Cases {
 		tc := tc
 		t.Run(tc.title, func(t *testing.T) {

@@ -75,8 +75,8 @@ func TestParseNeverReturnsNilNil(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestParseAcceptsUTF8 sweeps the byte-transparency contract added
-// by issue #50 across:
+// TestParseAcceptsUTF8 sweeps the UTF-8/high-byte acceptance contract
+// added by issue #50 across:
 //
 //	{TypeConfig: minimal, conventional, falco, freeform}
 //	x {input shape: trailer value, scope, free-form type}
@@ -84,13 +84,13 @@ func TestParseNeverReturnsNilNil(t *testing.T) {
 //
 // The matrix exists in addition to the per-shape reproducers in
 // utf8_test.go to guarantee that NO type config silently regresses
-// the byte-transparency contract: e.g. if a future change hard-codes
-// `print` in one production but not another, this sweep notices.
+// grammar acceptance: e.g. if a future change hard-codes `print` in
+// one production but not another, this sweep notices.
 //
 // Falco-types is included because it shares the trailer / scope
-// productions with the other configs, so byte-transparency in those
-// productions must hold there too. Free-form-type-utf8 is only run
-// under TypesFreeForm because the other configs use literal-string
+// productions with the other configs, so high-byte acceptance in
+// those productions must hold there too. Free-form-type-utf8 is only
+// run under TypesFreeForm because the other configs use literal-string
 // type alternations that intentionally reject anything but their
 // allow-list.
 func TestParseAcceptsUTF8(t *testing.T) {
@@ -127,9 +127,9 @@ func TestParseAcceptsUTF8(t *testing.T) {
 			cfg, s := cfg, s
 			t.Run(cfg.name+"/"+s.name, func(t *testing.T) {
 				m, err := NewMachine(cfg.opt).Parse(s.input)
-				assert.NoError(t, err, "byte-transparency: input %q must parse", s.input)
-				if assert.NotNil(t, m, "byte-transparency: input %q must yield a message", s.input) {
-					assert.True(t, m.Ok(), "byte-transparency: input %q must produce an Ok() commit", s.input)
+				assert.NoError(t, err, "UTF-8 acceptance: input %q must parse", s.input)
+				if assert.NotNil(t, m, "UTF-8 acceptance: input %q must yield a message", s.input) {
+					assert.True(t, m.Ok(), "UTF-8 acceptance: input %q must produce an Ok() commit", s.input)
 				}
 			})
 		}
