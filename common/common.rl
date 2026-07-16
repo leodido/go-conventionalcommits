@@ -27,9 +27,8 @@ exclamation = 0x21;
 # every byte in [\x80-\xff] including bytes that never appear in
 # valid UTF-8 (\xc0, \xc1, \xfe, \xff), lone leaders, lone
 # continuations, and overlong-encoding leaders. Validating that
-# captured slices form well-formed UTF-8 is the caller's
-# responsibility; an opt-in `WithStrictUTF8` option for that lives
-# in a follow-up PR.
+# captured slices form well-formed UTF-8 is the caller's responsibility
+# unless the parser's opt-in `Machine.WithStrictUTF8` setting is enabled.
 #
 # Export behavior is field-specific: trailer values are returned
 # without normalization, while type and scope pass through

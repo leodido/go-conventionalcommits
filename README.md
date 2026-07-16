@@ -104,11 +104,13 @@ res, err := p.Parse(i)
 By default, the parser remains byte-permissive: grammar acceptance does not
 guarantee that every byte in a commit message is well-formed UTF-8.
 
-Use the parser-specific `WithStrictUTF8` option when the entire original input
-must be valid UTF-8:
+Enable strict validation on the parser-specific machine when the entire
+original input must be valid UTF-8:
 
 ```go
-res, err := parser.NewMachine(parser.WithStrictUTF8()).Parse(input)
+machine := parser.NewMachine()
+machine.WithStrictUTF8()
+res, err := machine.Parse(input)
 ```
 
 Strict UTF-8 validation runs before grammar parsing. The first malformed byte
@@ -117,12 +119,22 @@ column is the zero-based byte offset in the original input. This input
 precondition also takes precedence over best-effort parsing, so malformed UTF-8
 never produces a partial message.
 
-`parser.WithStrictUTF8()` is only supported by machines created with
-`parser.NewMachine`. Although its return type is
-`conventionalcommits.MachineOption`, manually applying it to another
-`Machine` implementation panics with
-`parser.WithStrictUTF8 requires parser.NewMachine`. Failing loudly here avoids
-silently accepting malformed input because an option was ignored.
+Malformed input matches the `parser.ErrInvalidUTF8` sentinel. Use
+`errors.As` with `*parser.InvalidUTF8Error` to retrieve its exact zero-based
+`ByteOffset` without parsing the error string:
+
+```go
+if errors.Is(err, parser.ErrInvalidUTF8) {
+    var invalid *parser.InvalidUTF8Error
+    if errors.As(err, &invalid) {
+        fmt.Println(invalid.ByteOffset)
+    }
+}
+```
+
+`WithStrictUTF8` belongs to `parser.Machine`, the interface returned by
+`parser.NewMachine`. Other `conventionalcommits.Machine` implementations cannot
+receive this parser-specific setting accidentally.
 
 ### Best effort
 

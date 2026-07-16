@@ -30,7 +30,10 @@ func makeFakeTrailerHeavyBody(paragraphs int) string {
 }
 
 // Avoid compiler optimizations that could remove the actual call we are benchmarking during benchmarks.
-var benchParseResult conventionalcommits.Message
+var (
+	benchParseResult conventionalcommits.Message
+	errBenchParse    error
+)
 
 type benchCase struct {
 	input []byte
@@ -157,5 +160,50 @@ func BenchmarkSlimParseConventionalTypes(b *testing.B) {
 				benchParseResult, _ = m.Parse(tc.input)
 			}
 		})
+	}
+}
+
+func BenchmarkStrictUTF8Validation(b *testing.B) {
+	tests := []benchCase{
+		{
+			label: "minimal ASCII message",
+			input: []byte("fix: x"),
+		},
+		{
+			label: "4 KiB UTF-8 body",
+			input: []byte("fix: x\n\n" + strings.Repeat("é", 2048)),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		b.Run(tt.label, func(b *testing.B) {
+			b.Run("default", func(b *testing.B) {
+				benchmarkUTF8Validation(b, tt.input, false)
+			})
+			b.Run("strict", func(b *testing.B) {
+				benchmarkUTF8Validation(b, tt.input, true)
+			})
+		})
+	}
+}
+
+func benchmarkUTF8Validation(b *testing.B, input []byte, strict bool) {
+	machine := NewMachine()
+	if strict {
+		machine.WithStrictUTF8()
+	}
+	if _, err := machine.Parse(input); err != nil {
+		b.Fatal(err)
+	}
+
+	b.ReportAllocs()
+	b.SetBytes(int64(len(input)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchParseResult, errBenchParse = machine.Parse(input)
+	}
+	if errBenchParse != nil {
+		b.Fatal(errBenchParse)
 	}
 }
