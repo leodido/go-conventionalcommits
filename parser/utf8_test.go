@@ -192,6 +192,57 @@ func TestUTF8HighByteAcceptance(t *testing.T) {
 	}
 }
 
+// TestUTF8ExportNormalization distinguishes grammar acceptance from
+// the public representation returned by Parse. Type and Scope pass
+// through strings.ToLower during export, while trailer values are
+// exported without normalization.
+func TestUTF8ExportNormalization(t *testing.T) {
+	cases := []struct {
+		title     string
+		input     []byte
+		expectMsg func(t *testing.T, m cc.Message)
+	}{
+		{
+			title:     "uppercase-unicode-free-form-type-is-lowercased",
+			input:     []byte("FÉAT: x"),
+			expectMsg: expectType("féat"),
+		},
+		{
+			title:     "uppercase-unicode-scope-is-lowercased",
+			input:     []byte("feat(SCÔPE): x"),
+			expectMsg: expectScope("scôpe"),
+		},
+		{
+			title:     "malformed-free-form-type-becomes-replacement-rune",
+			input:     []byte{0xff, ':', ' ', 'x'},
+			expectMsg: expectType("\uFFFD"),
+		},
+		{
+			title:     "malformed-scope-becomes-replacement-rune",
+			input:     []byte{'f', 'e', 'a', 't', '(', 0xff, ')', ':', ' ', 'x'},
+			expectMsg: expectScope("\uFFFD"),
+		},
+		{
+			title: "malformed-trailer-value-is-preserved",
+			input: []byte{
+				'f', 'e', 'a', 't', ':', ' ', 'x', '\n', '\n',
+				'R', 'e', 'v', 'i', 'e', 'w', 'e', 'd', '-', 'b', 'y', ':', ' ', 0xff,
+			},
+			expectMsg: expectFooter("reviewed-by", "\xff"),
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.title, func(t *testing.T) {
+			m, err := NewMachine(WithTypes(cc.TypesFreeForm)).Parse(tc.input)
+			require.NoError(t, err)
+			require.NotNil(t, m)
+			tc.expectMsg(t, m)
+		})
+	}
+}
+
 // TestUTF8MidMultibyteEOFNoPanic asserts that an input ending mid-
 // multibyte does not panic the parser regardless of mode or type
 // config. Pinned separately because the panic surface is independent
