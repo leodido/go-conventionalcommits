@@ -51,7 +51,7 @@ type Logger interface {
 
 // Machine represent a FSM able to parse a conventional commit and return it in an structured way.
 type Machine interface {
-	Parse(input []byte) (Message, error)
+	Parse(input []byte) (*ConventionalCommit, error)
 	BestEfforter
 	TypeConfigurer
 	Logger

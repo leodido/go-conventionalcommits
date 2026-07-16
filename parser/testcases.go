@@ -14,8 +14,8 @@ type testCase struct {
 	title        string
 	input        []byte
 	ok           bool
-	value        conventionalcommits.Message
-	partialValue conventionalcommits.Message
+	value        *conventionalcommits.ConventionalCommit
+	partialValue *conventionalcommits.ConventionalCommit
 	errorString  string
 	bump         *conventionalcommits.VersionBump
 }

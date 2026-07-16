@@ -23,7 +23,7 @@ func (c *conventionalCommit) minimal() bool {
 	return c._type != "" && c.descr != ""
 }
 
-func (c *conventionalCommit) export() conventionalcommits.Message {
+func (c *conventionalCommit) export() *conventionalcommits.ConventionalCommit {
 	out := &conventionalcommits.ConventionalCommit{}
 	out.Exclamation = c.exclamation
 	// Type and Scope intentionally retain the parser's historical

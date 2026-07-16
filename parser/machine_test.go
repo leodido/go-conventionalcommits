@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/leodido/go-conventionalcommits"
+	cctesting "github.com/leodido/go-conventionalcommits/testing"
 	"github.com/sirupsen/logrus"
 	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
@@ -82,6 +83,53 @@ func TestMachineBestEffortOption(t *testing.T) {
 
 	p2 := NewMachine(WithBestEffort()).(conventionalcommits.BestEfforter)
 	assert.True(t, p2.HasBestEffort())
+}
+
+func TestPublicInterface(t *testing.T) {
+	i := []byte(`fix(code): correct minor typos in code
+
+see the issue [0] for details
+on typos fixed.
+
+[0]: https://issue
+
+Reviewed-by: Z
+Refs #133`)
+	opts := []conventionalcommits.MachineOption{
+		WithTypes(conventionalcommits.TypesConventional),
+	}
+	m, err := NewMachine(opts...).Parse(i)
+	assert.NoError(t, err)
+
+	footers := make(map[string][]string)
+	footers["reviewed-by"] = []string{"Z"}
+	footers["refs"] = []string{"133"}
+
+	res := &conventionalcommits.ConventionalCommit{
+		Type:        "fix",
+		Description: "correct minor typos in code",
+		Scope:       cctesting.StringAddress("code"),
+		Exclamation: false,
+		Body: cctesting.StringAddress(`see the issue [0] for details
+on typos fixed.
+
+[0]: https://issue`),
+		Footers:    footers,
+		TypeConfig: 1,
+	}
+
+	mScope := *m.Scope
+	resScope := *res.Scope
+	mBody := *m.Body
+	resBody := *res.Body
+
+	assert.Equal(t, m.Type, res.Type)
+	assert.Equal(t, m.Description, res.Description)
+	assert.Equal(t, mScope, resScope)
+	assert.Equal(t, m.Exclamation, res.Exclamation)
+	assert.Equal(t, mBody, resBody)
+	assert.Equal(t, m.Footers, res.Footers)
+	assert.Equal(t, m.TypeConfig, res.TypeConfig)
 }
 
 func TestMachineTypeConfigOption(t *testing.T) {

@@ -245,7 +245,7 @@ func NewMachine(options ...conventionalcommits.MachineOption) conventionalcommit
 //
 // It can also partially parse input messages returning a partially valid structured representation
 // and the error that stopped the parsing.
-func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
+func (m *machine) Parse(input []byte) (*conventionalcommits.ConventionalCommit, error) {
 	m.data = input
 	m.p = 0
 	m.pb = 0
