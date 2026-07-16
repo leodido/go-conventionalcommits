@@ -209,10 +209,14 @@ func (m *machine) emitDebug(s string, args ...interface{}) {
 }
 
 func (m *machine) emitError(s string, args ...interface{}) error {
-	e := fmt.Errorf(s+ColumnPositionTemplate, args...)
+	return m.emitErrorValue(fmt.Errorf(s+ColumnPositionTemplate, args...))
+}
+
+func (m *machine) emitErrorValue(e error) error {
 	if m.logger != nil {
 		m.logger.Errorln(e)
 	}
+
 	return e
 }
 
@@ -249,7 +253,7 @@ func NewMachine(options ...conventionalcommits.MachineOption) Machine {
 func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	if m.strictUTF8 {
 		if column := firstInvalidUTF8Index(input); column >= 0 {
-			return nil, m.emitError(ErrInvalidUTF8, column)
+			return nil, m.emitErrorValue(&InvalidUTF8Error{ByteOffset: column})
 		}
 	}
 

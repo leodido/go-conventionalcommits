@@ -4,6 +4,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -22,7 +23,7 @@ func malformedUTF8(prefix string, invalid []byte, suffix string) []byte {
 }
 
 func strictUTF8ErrorAt(column int) string {
-	return fmt.Sprintf("invalid UTF-8"+ColumnPositionTemplate, column)
+	return fmt.Sprintf("%s"+ColumnPositionTemplate, ErrInvalidUTF8, column)
 }
 
 func newStrictUTF8Machine(options ...cc.MachineOption) Machine {
@@ -112,6 +113,11 @@ func TestStrictUTF8ReportsFirstMalformedByte(t *testing.T) {
 
 	assert.Nil(t, message)
 	require.EqualError(t, err, strictUTF8ErrorAt(len(prefix)))
+	require.ErrorIs(t, err, ErrInvalidUTF8)
+
+	var invalidUTF8Error *InvalidUTF8Error
+	require.True(t, errors.As(err, &invalidUTF8Error))
+	assert.Equal(t, len(prefix), invalidUTF8Error.ByteOffset)
 }
 
 func TestStrictUTF8PrecedesGrammarValidation(t *testing.T) {
