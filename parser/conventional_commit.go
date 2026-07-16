@@ -26,6 +26,11 @@ func (c *conventionalCommit) minimal() bool {
 func (c *conventionalCommit) export() conventionalcommits.Message {
 	out := &conventionalcommits.ConventionalCommit{}
 	out.Exclamation = c.exclamation
+	// Type and Scope intentionally retain the parser's historical
+	// Unicode-aware lowercase normalization. Consequently, grammar
+	// acceptance of high bytes does not imply byte-for-byte export:
+	// cased Unicode is lowercased and ill-formed bytes become U+FFFD.
+	// Description, Body, and Footers do not pass through this step.
 	out.Type = strings.ToLower(c._type)
 	out.Description = c.descr
 	out.TypeConfig = c.typeconfig

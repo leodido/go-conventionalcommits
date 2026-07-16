@@ -256,6 +256,9 @@ conventional_types = ('build'i | 'ci'i | 'chore'i | 'docs'i | 'feat'i | 'fix'i |
 
 falco_types = ('build'i | 'ci'i | 'chore'i | 'docs'i | 'feat'i | 'fix'i | 'perf'i | 'new'i | 'revert'i | 'update'i | 'test'i | 'rule'i);
 
+# high_byte controls what the FSM can recognize. It does not define
+# the exported representation: type and scope are normalized by
+# conventionalCommit.export, while trailer values are not.
 free_form_types = high_byte+;
 
 scope = lpar ((high_byte* -- lpar) -- rpar) >mark %err(err_malformed_scope) %eof(err_malformed_scope_closing) %set_scope rpar;
