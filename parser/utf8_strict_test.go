@@ -90,18 +90,24 @@ func TestStrictUTF8RejectsFirstMalformedByteAnywhereInInput(t *testing.T) {
 }
 
 func TestStrictUTF8AcceptsWellFormedUTF8IncludingEncodedRuneError(t *testing.T) {
-	tests := []string{
-		"féat(scôpe): café",
-		"feat: replacement character \uFFFD",
-		"feat: description\n\n中文 👍\n\nReviewed-by: Léa",
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{name: "Latin text", input: "féat(scôpe): café"},
+		{name: "encoded replacement character", input: "feat: replacement character \uFFFD"},
+		{name: "CJK emoji and trailer", input: "feat: description\n\n中文 👍\n\nReviewed-by: Léa"},
 	}
 
-	for _, input := range tests {
-		message, err := newStrictUTF8Machine(WithTypes(cc.TypesFreeForm)).Parse([]byte(input))
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			message, err := newStrictUTF8Machine(WithTypes(cc.TypesFreeForm)).Parse([]byte(tt.input))
 
-		require.NoError(t, err)
-		require.NotNil(t, message)
-		assert.True(t, message.Ok())
+			require.NoError(t, err)
+			require.NotNil(t, message)
+			assert.True(t, message.Ok())
+		})
 	}
 }
 
@@ -155,24 +161,31 @@ func TestStrictUTF8PersistsAcrossParseCalls(t *testing.T) {
 
 func TestStrictUTF8UsesOriginalInputColumnsForIssue56Scenarios(t *testing.T) {
 	tests := []struct {
-		name   string
-		prefix string
-		suffix string
+		name            string
+		prefix          string
+		suffix          string
+		expectedBody    string
+		expectedFooters map[string][]string
 	}{
 		{
-			name:   "body assembly synthesizes newlines",
-			prefix: "feat: description\n\nfirst body line\nsecond body line ",
-			suffix: "\n\nReviewed-by: Leo",
+			name:            "body assembly synthesizes newlines",
+			prefix:          "feat: description\n\nfirst body line\nsecond body line ",
+			suffix:          "\n\nReviewed-by: Leo",
+			expectedBody:    "first body line\nsecond body line \xff",
+			expectedFooters: map[string][]string{"reviewed-by": {"Leo"}},
 		},
 		{
-			name:   "export trims trailing body blank line",
-			prefix: "feat: description\n\nbody before trailing blank line ",
-			suffix: "\n\n",
+			name:         "export trims trailing body blank line",
+			prefix:       "feat: description\n\nbody before trailing blank line ",
+			suffix:       "\n\n",
+			expectedBody: "body before trailing blank line \xff",
 		},
 		{
-			name:   "body-before-blank-line action nudges parser markers",
-			prefix: "feat: description\n\nbody paragraph\nFake: trailer-shaped body ",
-			suffix: "\n\nReviewed-by: Leo",
+			name:            "body-before-blank-line action nudges parser markers",
+			prefix:          "feat: description\n\nbody paragraph\nFake: trailer-shaped body ",
+			suffix:          "\n\nReviewed-by: Leo",
+			expectedBody:    "body paragraph\nFake: trailer-shaped body \xff",
+			expectedFooters: map[string][]string{"reviewed-by": {"Leo"}},
 		},
 	}
 
@@ -181,10 +194,21 @@ func TestStrictUTF8UsesOriginalInputColumnsForIssue56Scenarios(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			input := malformedUTF8(tt.prefix, []byte{0xff}, tt.suffix)
 
+			permissiveMessage, permissiveErr := NewMachine().Parse(input)
+			require.NoError(t, permissiveErr)
+			commit, ok := permissiveMessage.(*cc.ConventionalCommit)
+			require.True(t, ok)
+			require.NotNil(t, commit.Body)
+			assert.Equal(t, tt.expectedBody, *commit.Body)
+			assert.Equal(t, tt.expectedFooters, commit.Footers)
+
 			message, err := newStrictUTF8Machine().Parse(input)
 
 			assert.Nil(t, message)
 			require.EqualError(t, err, strictUTF8ErrorAt(len(tt.prefix)))
+			var invalidUTF8Error *InvalidUTF8Error
+			require.ErrorAs(t, err, &invalidUTF8Error)
+			assert.Equal(t, len(tt.prefix), invalidUTF8Error.ByteOffset)
 		})
 	}
 }

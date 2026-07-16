@@ -14,7 +14,8 @@ type Machine interface {
 
 	// WithStrictUTF8 requires the entire original input to be well-formed UTF-8.
 	// Malformed input returns a nil message and an error at the first invalid byte,
-	// including when best effort mode is enabled.
+	// including when best effort mode is enabled. The error matches ErrInvalidUTF8
+	// and can be inspected as *InvalidUTF8Error.
 	WithStrictUTF8()
 }
 

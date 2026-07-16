@@ -165,9 +165,9 @@ var utf8Cases = []utf8Case{
 // commit, which is a separate contract from the reject/accept
 // decision being asserted.
 //
-// Strict-mode validation (the WithStrictUTF8 option, follow-up PR)
+// Strict UTF-8 validation (the Machine.WithStrictUTF8 setting)
 // is intentionally NOT covered here either. This test pins which
-// bytes the FSM accepts; option behavior lives in its own test file.
+// bytes the FSM accepts; opt-in behavior lives in its own test file.
 func TestUTF8HighByteAcceptance(t *testing.T) {
 	for _, tc := range utf8Cases {
 		tc := tc
