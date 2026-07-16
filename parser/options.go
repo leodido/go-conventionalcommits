@@ -38,31 +38,22 @@ func WithLogger(l *logrus.Logger) conventionalcommits.MachineOption {
 	}
 }
 
-// WithStrictUTF8 enables opt-in UTF-8 well-formedness validation of
-// trailer values, scope, and free-form types.
+// WithStrictUTF8 requires the entire commit message to be well-formed UTF-8.
 //
-// When enabled, after a successful parse the captured slices are
-// checked with utf8.Valid. The first ill-formed slice produces an
-// error whose column is the byte offset (in the ORIGINAL input) of
-// the first invalid byte; trailer-value errors also include the
-// failing footer key.
+// Validation runs on the original input before parsing. Malformed input returns
+// a nil message and an error at the first invalid byte, including when best
+// effort mode is enabled.
 //
-// Body and description are intentionally NOT covered by this option.
-// Use WithStrictUTF8Body for those.
+// This option is specific to machines created by this parser package. Applying
+// it to another Machine implementation panics instead of silently doing nothing.
 func WithStrictUTF8() conventionalcommits.MachineOption {
-	return conventionalcommits.WithStrictUTF8()
-}
+	return func(m conventionalcommits.Machine) conventionalcommits.Machine {
+		parserMachine, ok := m.(*machine)
+		if !ok || parserMachine == nil {
+			panic("parser.WithStrictUTF8 requires parser.NewMachine")
+		}
+		parserMachine.strictUTF8 = true
 
-// WithStrictUTF8Body enables opt-in UTF-8 well-formedness validation
-// of body and description slices.
-//
-// When enabled, after a successful parse the captured slices are
-// checked with utf8.Valid. The first ill-formed slice produces an
-// error whose column is the byte offset (in the ORIGINAL input) of
-// the first invalid byte.
-//
-// Trailer values, scope, and free-form types are intentionally NOT
-// covered by this option. Use WithStrictUTF8 for those.
-func WithStrictUTF8Body() conventionalcommits.MachineOption {
-	return conventionalcommits.WithStrictUTF8Body()
+		return parserMachine
+	}
 }

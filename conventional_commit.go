@@ -49,32 +49,6 @@ type Logger interface {
 	WithLogger(l *logrus.Logger)
 }
 
-// StrictUTF8er is an optional capability for parsers that support
-// opt-in UTF-8 well-formedness validation of trailer values, scope,
-// and free-form types.
-//
-// Intentionally NOT part of the Machine interface: external
-// implementors of Machine (mocks, alternate parsers) MUST be allowed
-// to satisfy Machine without growing this method. The package-level
-// option function uses a checked type-assert and is a no-op for
-// machines that don't implement StrictUTF8er.
-type StrictUTF8er interface {
-	WithStrictUTF8()
-	HasStrictUTF8() bool
-}
-
-// StrictUTF8Bodyer is an optional capability for parsers that
-// support opt-in UTF-8 well-formedness validation of body and
-// description.
-//
-// Intentionally NOT part of the Machine interface, for the same
-// reasons as StrictUTF8er. The two strict-UTF-8 knobs are
-// independent and can be combined.
-type StrictUTF8Bodyer interface {
-	WithStrictUTF8Body()
-	HasStrictUTF8Body() bool
-}
-
 // Machine represent a FSM able to parse a conventional commit and return it in an structured way.
 type Machine interface {
 	Parse(input []byte) (Message, error)
