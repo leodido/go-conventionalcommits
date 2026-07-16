@@ -17,24 +17,6 @@ type conventionalCommit struct {
 	body        string
 	footers     map[string][]string
 	typeconfig  conventionalcommits.TypeConfig
-
-	// Byte offsets in the ORIGINAL input where each captured slice
-	// begins. -1 when the corresponding field was never captured.
-	// Used by the WithStrictUTF8 / WithStrictUTF8Body validators to
-	// report the column of the first invalid byte against the
-	// original input rather than against the post-parse cursor
-	// (m.p == m.pe at validation time). The exported view goes
-	// through strings.ToLower for type/scope, which collapses
-	// invalid bytes to U+FFFD; validation reads the raw fields here
-	// instead.
-	typeOffset  int
-	descrOffset int
-	scopeOffset int
-	bodyOffset  int
-	// footerValueOffsets parallels footers: footerValueOffsets[k][i]
-	// is the byte offset in the original input of the i-th value
-	// captured for footer key k.
-	footerValueOffsets map[string][]int
 }
 
 func (c *conventionalCommit) minimal() bool {

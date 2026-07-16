@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"sort"
-	"unicode/utf8"
 
 	"github.com/leodido/go-conventionalcommits"
 	"github.com/sirupsen/logrus"
@@ -40,24 +39,6 @@ const (
 	ErrTrailer = "illegal '%s' character in trailer"
 	// ErrTrailerIncomplete represent an error when a trailer is not complete.
 	ErrTrailerIncomplete = "incomplete footer trailer after '%s' character"
-	// ErrInvalidUTF8Trailer is the WithStrictUTF8 error for a trailer
-	// value that contains a byte sequence that is not well-formed
-	// UTF-8. The %s placeholder is the failing footer key.
-	ErrInvalidUTF8Trailer = "invalid UTF-8 in trailer value for %q"
-	// ErrInvalidUTF8Scope is the WithStrictUTF8 error for a scope
-	// that contains a byte sequence that is not well-formed UTF-8.
-	ErrInvalidUTF8Scope = "invalid UTF-8 in scope"
-	// ErrInvalidUTF8Type is the WithStrictUTF8 error for a free-form
-	// type that contains a byte sequence that is not well-formed
-	// UTF-8.
-	ErrInvalidUTF8Type = "invalid UTF-8 in free-form type"
-	// ErrInvalidUTF8Description is the WithStrictUTF8Body error for a
-	// description that contains a byte sequence that is not well-
-	// formed UTF-8.
-	ErrInvalidUTF8Description = "invalid UTF-8 in description"
-	// ErrInvalidUTF8Body is the WithStrictUTF8Body error for a body
-	// that contains a byte sequence that is not well-formed UTF-8.
-	ErrInvalidUTF8Body = "invalid UTF-8 in body"
 )
 
 %%{
@@ -135,19 +116,16 @@ action err_begin_blank_line {
 
 action set_type {
 	output._type = string(m.text())
-	output.typeOffset = m.pb
 	m.emitInfo("valid commit message type", "type", output._type)
 }
 
 action set_scope {
 	output.scope = string(m.text())
-	output.scopeOffset = m.pb
 	m.emitInfo("valid commit message scope", "scope", output.scope)
 }
 
 action set_description {
 	output.descr = string(m.text())
-	output.descrOffset = m.pb
 	m.emitInfo("valid commit message description", "description", output.descr)
 }
 
@@ -171,7 +149,6 @@ action set_current_footer_key {
 
 action set_footer {
 	output.footers[m.currentFooterKey] = append(output.footers[m.currentFooterKey], string(m.text()))
-	output.footerValueOffsets[m.currentFooterKey] = append(output.footerValueOffsets[m.currentFooterKey], m.pb)
 	m.emitInfo("valid commit message footer trailer", m.currentFooterKey, string(m.text()))
 }
 
@@ -183,14 +160,6 @@ action count_nl {
 }
 
 action append_body {
-	// Record the offset of the FIRST body byte (in the original
-	// input) the very first time we append. Subsequent appends do
-	// not move it. Used by the WithStrictUTF8Body validator to
-	// report the column of the first invalid body byte against the
-	// original input.
-	if output.bodyOffset < 0 {
-		output.bodyOffset = m.pb
-	}
 	// Append newlines
 	for ; m.countNewlines > 0; {
 		output.body += "\n"
@@ -206,9 +175,6 @@ action append_body_before_blank_line {
 	// Append content to body
 	m.pb++
 	m.p++
-	if output.bodyOffset < 0 {
-		output.bodyOffset = m.pb
-	}
 	output.body += string(m.text())
 	m.emitInfo("valid commit message body content", "body", string(m.text()))
 	// Do not advance over the current char
@@ -387,7 +353,6 @@ type machine struct {
 	err              error
 	bestEffort       bool
 	strictUTF8       bool
-	strictUTF8Body   bool
 	typeConfig       conventionalcommits.TypeConfig
 	logger           *logrus.Logger
 	currentFooterKey string
@@ -581,6 +546,12 @@ func NewMachine(options ...conventionalcommits.MachineOption) conventionalcommit
 // It can also partially parse input messages returning a partially valid structured representation
 // and the error that stopped the parsing.
 func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
+	if m.strictUTF8 {
+		if column := firstInvalidUTF8Index(input); column >= 0 {
+			return nil, m.emitError(ErrInvalidUTF8, column)
+		}
+	}
+
 	m.data = input
 	m.p = 0
 	m.pb = 0
@@ -600,15 +571,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 	m.trailerBlockStart, m.trailerLineStarts = findTrailerBlock(input)
 	output := &conventionalCommit{}
 	output.footers = make(map[string][]string)
-	output.footerValueOffsets = make(map[string][]int)
 	output.typeconfig = m.typeConfig
-	// Sentinel: -1 means "never captured". The set_* actions
-	// overwrite these with m.pb the first time they fire. Used by
-	// the WithStrictUTF8 / WithStrictUTF8Body validators.
-	output.typeOffset = -1
-	output.descrOffset = -1
-	output.scopeOffset = -1
-	output.bodyOffset = -1
 
 	switch m.typeConfig {
 	case conventionalcommits.TypesFreeForm:
@@ -659,109 +622,7 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		return nil, m.err
 	}
 
-	// Strict-UTF8 validation runs as a post-pass on the captured
-	// slices of the internal output struct (NOT the exported view:
-	// strings.ToLower in export() collapses invalid bytes to U+FFFD,
-	// which would mask the very thing we're trying to detect).
-	//
-	// Best-effort interaction: when both bestEffort and a strict knob
-	// are set and validation fails, we still return the partial
-	// commit alongside the error, mirroring how the FSM-error path
-	// above behaves with bestEffort. Callers get the message for
-	// inspection; the error is the authoritative signal.
-	if m.strictUTF8 {
-		if err := m.validateStrictUTF8(output); err != nil {
-			if m.bestEffort {
-				return output.export(), err
-			}
-			return nil, err
-		}
-	}
-	if m.strictUTF8Body {
-		if err := m.validateStrictUTF8Body(output); err != nil {
-			if m.bestEffort {
-				return output.export(), err
-			}
-			return nil, err
-		}
-	}
-
 	return output.export(), nil
-}
-
-// validateStrictUTF8 runs the WithStrictUTF8 post-pass on the
-// captured slices for trailer values, scope, and free-form types.
-// It returns the FIRST error encountered; iteration over footers is
-// sorted by key so the result is deterministic across runs.
-//
-// Free-form type is only validated under TypesFreeForm; the other
-// type configs use literal-string allow-lists that already exclude
-// any non-ASCII byte at parse time.
-func (m *machine) validateStrictUTF8(c *conventionalCommit) error {
-	// Scope first (appears earliest in the input).
-	if c.scope != "" && !utf8.ValidString(c.scope) {
-		col := c.scopeOffset + firstInvalidUTF8Index([]byte(c.scope))
-		return fmt.Errorf(ErrInvalidUTF8Scope+ColumnPositionTemplate, col)
-	}
-	// Free-form type next.
-	if m.typeConfig == conventionalcommits.TypesFreeForm && c._type != "" && !utf8.ValidString(c._type) {
-		col := c.typeOffset + firstInvalidUTF8Index([]byte(c._type))
-		return fmt.Errorf(ErrInvalidUTF8Type+ColumnPositionTemplate, col)
-	}
-	// Footers last. Iterate sorted keys for deterministic errors.
-	if len(c.footers) > 0 {
-		keys := make([]string, 0, len(c.footers))
-		for k := range c.footers {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			vs := c.footers[k]
-			offs := c.footerValueOffsets[k]
-			for i, v := range vs {
-				if utf8.ValidString(v) {
-					continue
-				}
-				origin := -1
-				if i < len(offs) {
-					origin = offs[i]
-				}
-				col := origin + firstInvalidUTF8Index([]byte(v))
-				return fmt.Errorf(ErrInvalidUTF8Trailer+ColumnPositionTemplate, k, col)
-			}
-		}
-	}
-	return nil
-}
-
-// validateStrictUTF8Body runs the WithStrictUTF8Body post-pass on
-// the description and body slices. Description is checked first
-// because it appears earliest in the input.
-func (m *machine) validateStrictUTF8Body(c *conventionalCommit) error {
-	if c.descr != "" && !utf8.ValidString(c.descr) {
-		col := c.descrOffset + firstInvalidUTF8Index([]byte(c.descr))
-		return fmt.Errorf(ErrInvalidUTF8Description+ColumnPositionTemplate, col)
-	}
-	if c.body != "" && !utf8.ValidString(c.body) {
-		col := c.bodyOffset + firstInvalidUTF8Index([]byte(c.body))
-		return fmt.Errorf(ErrInvalidUTF8Body+ColumnPositionTemplate, col)
-	}
-	return nil
-}
-
-// firstInvalidUTF8Index returns the byte index of the first
-// ill-formed UTF-8 byte in b, or -1 if b is well-formed UTF-8. The
-// caller should ensure b is known-invalid before relying on a
-// non-negative result.
-func firstInvalidUTF8Index(b []byte) int {
-	for i := 0; i < len(b); {
-		r, size := utf8.DecodeRune(b[i:])
-		if r == utf8.RuneError && size == 1 {
-			return i
-		}
-		i += size
-	}
-	return -1
 }
 
 // WithBestEffort enables best effort mode.
@@ -782,30 +643,4 @@ func (m *machine) WithTypes(t conventionalcommits.TypeConfig) {
 // WithLogger tells the parser which logger to use.
 func (m *machine) WithLogger(l *logrus.Logger) {
 	m.logger = l
-}
-
-// WithStrictUTF8 enables opt-in UTF-8 well-formedness validation of
-// trailer values, scope, and free-form types. See the package-level
-// WithStrictUTF8 option for the user-facing contract.
-func (m *machine) WithStrictUTF8() {
-	m.strictUTF8 = true
-}
-
-// HasStrictUTF8 reports whether the strict-UTF-8 option has been
-// enabled on this machine. Independent of HasStrictUTF8Body.
-func (m *machine) HasStrictUTF8() bool {
-	return m.strictUTF8
-}
-
-// WithStrictUTF8Body enables opt-in UTF-8 well-formedness validation
-// of body and description. See the package-level WithStrictUTF8Body
-// option for the user-facing contract.
-func (m *machine) WithStrictUTF8Body() {
-	m.strictUTF8Body = true
-}
-
-// HasStrictUTF8Body reports whether the strict-UTF-8-body option has
-// been enabled on this machine. Independent of HasStrictUTF8.
-func (m *machine) HasStrictUTF8Body() bool {
-	return m.strictUTF8Body
 }
