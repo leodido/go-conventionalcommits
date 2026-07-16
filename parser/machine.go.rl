@@ -522,7 +522,7 @@ func (m *machine) emitErrorOnPreviousCharacter(messageTemplate string) error {
 }
 
 // NewMachine creates a new FSM able to parse Conventional Commits.
-func NewMachine(options ...conventionalcommits.MachineOption) conventionalcommits.Machine {
+func NewMachine(options ...conventionalcommits.MachineOption) Machine {
 	m := &machine{}
 
 	for _, opt := range options {
