@@ -19,7 +19,9 @@ exclamation = 0x21;
 # high_byte widens Ragel's built-in `print` class ([\x20-\x7e], ASCII
 # printable only) with the high-byte range [\x80-\xff] so productions
 # that capture user-supplied free-form text (trailer values, scope,
-# free-form types) accept any non-control byte transparently.
+# free-form types) accept any non-control byte at the grammar layer.
+# This is an acceptance rule, not a promise that every exported field
+# preserves the input bytes unchanged.
 #
 # The class is "any high byte", NOT "any valid UTF-8 byte". It admits
 # every byte in [\x80-\xff] including bytes that never appear in
@@ -28,6 +30,11 @@ exclamation = 0x21;
 # captured slices form well-formed UTF-8 is the caller's
 # responsibility; an opt-in `WithStrictUTF8` option for that lives
 # in a follow-up PR.
+#
+# Export behavior is field-specific: trailer values are returned
+# without normalization, while type and scope pass through
+# strings.ToLower in parser/conventional_commit.go. That lowercases
+# valid cased Unicode and replaces ill-formed bytes with U+FFFD.
 #
 # \x7f (DEL) is intentionally excluded; it is a control byte. C0
 # controls [\x00-\x1f] (except \n where the production allows it)
