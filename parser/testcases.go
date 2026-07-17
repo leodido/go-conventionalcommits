@@ -517,13 +517,11 @@ var testCases = []testCase{
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
 		nil,
 	},
-	// INVALID / newline in the description
-	// VALID / until the newline
+	// VALID / terminal line ending
 	{
 		"description-ending-with-single-newline",
 		[]byte("feat(az)!: bla\x0A"),
-		false,
-		nil,
+		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "feat",
 			Scope:       cctesting.StringAddress("az"),
@@ -531,7 +529,14 @@ var testCases = []testCase{
 			Description: "bla",
 			TypeConfig:  0,
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
+		&conventionalcommits.ConventionalCommit{
+			Type:        "feat",
+			Scope:       cctesting.StringAddress("az"),
+			Exclamation: true,
+			Description: "bla",
+			TypeConfig:  0,
+		},
+		"",
 		nil,
 	},
 	// VALID / multi-line body is valid (after a blank line)
@@ -2024,13 +2029,11 @@ var testCasesForFalcoTypes = []testCase{
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
 		nil,
 	},
-	// INVALID / newline in the description
-	// VALID / until the newline
+	// VALID / terminal line ending
 	{
 		"description-ending-with-single-newline",
 		[]byte("docs(az)!: bla\x0A"),
-		false,
-		nil,
+		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "docs",
 			Scope:       cctesting.StringAddress("az"),
@@ -2038,7 +2041,14 @@ var testCasesForFalcoTypes = []testCase{
 			Description: "bla",
 			TypeConfig:  2,
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
+		&conventionalcommits.ConventionalCommit{
+			Type:        "docs",
+			Scope:       cctesting.StringAddress("az"),
+			Exclamation: true,
+			Description: "bla",
+			TypeConfig:  2,
+		},
+		"",
 		nil,
 	},
 	// VALID
@@ -2846,13 +2856,11 @@ var testCasesForConventionalTypes = []testCase{
 		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
 		nil,
 	},
-	// INVALID / newline in the description
-	// VALID / until the newline
+	// VALID / terminal line ending
 	{
 		"description-ending-with-single-newline",
 		[]byte("perf(at)!: rrr\x0A"),
-		false,
-		nil,
+		true,
 		&conventionalcommits.ConventionalCommit{
 			Type:        "perf",
 			Scope:       cctesting.StringAddress("at"),
@@ -2860,7 +2868,14 @@ var testCasesForConventionalTypes = []testCase{
 			Description: "rrr",
 			TypeConfig:  1,
 		},
-		fmt.Sprintf(ErrMissingBlankLineAtBeginning+ColumnPositionTemplate, 15),
+		&conventionalcommits.ConventionalCommit{
+			Type:        "perf",
+			Scope:       cctesting.StringAddress("at"),
+			Exclamation: true,
+			Description: "rrr",
+			TypeConfig:  1,
+		},
+		"",
 		nil,
 	},
 	// VALID

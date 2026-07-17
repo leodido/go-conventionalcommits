@@ -18,6 +18,85 @@ func TestMachineParse(t *testing.T) {
 	runner(t, "minimaltypes", testCases, WithTypes(conventionalcommits.TypesMinimal))
 }
 
+func TestParseTerminalLineEndings(t *testing.T) {
+	t.Parallel()
+
+	const header = "feat(NOSCOPE): some great feature"
+
+	cases := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{
+			name:  "single LF",
+			input: header + "\n",
+		},
+		{
+			name:  "single CRLF",
+			input: header + "\r\n",
+		},
+		{
+			name:  "mixed terminal line endings",
+			input: header + "\r\n\n\r\n",
+		},
+		{
+			name:    "trailing space is not normalized",
+			input:   header + " \n",
+			wantErr: true,
+		},
+		{
+			name:    "non-empty trailing line is not normalized",
+			input:   header + "\nnot a body",
+			wantErr: true,
+		},
+	}
+
+	modes := []struct {
+		name string
+		opts []conventionalcommits.MachineOption
+	}{
+		{name: "default"},
+		{name: "best-effort", opts: []conventionalcommits.MachineOption{WithBestEffort()}},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			for _, mode := range modes {
+				mode := mode
+				t.Run(mode.name, func(t *testing.T) {
+					message, err := NewMachine(mode.opts...).Parse([]byte(tc.input))
+					if tc.wantErr {
+						require.Error(t, err)
+
+						return
+					}
+
+					require.NoError(t, err)
+					require.NotNil(t, message)
+
+					commit, ok := message.(*conventionalcommits.ConventionalCommit)
+					require.True(t, ok)
+					assert.Equal(t, "feat", commit.Type)
+					require.NotNil(t, commit.Scope)
+					assert.Equal(t, "noscope", *commit.Scope)
+					assert.Equal(t, "some great feature", commit.Description)
+				})
+			}
+		})
+	}
+}
+
+func TestParsePreservesTerminalCarriageReturn(t *testing.T) {
+	message, err := NewMachine().Parse([]byte("feat: description\r"))
+
+	require.NoError(t, err)
+	commit, ok := message.(*conventionalcommits.ConventionalCommit)
+	require.True(t, ok)
+	assert.Equal(t, "description\r", commit.Description)
+}
+
 func TestMachineParseWithFalcoTypes(t *testing.T) {
 	runner(t, "falcotypes", testCasesForFalcoTypes, WithTypes(conventionalcommits.TypesFalco))
 }
