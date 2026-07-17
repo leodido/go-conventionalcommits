@@ -1,13 +1,13 @@
 # Validate PR titles with the repository's Conventional Commits parser.
 # This read-only workflow executes the PR merge commit so parser changes are
 # tested with the rest of the PR. Maintainers can bypass the check with the
-# `no-conventional-title` label.
+# `no-conventional-title` label; label changes must therefore retrigger it.
 
 name: validate-title
 
 on:
   pull_request:
-    types: [opened, edited, reopened, synchronize]
+    types: [opened, edited, reopened, synchronize, labeled, unlabeled]
 
 permissions:
   contents: read
