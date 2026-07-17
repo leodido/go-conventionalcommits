@@ -1,9 +1,11 @@
 # This workflow handles untrusted pull requests with a write-scoped token.
 # Keep these invariants intact:
-#   - check out and execute only the immutable base SHA;
-#   - pass PR-controlled data through env/files, never into run expressions;
-#   - derive labels only from ccvalidate output and hardcoded mappings;
-#   - pin third-party actions to full commit SHAs.
+#   - every checkout, action, and build runs in the read-only classify job;
+#   - classify checks out only the immutable base SHA and disables caches;
+#   - PR-controlled strings stay in env/files and never enter run expressions;
+#   - only a compact JSON array of hardcoded labels crosses into apply;
+#   - apply has no checkout/action/build and independently validates its input;
+#   - mutations add/remove individual managed labels, never replace the set.
 
 name: label
 
@@ -19,31 +21,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  file-globs:
-    name: file-glob labels
+  classify:
+    name: classify desired labels
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/labeler@8558fd74291d67161a8a78ce36a881fa63b766a9 # v5.0.0
-        with:
-          configuration-path: .github/labeler.yml
-          sync-labels: true
-
-  cc-title:
-    name: conventional-commits labels
-    needs: file-globs
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: write
+      pull-requests: read
+    outputs:
+      labels: ${{ steps.classify.outputs.labels }}
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
+      EXPECTED_CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
       PR_TITLE: ${{ github.event.pull_request.title }}
       PR_BODY: ${{ github.event.pull_request.body }}
     steps:
@@ -55,109 +46,147 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
 
       - name: Build trusted validator
         run: |
           set -euo pipefail
           go build -o "$RUNNER_TEMP/ccvalidate" ./tools/ccvalidate
 
-      - name: Sync Conventional Commits labels
+      - name: Classify labels
+        id: classify
         run: |
           set -euo pipefail
 
-          managed=(
-            enhancement bug performance refactor documentation
-            test build ci chore breaking-change
-          )
-          desired=()
-
           message_file="$RUNNER_TEMP/pr-message.txt"
+          changed_files_file="$RUNNER_TEMP/changed-files.json"
+
           {
             printf '%s\n' "$PR_TITLE"
             if [ -n "${PR_BODY:-}" ]; then
               printf '\n%s' "$PR_BODY"
             fi
-          } > "$message_file"
+          } >"$message_file"
 
-          commit_type=""
-          breaking=false
-          if describe=$(CC_INPUT_FILE="$message_file" "$RUNNER_TEMP/ccvalidate" --describe 2>/dev/null); then
-            while IFS='=' read -r key value; do
-              case "$key" in
-                type) commit_type="$value" ;;
-                breaking) breaking="$value" ;;
-              esac
-            done <<< "$describe"
-          else
-            echo "::warning title=Non-Conventional-Commits PR title::The PR title is not a valid Conventional Commit and will not receive a category label."
-          fi
+          gh api --paginate --slurp \
+            "repos/$GH_REPO/pulls/$PR_NUMBER/files?per_page=100" \
+            >"$changed_files_file"
 
-          case "$commit_type" in
-            feat) desired+=(enhancement) ;;
-            fix) desired+=(bug) ;;
-            perf) desired+=(performance) ;;
-            refactor) desired+=(refactor) ;;
-            docs) desired+=(documentation) ;;
-            test) desired+=(test) ;;
-            build) desired+=(build) ;;
-            ci) desired+=(ci) ;;
-            chore|style|revert) desired+=(chore) ;;
-            "") ;;
-            *)
-              echo "unexpected type from ccvalidate: $commit_type" >&2
-              exit 1
-              ;;
-          esac
+          desired_json=$(".github/scripts/classify-labels.sh" \
+            "$RUNNER_TEMP/ccvalidate" \
+            "$message_file" \
+            "$changed_files_file" \
+            "$EXPECTED_CHANGED_FILES")
+          printf 'labels=%s\n' "$desired_json" >>"$GITHUB_OUTPUT"
 
-          case "$breaking" in
-            true) desired+=(breaking-change) ;;
-            false) ;;
-            *)
-              echo "unexpected breaking value from ccvalidate: $breaking" >&2
-              exit 1
-              ;;
-          esac
+  apply:
+    name: apply desired labels
+    needs: classify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      DESIRED_LABELS_JSON: ${{ needs.classify.outputs.labels }}
+    steps:
+      - name: Apply labels
+        run: |
+          set -euo pipefail
 
-          allowed='^(enhancement|bug|performance|refactor|documentation|test|build|ci|chore|breaking-change)$'
-          if [ ${#desired[@]} -gt 0 ]; then
-            for label in "${desired[@]}"; do
-              if [[ ! "$label" =~ $allowed ]]; then
-                echo "refusing non-whitelisted label: $label" >&2
-                exit 1
-              fi
-            done
-          fi
+          allowed_labels_json='["enhancement","bug","performance","refactor","documentation","test","build","ci","chore","breaking-change","dependencies","parser","tools"]'
 
-          if ! current_raw=$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/labels" --paginate --jq '.[].name' | sort -u); then
-            echo "::error::Unable to read current labels; refusing to mutate unknown state."
+          # Treat the job output as an untrusted boundary even though the
+          # classifier emits constants. Require a unique array containing
+          # only labels owned by this workflow before contacting GitHub.
+          if ! desired_json=$(jq -ce -s --argjson allowed "$allowed_labels_json" '
+            if length == 1 and
+              (.[0] |
+                type == "array" and
+                length <= ($allowed | length) and
+                length == (unique | length) and
+                all(.[];
+                  . as $label |
+                  (($label | type) == "string" and
+                  ($allowed | index($label)) != null)
+                )
+              )
+            then .[0]
+            else error("invalid classifier output")
+            end
+          ' <<<"$DESIRED_LABELS_JSON"); then
+            echo "::error::Classifier returned invalid labels; refusing to mutate." >&2
             exit 1
           fi
-          current=()
-          while IFS= read -r label; do
-            [ -n "$label" ] && current+=("$label")
-          done <<< "$current_raw"
 
-          contains() {
-            local needle="$1"
-            shift
+          managed=()
+          managed_raw=$(jq -r '.[]' <<<"$allowed_labels_json")
+          while IFS= read -r label; do
+            [ -n "$label" ] && managed+=("$label")
+          done <<<"$managed_raw"
+
+          desired=()
+          desired_raw=$(jq -r '.[]' <<<"$desired_json")
+          while IFS= read -r label; do
+            [ -n "$label" ] && desired+=("$label")
+          done <<<"$desired_raw"
+
+          fetch_labels() {
+            gh api --paginate --slurp \
+              "repos/$GH_REPO/issues/$PR_NUMBER/labels?per_page=100"
+          }
+
+          normalize_labels_envelope() {
+            jq -ce -s '
+              if length == 1 and
+                (.[0] |
+                  type == "array" and
+                  length > 0 and
+                  all(.[];
+                    type == "array" and
+                    all(.[]; type == "object" and (.name | type == "string"))
+                  )
+                )
+              then .[0]
+              else error("invalid labels response")
+              end
+            '
+          }
+
+          if ! current_raw=$(fetch_labels); then
+            echo "::error::Unable to read current labels; refusing to mutate unknown state." >&2
+            exit 1
+          fi
+          if ! current_json=$(normalize_labels_envelope <<<"$current_raw"); then
+            echo "::error::GitHub returned an invalid labels response; refusing to mutate." >&2
+            exit 1
+          fi
+
+          has_current_label() {
+            local label=$1
+            jq -e --arg label "$label" 'any(.[][]; .name == $label)' \
+              <<<"$current_json" >/dev/null
+          }
+
+          has_desired_label() {
+            local needle=$1
             local candidate
-            for candidate in "$@"; do
+            for candidate in "${desired[@]:-}"; do
               [ "$candidate" = "$needle" ] && return 0
             done
             return 1
           }
 
           to_add=()
-          if [ ${#desired[@]} -gt 0 ]; then
-            for label in "${desired[@]}"; do
-              contains "$label" "${current[@]:-}" || to_add+=("$label")
-            done
-          fi
+          for label in "${desired[@]:-}"; do
+            [ -n "$label" ] && ! has_current_label "$label" && to_add+=("$label")
+          done
 
           to_remove=()
           for label in "${managed[@]}"; do
-            if contains "$label" "${current[@]:-}" && ! contains "$label" "${desired[@]:-}"; then
+            if has_current_label "$label" && ! has_desired_label "$label"; then
               to_remove+=("$label")
             fi
           done
@@ -167,31 +196,30 @@ jobs:
             for label in "${to_add[@]}"; do
               add_args+=(-f "labels[]=$label")
             done
-            gh api -X POST "repos/$GH_REPO/issues/$PR_NUMBER/labels" "${add_args[@]}" >/dev/null
+            gh api -X POST \
+              "repos/$GH_REPO/issues/$PR_NUMBER/labels" \
+              "${add_args[@]}" >/dev/null
             echo "Added: ${to_add[*]}"
           fi
 
-          # Remove only stale labels owned by this job. Unrelated labels are
-          # never submitted as a replacement set, so concurrent additions by
-          # maintainers or other automation remain untouched.
           if [ ${#to_remove[@]} -gt 0 ]; then
             for label in "${to_remove[@]}"; do
-              if delete_error=$(gh api --silent -X DELETE "repos/$GH_REPO/issues/$PR_NUMBER/labels/$label" 2>&1); then
+              if delete_error=$(gh api --silent -X DELETE \
+                "repos/$GH_REPO/issues/$PR_NUMBER/labels/$label" 2>&1); then
                 continue
               fi
 
               # A concurrent run or maintainer may have removed the same
-              # label after our initial read. Confirm the resulting state so
-              # an already-satisfied deletion stays idempotent, but preserve
-              # every failure that leaves the label present or unknown.
-              if ! labels_after=$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/labels" --paginate --jq '.[].name' | sort -u); then
+              # label after the initial read. Confirm the resulting state;
+              # preserve failures that leave the label present or unknown.
+              if ! current_raw=$(fetch_labels); then
                 printf '%s\n' "$delete_error" >&2
-                echo "::error::Unable to remove $label or confirm its current state."
+                echo "::error::Unable to remove $label or confirm its current state." >&2
                 exit 1
               fi
-              if grep -Fxq "$label" <<< "$labels_after"; then
+              if ! current_json=$(normalize_labels_envelope <<<"$current_raw") || has_current_label "$label"; then
                 printf '%s\n' "$delete_error" >&2
-                echo "::error::Unable to remove managed label $label."
+                echo "::error::Unable to remove managed label $label." >&2
                 exit 1
               fi
             done
@@ -199,5 +227,5 @@ jobs:
           fi
 
           if [ ${#to_add[@]} -eq 0 ] && [ ${#to_remove[@]} -eq 0 ]; then
-            echo "Conventional Commits labels already synchronized."
+            echo "Managed labels already synchronized."
           fi
