@@ -11,8 +11,8 @@
 # default).
 
 # ---------- categories driven by Conventional Commits prefix ----------
-# These are referenced by .github/workflows/label.yml's whitelist and
-# by .github/release.yml. Keep colour palette consistent (semantic
+# These are referenced by .github/workflows/label.yml's classifier/mutator
+# whitelists and by .github/release.yml. Keep colour palette consistent (semantic
 # meaning encoded in hue: red=bug, green=feat/perf, blue=refactor/docs,
 # yellow=test, grey=chore/breaking).
 
@@ -57,6 +57,7 @@
   description: Marks a pull request as introducing breaking changes
 
 # ---------- subsystem labels driven by changed files ----------
+# These paths are classified by .github/scripts/classify-labels.sh.
 
 - name: dependencies
   color: "ff8722"

@@ -14,6 +14,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  label-workflow:
+    name: label workflow regressions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: '1.24'
+          cache: false
+
+      - name: Check shell scripts
+        run: shellcheck .github/scripts/classify-labels.sh .github/scripts/test-label-workflow.sh
+
+      - name: Run label workflow regressions
+        run: bash .github/scripts/test-label-workflow.sh
+
   test:
     strategy:
       fail-fast: false
