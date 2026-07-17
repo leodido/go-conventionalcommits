@@ -176,7 +176,24 @@ jobs:
           # maintainers or other automation remain untouched.
           if [ ${#to_remove[@]} -gt 0 ]; then
             for label in "${to_remove[@]}"; do
-              gh api --silent -X DELETE "repos/$GH_REPO/issues/$PR_NUMBER/labels/$label"
+              if delete_error=$(gh api --silent -X DELETE "repos/$GH_REPO/issues/$PR_NUMBER/labels/$label" 2>&1); then
+                continue
+              fi
+
+              # A concurrent run or maintainer may have removed the same
+              # label after our initial read. Confirm the resulting state so
+              # an already-satisfied deletion stays idempotent, but preserve
+              # every failure that leaves the label present or unknown.
+              if ! labels_after=$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/labels" --paginate --jq '.[].name' | sort -u); then
+                printf '%s\n' "$delete_error" >&2
+                echo "::error::Unable to remove $label or confirm its current state."
+                exit 1
+              fi
+              if grep -Fxq "$label" <<< "$labels_after"; then
+                printf '%s\n' "$delete_error" >&2
+                echo "::error::Unable to remove managed label $label."
+                exit 1
+              fi
             done
             echo "Removed: ${to_remove[*]}"
           fi
