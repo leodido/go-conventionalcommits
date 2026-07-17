@@ -4,6 +4,7 @@
 package parser
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -205,5 +206,65 @@ func benchmarkUTF8Validation(b *testing.B, input []byte, strict bool) {
 	}
 	if errBenchParse != nil {
 		b.Fatal(errBenchParse)
+	}
+}
+
+func BenchmarkStrictUTF8MalformedInput(b *testing.B) {
+	tests := []struct {
+		label          string
+		input          []byte
+		expectedOffset int
+	}{
+		{
+			label:          "invalid first byte",
+			input:          []byte{0xff},
+			expectedOffset: 0,
+		},
+		{
+			label:          "invalid after minimal message",
+			input:          append([]byte("fix: x"), 0xff),
+			expectedOffset: len("fix: x"),
+		},
+		{
+			label:          "invalid after 4 KiB ASCII body",
+			input:          append([]byte("fix: x\n\n"+strings.Repeat("x", 4096)), 0xff),
+			expectedOffset: len("fix: x\n\n") + 4096,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		b.Run(tt.label, func(b *testing.B) {
+			benchmarkStrictUTF8Rejection(b, tt.input, tt.expectedOffset)
+		})
+	}
+}
+
+func benchmarkStrictUTF8Rejection(b *testing.B, input []byte, expectedOffset int) {
+	machine := NewMachine()
+	machine.WithStrictUTF8()
+	message, err := machine.Parse(input)
+	if message != nil {
+		b.Fatalf("expected a nil message, got %T", message)
+	}
+	var invalidUTF8Error *InvalidUTF8Error
+	if !errors.As(err, &invalidUTF8Error) {
+		b.Fatalf("expected InvalidUTF8Error, got %T: %v", err, err)
+	}
+	if invalidUTF8Error.ByteOffset != expectedOffset {
+		b.Fatalf("expected byte offset %d, got %d", expectedOffset, invalidUTF8Error.ByteOffset)
+	}
+
+	b.ReportAllocs()
+	b.SetBytes(int64(len(input)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		benchParseResult, errBenchParse = machine.Parse(input)
+	}
+	if benchParseResult != nil {
+		b.Fatalf("expected a nil message, got %T", benchParseResult)
+	}
+	if !errors.Is(errBenchParse, ErrInvalidUTF8) {
+		b.Fatalf("expected ErrInvalidUTF8, got %v", errBenchParse)
 	}
 }
