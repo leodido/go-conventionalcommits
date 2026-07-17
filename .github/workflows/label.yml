@@ -1,54 +1,9 @@
-# SECURITY: This workflow runs on pull_request_target, which exposes a
-# write-scoped GITHUB_TOKEN to events from forks. To keep that safe, the
-# following invariants MUST hold for every step in this file:
-#
-#   1. NEVER check out the PR head (refs/pull/N/merge or
-#      pull_request.head.sha). The cc-title job DOES check out
-#      `pull_request.base.sha` so it can build tools/ccvalidate from
-#      the target branch — that is safe, since the source tree at
-#      base.sha is already-merged code. Checking out the head, the
-#      merge ref, or any branch the PR can move would let attacker
-#      code run with the workflow's write-scoped token.
-#   2. NEVER run a build, install, or test against PR content. Building
-#      tools/ccvalidate from base.sha is fine for the same reason as
-#      (1). Building from PR content (head or merge ref) is not.
-#   3. NEVER interpolate ${{ github.event.pull_request.* }} (or any other
-#      attacker-controlled value) directly into a `run:` script. Always
-#      pass them through `env:` so they become shell variables, not
-#      lexical script content. Shell injection lives here.
-#   4. Only known, hardcoded label names may be passed to `gh pr edit`.
-#      The whitelist below enforces this. Do NOT remove it.
-#   5. Pin every third-party action to a full commit SHA, never a tag.
-#
-# DESIGN: cc-title is the single source of truth for category labels
-# (enhancement, bug, performance, refactor, documentation, test, build,
-# ci, chore, breaking-change). It SYNCS — adds the labels implied by
-# the title/body, and removes any label in the managed set that is no
-# longer implied.
-#
-# AGREEMENT WITH THE PARSER: the title patterns matched here are kept
-# in lockstep with what tools/ccvalidate accepts (parser strict mode,
-# TypesConventional). Specifically:
-#
-#   - Case-insensitive type match: the parser uses Ragel's 'i flag, so
-#     "FEAT: x" parses; we use `shopt -s nocasematch` to match.
-#   - GitHub's default revert-PR shape ("Revert \"...\"") is NOT
-#     matched here, because validate-title would reject it. To revert
-#     via the GitHub button, rewrite the title to "revert: <subject>".
-#
-# As a consequence:
-#
-#   - To recategorize a PR, edit the title. Manually adding (e.g.) the
-#     "bug" label to a "chore: ..." PR will be undone on the next
-#     synchronize/edit event.
-#   - File-globs and manual triage labels live outside the managed set
-#     and are never touched by this workflow. See labeler.yml.
-#   - To exclude a PR from release notes entirely, use the
-#     "no-releasenotes" label (configured in .github/release.yml).
-#
-# Background:
-#   https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
-#   https://docs.github.com/actions/security-guides/automatic-token-authentication
+# This workflow handles untrusted pull requests with a write-scoped token.
+# Keep these invariants intact:
+#   - check out and execute only the immutable base SHA;
+#   - pass PR-controlled data through env/files, never into run expressions;
+#   - derive labels only from ccvalidate output and hardcoded mappings;
+#   - pin third-party actions to full commit SHAs.
 
 name: label
 
@@ -56,15 +11,9 @@ on:
   pull_request_target:
     types: [opened, edited, synchronize, reopened]
 
-# Default to read-only at the workflow level. Each job that needs write
-# scope opts in explicitly; new jobs added later inherit read-only.
 permissions:
   contents: read
 
-# Cancel an in-flight run when the same PR fires another label event
-# (rapid title edits, force-pushes). Without this, runs interleave and
-# whichever finishes last "wins" the label state — which becomes a
-# correctness problem now that cc-title removes stale labels.
 concurrency:
   group: label-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -84,14 +33,10 @@ jobs:
           sync-labels: true
 
   cc-title:
-    name: conventional-commits title labels
+    name: conventional-commits labels
+    needs: file-globs
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # Run after file-globs finishes so the two jobs never race on the
-    # PR's label state. Vocabularies are disjoint (see labeler.yml), so
-    # this is mostly belt-and-suspenders, but it also means a labeler
-    # failure surfaces before cc-title runs.
-    needs: file-globs
     permissions:
       contents: read
       pull-requests: write
@@ -99,18 +44,9 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
-      # PR_TITLE / PR_BODY are attacker-controlled. They MUST stay in env
-      # (where they're shell variables) and never appear inside ${{ }}
-      # interpolated into the run: block.
       PR_TITLE: ${{ github.event.pull_request.title }}
       PR_BODY: ${{ github.event.pull_request.body }}
     steps:
-      # SECURITY: pin to base.sha (not base.ref). base.ref is a branch
-      # name and could be moved by a concurrent merge mid-run; base.sha
-      # is immutable for the lifetime of the event. We deliberately do
-      # NOT check out the PR head — see invariant #1 in the file
-      # banner. The checkout exists only so we can build ccvalidate
-      # (the breaking-change footer detector) from the target branch.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
@@ -121,283 +57,130 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Build ccvalidate
-        # Built from the checked-out base.sha; never from PR content.
-        # We pin the binary path so the labeler step below can't
-        # accidentally invoke a different `ccvalidate` from $PATH.
+      - name: Build trusted validator
         run: |
           set -euo pipefail
           go build -o "$RUNNER_TEMP/ccvalidate" ./tools/ccvalidate
-          echo "CCV=$RUNNER_TEMP/ccvalidate" >> "$GITHUB_ENV"
 
-      - name: Sync CC category labels with PR title and body
+      - name: Sync Conventional Commits labels
         run: |
           set -euo pipefail
 
-          # MANAGED: the complete set of category labels this job owns.
-          # Anything in this set on the PR but not in the desired set
-          # below is removed; anything in the desired set but not on the
-          # PR is added. This makes the job *sync* labels, not just add
-          # them — fixes stale-label-after-retitle and the
-          # breaking-change-once-set-always-set problem.
           managed=(
             enhancement bug performance refactor documentation
             test build ci chore breaking-change
           )
-
-          # ---------- compute desired labels from title + body ----------
           desired=()
 
-          # Conventional Commits prefix in title -> category label.
-          # Matches "type:" or "type(scope):", optionally with "!" before the colon.
-          # Bang ("!") arms come first so they take precedence over the
-          # plain arms.
-          #
-          # The parser at parser/machine.go.rl uses Ragel's 'i flag on
-          # type tokens, making validate-title accept "FEAT: x", "Feat:
-          # x" etc. To keep the labeler in lockstep with the validator,
-          # we run the case statement under `shopt -s nocasematch`. The
-          # shopt is scoped to a subshell so it does NOT bleed into the
-          # whitelist regex below — that gate must stay case-sensitive
-          # so a label of "ENHANCEMENT" cannot pass.
-          # Run the case statement in a subshell with `shopt -s
-          # nocasematch` so it accepts "FEAT: x" the same way the
-          # parser does. The subshell scopes the shopt: it does not
-          # bleed into the whitelist regex below, which MUST remain
-          # case-sensitive so a label of "ENHANCEMENT" cannot pass.
-          # Output is captured via $(...) (not `mapfile < <(...)`) so
-          # the subshell's exit status propagates under `set -e`.
-          desired_lines=$(
-            shopt -s nocasematch
-            out=()
-            # Patterns require ": " (colon + literal space) followed
-            # by at least one character. The parser rejects "feat:",
-            # "feat: " and "feat:x" (it requires exactly one space
-            # between the colon and the description). Mirroring that
-            # here keeps the labeler from labelling titles that the
-            # validator will reject — the corpus in
-            # .github/scripts/test-labeler-agreement.sh pins this
-            # contract case-by-case.
-            case "$PR_TITLE" in
-              feat\!:\ ?*|feat\(*\)\!:\ ?*)             out+=("enhancement" "breaking-change") ;;
-              fix\!:\ ?*|fix\(*\)\!:\ ?*)               out+=("bug" "breaking-change") ;;
-              perf\!:\ ?*|perf\(*\)\!:\ ?*)             out+=("performance" "breaking-change") ;;
-              refactor\!:\ ?*|refactor\(*\)\!:\ ?*)     out+=("refactor" "breaking-change") ;;
-              docs\!:\ ?*|docs\(*\)\!:\ ?*)             out+=("documentation" "breaking-change") ;;
-              test\!:\ ?*|test\(*\)\!:\ ?*)             out+=("test" "breaking-change") ;;
-              build\!:\ ?*|build\(*\)\!:\ ?*)           out+=("build" "breaking-change") ;;
-              ci\!:\ ?*|ci\(*\)\!:\ ?*)                 out+=("ci" "breaking-change") ;;
-              chore\!:\ ?*|chore\(*\)\!:\ ?*)           out+=("chore" "breaking-change") ;;
-              style\!:\ ?*|style\(*\)\!:\ ?*)           out+=("chore" "breaking-change") ;;
-              revert\!:\ ?*|revert\(*\)\!:\ ?*)         out+=("chore" "breaking-change") ;;
-              feat:\ ?*|feat\(*\):\ ?*)                 out+=("enhancement") ;;
-              fix:\ ?*|fix\(*\):\ ?*)                   out+=("bug") ;;
-              perf:\ ?*|perf\(*\):\ ?*)                 out+=("performance") ;;
-              refactor:\ ?*|refactor\(*\):\ ?*)         out+=("refactor") ;;
-              docs:\ ?*|docs\(*\):\ ?*)                 out+=("documentation") ;;
-              test:\ ?*|test\(*\):\ ?*)                 out+=("test") ;;
-              build:\ ?*|build\(*\):\ ?*)               out+=("build") ;;
-              ci:\ ?*|ci\(*\):\ ?*)                     out+=("ci") ;;
-              chore:\ ?*|chore\(*\):\ ?*)               out+=("chore") ;;
-              # style and revert have no dedicated release-notes category
-              # in .github/release.yml; bucket under chore. Matches the
-              # parser's TypesConventional set so what validate-title
-              # accepts is also what the labeler labels.
-              style:\ ?*|style\(*\):\ ?*)               out+=("chore") ;;
-              revert:\ ?*|revert\(*\):\ ?*)             out+=("chore") ;;
-            esac
-            printf '%s\n' "${out[@]:-}"
-          )
-          while IFS= read -r line; do
-            [ -n "$line" ] && desired+=("$line")
-          done <<< "$desired_lines"
-          # NOTE: GitHub's default revert-PR title shape ("Revert \"...\"")
-          # is intentionally NOT matched. It is not Conventional Commits
-          # and validate-title would reject it; matching it here would
-          # reintroduce the labeler/validator divergence this workflow
-          # is structured to avoid. Maintainers reverting via the GitHub
-          # button must rewrite the title to "revert: <subject>" before
-          # merge.
-
-          # BREAKING CHANGE footer detection. The earlier version of
-          # this workflow used a bash `grep -E '^BREAKING[ -]CHANGE:'`
-          # against PR_BODY, which produced false positives on
-          # documentation PRs that mention BREAKING CHANGE inside a
-          # fenced code block, in prose, or after indentation. The
-          # parser already implements the correct rule (CC spec
-          # clauses 12/13: footer at end of message, blank line above,
-          # no indentation, recognised token). We feed the full
-          # message through ccvalidate --describe so the labeler's
-          # notion of "breaking" matches what the parser accepts.
-          #
-          # SECURITY: PR_TITLE / PR_BODY are attacker-controlled. We
-          # pass them through a temp file (not argv) so shell quoting
-          # cannot interpret either, and ccvalidate reads via
-          # $CC_INPUT_FILE. The parser is a fixed Ragel state machine
-          # built from base.sha — PR content cannot influence it.
-          msg_file="$RUNNER_TEMP/pr_message.txt"
-          # Concatenate title and body with a blank line, the standard
-          # CC layout. If PR_BODY is empty, ccvalidate sees a header-
-          # only message and reports breaking=false (unless the title
-          # has "!"), which is correct.
+          message_file="$RUNNER_TEMP/pr-message.txt"
           {
             printf '%s\n' "$PR_TITLE"
             if [ -n "${PR_BODY:-}" ]; then
               printf '\n%s' "$PR_BODY"
             fi
-          } > "$msg_file"
+          } > "$message_file"
 
-          # ccvalidate --describe exits non-zero on an invalid header.
-          # That's not a labeler failure: an unrecognised title is
-          # already surfaced by the soft warning below, and the
-          # authoritative check lives in validate-title.yml. We only
-          # consume the breaking flag when the parse succeeds.
-          if describe_out=$(CC_INPUT_FILE="$msg_file" "$CCV" --describe 2>/dev/null); then
-            if grep -qx 'breaking=true' <<< "$describe_out"; then
-              desired+=("breaking-change")
-            fi
+          commit_type=""
+          breaking=false
+          if describe=$(CC_INPUT_FILE="$message_file" "$RUNNER_TEMP/ccvalidate" --describe 2>/dev/null); then
+            while IFS='=' read -r key value; do
+              case "$key" in
+                type) commit_type="$value" ;;
+                breaking) breaking="$value" ;;
+              esac
+            done <<< "$describe"
+          else
+            echo "::warning title=Non-Conventional-Commits PR title::The PR title is not a valid Conventional Commit and will not receive a category label."
           fi
 
-          # Soft signal when nothing matched. Surfaces as a yellow
-          # annotation on the PR's checks tab so contributors who skip
-          # CC don't slip through silently. We do NOT fail the job —
-          # blocking would be a behaviour change vs the prior reviewpad
-          # config and would punish maintainers landing PRs with non-CC
-          # titles (e.g. "Initial release"). An authoritative check
-          # using the repo's own parser is added by validate-title.yml.
-          #
-          # SECURITY: $PR_TITLE is attacker-controlled. Echoing it into
-          # a ::warning:: line would let a title containing literal
-          # workflow-command syntax (e.g. "%0A::set-output name=x::y")
-          # inject commands. The fixed string below carries the signal
-          # without interpolating the title.
-          if [ ${#desired[@]} -eq 0 ]; then
-            echo "::warning title=Non-Conventional-Commits PR title::This PR's title has no recognized Conventional Commits prefix; release notes will categorize it under \"Other Changes\". See https://www.conventionalcommits.org/."
-          fi
+          case "$commit_type" in
+            feat) desired+=(enhancement) ;;
+            fix) desired+=(bug) ;;
+            perf) desired+=(performance) ;;
+            refactor) desired+=(refactor) ;;
+            docs) desired+=(documentation) ;;
+            test) desired+=(test) ;;
+            build) desired+=(build) ;;
+            ci) desired+=(ci) ;;
+            chore|style|revert) desired+=(chore) ;;
+            "") ;;
+            *)
+              echo "unexpected type from ccvalidate: $commit_type" >&2
+              exit 1
+              ;;
+          esac
 
-          # ---------- whitelist gate ----------
-          # Only labels in this set may ever be applied. Even if the case
-          # statement above is later edited to derive a label name from
-          # $PR_TITLE/$PR_BODY, this gate keeps untrusted strings out of
-          # `gh pr edit`.
+          case "$breaking" in
+            true) desired+=(breaking-change) ;;
+            false) ;;
+            *)
+              echo "unexpected breaking value from ccvalidate: $breaking" >&2
+              exit 1
+              ;;
+          esac
+
           allowed='^(enhancement|bug|performance|refactor|documentation|test|build|ci|chore|breaking-change)$'
+          if [ ${#desired[@]} -gt 0 ]; then
+            for label in "${desired[@]}"; do
+              if [[ ! "$label" =~ $allowed ]]; then
+                echo "refusing non-whitelisted label: $label" >&2
+                exit 1
+              fi
+            done
+          fi
 
-          mapfile -t desired_uniq < <(printf '%s\n' "${desired[@]:-}" | sort -u | sed '/^$/d')
-          safe_desired=()
-          for l in "${desired_uniq[@]}"; do
-            if [[ "$l" =~ $allowed ]]; then
-              safe_desired+=("$l")
-            else
-              echo "rejected non-whitelisted desired label: $l" >&2
-            fi
-          done
-
-          # ---------- compute the current label set on the PR ----------
-          # gh pr view emits one label name per line via the JQ template.
-          #
-          # We deliberately use $(...) capture, NOT `mapfile -t current
-          # < <(gh ...)`. Process substitution `<(...)` runs gh in a
-          # subshell whose exit status is invisible to mapfile, so a
-          # transient gh/API failure would surface as an *empty*
-          # `current` array. Combined with the diff logic below, that
-          # turns into a silent regression: nothing gets removed, and
-          # stale category labels (e.g. "enhancement" left over after a
-          # title is edited from "feat:" to "chore:") survive forever.
-          # Capturing via $(...) propagates the gh exit code into the
-          # surrounding `set -e` script, so a failure aborts the run
-          # loudly instead of corrupting the label state.
-          if ! current_raw=$(gh pr view "$PR_NUMBER" --json labels --jq '.labels[].name' | sort -u); then
-            echo "::error::gh pr view failed; refusing to mutate labels with an unknown current state" >&2
+          if ! current_raw=$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/labels" --paginate --jq '.[].name' | sort -u); then
+            echo "::error::Unable to read current labels; refusing to mutate unknown state."
             exit 1
           fi
           current=()
-          while IFS= read -r line; do
-            [ -n "$line" ] && current+=("$line")
+          while IFS= read -r label; do
+            [ -n "$label" ] && current+=("$label")
           done <<< "$current_raw"
 
-          # ---------- diff: to_add = desired - current, to_remove = (managed ∩ current) - desired ----------
-          declare -A in_current=()
-          for l in "${current[@]}"; do in_current["$l"]=1; done
-          declare -A in_desired=()
-          for l in "${safe_desired[@]}"; do in_desired["$l"]=1; done
+          contains() {
+            local needle="$1"
+            shift
+            local candidate
+            for candidate in "$@"; do
+              [ "$candidate" = "$needle" ] && return 0
+            done
+            return 1
+          }
 
           to_add=()
-          for l in "${safe_desired[@]}"; do
-            [ -z "${in_current[$l]:-}" ] && to_add+=("$l")
-          done
-
-          to_remove=()
-          for l in "${managed[@]}"; do
-            if [ -n "${in_current[$l]:-}" ] && [ -z "${in_desired[$l]:-}" ]; then
-              to_remove+=("$l")
-            fi
-          done
-
-          # ---------- apply ----------
-          if [ ${#to_add[@]} -eq 0 ] && [ ${#to_remove[@]} -eq 0 ]; then
-            echo "No label changes for PR #$PR_NUMBER (title: $PR_TITLE)"
-            exit 0
+          if [ ${#desired[@]} -gt 0 ]; then
+            for label in "${desired[@]}"; do
+              contains "$label" "${current[@]:-}" || to_add+=("$label")
+            done
           fi
 
-          # Build the final desired label set. The GitHub API
-          # `PUT /repos/{owner}/{repo}/issues/{number}/labels` replaces
-          # the entire label set in a single call. To keep that safe,
-          # we must include EVERY label the PR should retain — not
-          # only the labels this job manages, but also unrelated ones
-          # (file-glob labels, manual triage labels, "no-releasenotes",
-          # etc.) — otherwise the PUT would wipe them.
-          #
-          # Why a single PUT rather than two `gh pr edit` calls:
-          #   - Atomic: subscribers (webhooks, projects, automations)
-          #     see one transition, never an intermediate state where
-          #     "enhancement" has been removed but "chore" hasn't been
-          #     added yet.
-          #   - Halves the API budget (one HTTP call, one rate-limit
-          #     decrement) on every title edit.
-          declare -A in_remove=()
-          for l in "${to_remove[@]:-}"; do [ -n "$l" ] && in_remove["$l"]=1; done
-
-          final=()
-          # Keep current labels that we are NOT removing.
-          for l in "${current[@]:-}"; do
-            [ -z "$l" ] && continue
-            if [ -z "${in_remove[$l]:-}" ]; then
-              final+=("$l")
-            fi
-          done
-          # Add desired labels that aren't already in `final`.
-          declare -A in_final=()
-          for l in "${final[@]:-}"; do [ -n "$l" ] && in_final["$l"]=1; done
-          for l in "${safe_desired[@]:-}"; do
-            if [ -n "$l" ] && [ -z "${in_final[$l]:-}" ]; then
-              final+=("$l")
-              in_final["$l"]=1
+          to_remove=()
+          for label in "${managed[@]}"; do
+            if contains "$label" "${current[@]:-}" && ! contains "$label" "${desired[@]:-}"; then
+              to_remove+=("$label")
             fi
           done
 
-          echo "Final label set for PR #$PR_NUMBER:"
-          printf '  %s\n' "${final[@]:-(none)}"
-          if [ ${#to_add[@]} -gt 0 ];    then echo "  (adding:   ${to_add[*]})"; fi
-          if [ ${#to_remove[@]} -gt 0 ]; then echo "  (removing: ${to_remove[*]})"; fi
+          if [ ${#to_add[@]} -gt 0 ]; then
+            add_args=()
+            for label in "${to_add[@]}"; do
+              add_args+=(-f "labels[]=$label")
+            done
+            gh api -X POST "repos/$GH_REPO/issues/$PR_NUMBER/labels" "${add_args[@]}" >/dev/null
+            echo "Added: ${to_add[*]}"
+          fi
 
-          # Build `-f labels[]=…` flags. gh api repeats the field for
-          # each value, which the GitHub REST API interprets as a JSON
-          # array. `set -e` will abort the run on a failed PUT.
-          api_args=()
-          for l in "${final[@]:-}"; do
-            [ -n "$l" ] && api_args+=(-f "labels[]=$l")
-          done
-          # When `final` is empty, GitHub's API needs the JSON `[]`
-          # rather than no `labels` field at all. The `-f labels[]=`
-          # idiom doesn't produce that, so fall back to a raw body.
-          if [ ${#api_args[@]} -eq 0 ]; then
-            gh api \
-              -X PUT \
-              "repos/$GH_REPO/issues/$PR_NUMBER/labels" \
-              --input - <<<'{"labels":[]}'
-          else
-            gh api \
-              -X PUT \
-              "repos/$GH_REPO/issues/$PR_NUMBER/labels" \
-              "${api_args[@]}"
+          # Remove only stale labels owned by this job. Unrelated labels are
+          # never submitted as a replacement set, so concurrent additions by
+          # maintainers or other automation remain untouched.
+          if [ ${#to_remove[@]} -gt 0 ]; then
+            for label in "${to_remove[@]}"; do
+              gh api --silent -X DELETE "repos/$GH_REPO/issues/$PR_NUMBER/labels/$label"
+            done
+            echo "Removed: ${to_remove[*]}"
+          fi
+
+          if [ ${#to_add[@]} -eq 0 ] && [ ${#to_remove[@]} -eq 0 ]; then
+            echo "Conventional Commits labels already synchronized."
           fi

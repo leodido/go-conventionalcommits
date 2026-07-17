@@ -31,10 +31,8 @@ func TestValidate(t *testing.T) {
 		{name: "style", header: "style: format", wantErr: false},
 		{name: "revert", header: "revert: undo", wantErr: false},
 		// The parser uses Ragel's 'i flag on type tokens, so uppercase
-		// types parse successfully. The labeler in
-		// .github/workflows/label.yml MUST stay in lockstep with this
-		// (it does, via `shopt -s nocasematch`). Codifying both
-		// directions of the contract here.
+		// types parse successfully. --describe canonicalises them for
+		// downstream consumers.
 		{name: "uppercase type", header: "FEAT: add foo", wantErr: false},
 		{name: "mixed-case type", header: "Feat(API)!: x", wantErr: false},
 		{name: "shell metacharacters in description are fine", header: "feat: add $(rm -rf /tmp/x)", wantErr: false},
@@ -66,10 +64,8 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-// TestDescribe pins the canonical-form contract that the
-// .github/workflows/label.yml labeler relies on. The labeler reads
-// these key=value lines and applies labels from them; if this output
-// shape ever changes, the labeler breaks.
+// TestDescribe pins the canonical-form contract consumed by
+// .github/workflows/label.yml.
 func TestDescribe(t *testing.T) {
 	cases := []struct {
 		name   string

@@ -1,61 +1,7 @@
-# Authoritative Conventional Commits check on PR titles.
-#
-# Runs on `pull_request` (NOT pull_request_target). The token is
-# read-only by default for fork PRs, and we don't need write scope —
-# this workflow only emits a check status, it never mutates the PR.
-#
-# This complements the bash-based labeler in label.yml:
-#   - label.yml gives a soft ::warning:: when a title doesn't match a
-#     known prefix; it still labels best-effort and never blocks.
-#   - This workflow uses the repo's own parser as the source of truth.
-#     A red check here is the signal that the title is not valid CC.
-#
-# Maintainers may override on a case-by-case basis with the
-# `no-conventional-title` label (e.g. for "Initial release"-style PRs).
-#
-# CHECKOUT REF — head, not base
-# -----------------------------
-# `actions/checkout` uses the merge commit (PR head merged onto base)
-# by default on `pull_request`. We accept that default rather than
-# pinning to `pull_request.base.sha`. The earlier base.sha pinning
-# was over-conservative: it created a bootstrap deadlock for any PR
-# that introduces or modifies tools/ccvalidate or the agreement
-# script — those files only exist on the head, not on base, so the
-# checkout step put the runner into a tree where `go run
-# ./tools/ccvalidate` failed with "directory not found".
-#
-# Threat model: a malicious PR could modify tools/ccvalidate to
-# accept its own bad title. The consequence is a green status check
-# on that PR — nothing more. The token is read-only on fork PRs, no
-# secrets are exposed, and the modified validator does not survive
-# beyond this check run. The lint and test matrix on the same PR
-# still run the unmodified validator's behaviour as part of the Go
-# test suite, so a tampered ccvalidate would be caught there. Net
-# privilege escape: zero.
-#
-# FORK PRs / FIRST-TIME CONTRIBUTORS
-# ----------------------------------
-# Because this workflow runs on `pull_request`, GitHub gates fork PRs
-# from first-time contributors behind an "Approve and run" button on
-# the Actions tab — the workflow won't run until a maintainer clicks
-# it. This is GitHub's default policy ("Require approval for first-
-# time contributors") and is intentional: it prevents an attacker
-# from running arbitrary workflow code against a fork PR without
-# review. Once a maintainer has approved one workflow run, subsequent
-# runs from the same author go through automatically.
-#
-# Symptoms when this gate is active:
-#   - The "validate-title / PR title is Conventional Commits" check
-#     stays in "Expected — Waiting for status to be reported" forever.
-#   - No logs appear in the Actions tab; the workflow row says
-#     "<contributor> wants to run this workflow".
-#
-# Resolution: a maintainer opens the Actions tab, finds the queued
-# run for this PR, and clicks "Approve and run".
-#
-# Maintainers can change the policy at
-#   Settings → Actions → General → Fork pull request workflows from
-#   outside collaborators.
+# Validate PR titles with the repository's Conventional Commits parser.
+# This read-only workflow executes the PR merge commit so parser changes are
+# tested with the rest of the PR. Maintainers can bypass the check with the
+# `no-conventional-title` label.
 
 name: validate-title
 
@@ -79,9 +25,6 @@ jobs:
     env:
       PR_TITLE: ${{ github.event.pull_request.title }}
     steps:
-      # Default ref is the merge commit (PR head merged onto base) —
-      # see the CHECKOUT REF block in the file banner for why that's
-      # safe under `pull_request` and necessary for bootstrap PRs.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           persist-credentials: false
@@ -94,44 +37,9 @@ jobs:
       - name: Validate
         run: |
           set -euo pipefail
-          # Sanity: surface a clear error if the validator was
-          # deleted or moved instead of failing with the cryptic
-          # "directory not found" from `go run`.
           if [ ! -d tools/ccvalidate ]; then
             echo "::error::tools/ccvalidate is missing on the PR head; cannot validate the title." >&2
             exit 1
           fi
-          # Pass the title through a file so shell quoting can never
-          # interpret it. The Go program reads via $CC_INPUT_FILE.
           printf '%s' "$PR_TITLE" > "$RUNNER_TEMP/pr_title.txt"
           CC_INPUT_FILE="$RUNNER_TEMP/pr_title.txt" go run ./tools/ccvalidate
-
-  agreement:
-    # Asserts the cc-title case statement in label.yml stays in
-    # lockstep with what tools/ccvalidate accepts, across a fixed
-    # corpus of titles and bodies. Catches drift when either is
-    # edited without the other.
-    name: labeler/validator agreement
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      # Default ref is the merge commit (PR head merged onto base) —
-      # see the CHECKOUT REF block in the file banner for why that's
-      # safe under `pull_request`.
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Run agreement test
-        run: |
-          set -euo pipefail
-          if [ ! -x .github/scripts/test-labeler-agreement.sh ]; then
-            echo "::error::.github/scripts/test-labeler-agreement.sh is missing or not executable on the PR head." >&2
-            exit 1
-          fi
-          bash .github/scripts/test-labeler-agreement.sh

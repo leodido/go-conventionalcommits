@@ -1,18 +1,7 @@
 # Reconcile the repo's labels with .github/labels.yml.
 #
-# Runs in dry-run on PRs that touch .github/labels.yml (so the diff
-# is visible in the check output before merge) and in apply mode on
-# pushes to develop.
-#
-# Why declarative: GitHub silently drops `gh pr edit --add-label` for
-# unknown label names. Without a mechanism to create missing labels,
-# every new category here becomes a footgun where the first PR of
-# that kind just lands without its label and silently bucketed into
-# "Other Changes" in release notes.
-#
-# This workflow does NOT delete labels not in the YAML — drop a
-# label by removing it from labels.yml AND deleting it manually, or
-# add `dry-run: false` and `extra-args: -r` once you're sure.
+# Pull requests get a dry-run; pushes to develop apply the declaration. Labels
+# absent from the file are deliberately preserved during migration.
 
 name: labels-bootstrap
 
@@ -30,9 +19,6 @@ on:
 permissions:
   contents: read
 
-# Per-event-and-ref keying: PR runs (dry-run) cancel themselves on
-# rapid pushes; the apply path (push to develop) stays serialized so
-# concurrent applies can never trample each other.
 concurrency:
   group: labels-bootstrap-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -44,9 +30,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      # Labels live on the issues API. ghaction-github-labeler only
-      # reads/writes labels — it doesn't edit PRs — so pull-requests
-      # write scope would be dead privilege.
       issues: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -57,11 +40,6 @@ jobs:
         uses: crazy-max/ghaction-github-labeler@24d110aa46a59976b8a7f35518cb7f14f434c916 # v5.3.0
         with:
           yaml-file: .github/labels.yml
-          # On PRs: dry-run, just print the diff. On push to develop:
-          # apply for real.
           dry-run: ${{ github.event_name == 'pull_request' }}
-          # Don't delete labels that aren't in the YAML — the project
-          # has historical labels (size markers, etc.) we want to keep
-          # while migrating off reviewpad.
           skip-delete: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
