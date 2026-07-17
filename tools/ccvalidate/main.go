@@ -4,8 +4,8 @@
 
 // Command ccvalidate validates a single Conventional Commits header
 // (the first line of a commit message, or a PR title) using this
-// repository's own parser. It is the authoritative on-CI gate that
-// complements the bash-based labeler in .github/workflows/label.yml.
+// repository's own parser. It is the authoritative on-CI gate and the
+// canonical source consumed by .github/workflows/label.yml.
 //
 // Usage:
 //
@@ -28,12 +28,10 @@
 //	breaking=true
 //
 // "type" is always lowercased — even if the parser accepted "FEAT" via
-// its Ragel case-insensitive type token — so downstream consumers
-// (labelers, agreement tests) get a single canonical form. "scope" is
+// its Ragel case-insensitive type token — so downstream consumers get
+// a single canonical form. "scope" is
 // emitted only when present; "breaking" is "true" or "false". This
-// makes ccvalidate the single source of truth: the labeler can be
-// regenerated from --describe, and an agreement test can assert that
-// what ccvalidate accepts is exactly what the labeler labels.
+// makes ccvalidate the single source of truth for validation and labeling.
 //
 // The parser is run in strict mode. Best-effort mode is intentionally
 // disabled: a CI gate must be authoritative.

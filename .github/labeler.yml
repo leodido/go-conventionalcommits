@@ -1,44 +1,8 @@
 # Pull request labels driven by changed file paths.
 #
-# Consumed by actions/labeler in .github/workflows/label.yml with
-# sync-labels: true.
-#
-# TRUST MODEL — read before editing
-# =================================
-# Each top-level key in this file is a label name, and `sync-labels:
-# true` makes this file the SINGLE SOURCE OF TRUTH for that label:
-#
-#   - When a PR's changed files match the globs, the label is added.
-#   - When they no longer match, the label is REMOVED on the next run.
-#   - Manually adding a label whose name appears here is futile: the
-#     next push to the PR will strip it back off.
-#
-# This is the same one-way trust contract the cc-title job in
-# label.yml uses for category labels — both jobs claim a vocabulary
-# and own it absolutely. The asymmetry vs ad-hoc/manual labels is
-# intentional: it makes label state machine-derivable from the PR
-# (title + files), not from human memory.
-#
-# DESIGN: this file owns *subsystem* labels — "what part of the
-# codebase does this PR touch". The cc-title job in label.yml owns
-# *category* labels — "what kind of change is this"
-# (feat/fix/docs/test/ci/build/perf/refactor/chore/breaking-change),
-# driven by the Conventional Commits prefix in the PR title.
-#
-# Subsystem and category vocabularies MUST stay disjoint. The two
-# vocabularies are owned by different jobs that run in sequence
-# (file-globs, then cc-title). If the same label appeared in both
-# vocabularies, whichever job ran second would have authority — and
-# the resulting label state would depend on which trigger fired the
-# event. Keep the lists disjoint to keep the contract single-valued.
-#
-# WHEN ADDING A LABEL HERE you are signing up for:
-#   1. The label exists in .github/labels.yml (so labels-bootstrap
-#      creates it with the right colour/description).
-#   2. The label name does NOT appear in the cc-title `case` statement
-#      in .github/workflows/label.yml.
-#   3. Anyone manually adding the label will see it disappear; this is
-#      desired behaviour, not a bug to fix.
+# actions/labeler owns these subsystem labels with sync-labels enabled. Keep
+# this vocabulary disjoint from the Conventional Commits labels managed in
+# label.yml, and declare every label in labels.yml before using it here.
 #
 # Schema reference: https://github.com/actions/labeler
 
