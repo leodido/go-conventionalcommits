@@ -70,6 +70,7 @@ func checkWorkflows(workflows string) error {
 	if !state.seenSetupGo {
 		return fmt.Errorf("no actions/setup-go reference found")
 	}
+
 	return nil
 }
 
@@ -87,12 +88,15 @@ func workflowPaths(root string) ([]string, error) {
 		if extension == ".yml" || extension == ".yaml" {
 			paths = append(paths, path)
 		}
+
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
+
 	sort.Strings(paths)
+
 	return paths, nil
 }
 
@@ -112,8 +116,10 @@ func checkWorkflow(path string, state *policyState) error {
 		if err == nil {
 			return fmt.Errorf("%s: workflow must contain exactly one YAML document", path)
 		}
+
 		return fmt.Errorf("%s: parse workflow: %w", path, err)
 	}
+
 	return checkDocument(path, &document, state)
 }
 
@@ -145,6 +151,7 @@ func checkDocument(path string, document *yaml.Node, state *policyState) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -159,8 +166,8 @@ func checkJob(path string, node *yaml.Node, state *policyState) error {
 		return nodeError(path, job, "cannot inspect reusable workflow reference")
 	}
 	if found {
-		if _, err := checkUses(path, usesNode, state); err != nil {
-			return err
+		if _, checkErr := checkUses(path, usesNode, state); checkErr != nil {
+			return checkErr
 		}
 	}
 
@@ -171,6 +178,7 @@ func checkJob(path string, node *yaml.Node, state *policyState) error {
 	if !found {
 		return nil
 	}
+
 	return checkSteps(path, stepsNode, state)
 }
 
@@ -203,6 +211,7 @@ func checkSteps(path string, node *yaml.Node, state *policyState) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -246,6 +255,7 @@ func checkUses(path string, node *yaml.Node, state *policyState) (string, error)
 			return "", nodeError(path, value, "expected # %s annotation", setupGoVersion)
 		}
 	}
+
 	return action, nil
 }
 
@@ -269,6 +279,7 @@ func checkCheckoutInputs(path string, step *yaml.Node) error {
 	if found {
 		return nodeError(path, unsafeKey, "allow-unsafe-pr-checkout must not be configured")
 	}
+
 	return nil
 }
 
@@ -284,6 +295,7 @@ func mappingEntry(mapping *yaml.Node, name string) (*yaml.Node, *yaml.Node, bool
 			return key, value, true, nil
 		}
 	}
+
 	return nil, nil, false, nil
 }
 
@@ -292,6 +304,7 @@ func mappingNode(node *yaml.Node) (*yaml.Node, error) {
 	if err != nil || node.Kind != yaml.MappingNode {
 		return nil, fmt.Errorf("not a mapping")
 	}
+
 	return node, nil
 }
 
@@ -300,6 +313,7 @@ func sequenceNode(node *yaml.Node) (*yaml.Node, error) {
 	if err != nil || node.Kind != yaml.SequenceNode {
 		return nil, fmt.Errorf("not a sequence")
 	}
+
 	return node, nil
 }
 
@@ -308,6 +322,7 @@ func scalarValue(node *yaml.Node) (string, *yaml.Node, error) {
 	if err != nil || node.Kind != yaml.ScalarNode {
 		return "", node, fmt.Errorf("not a scalar")
 	}
+
 	return node.Value, node, nil
 }
 
@@ -323,6 +338,7 @@ func dereferenceNode(node *yaml.Node) (*yaml.Node, error) {
 	if node == nil {
 		return nil, fmt.Errorf("nil node")
 	}
+
 	return node, nil
 }
 
