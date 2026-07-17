@@ -32,13 +32,48 @@ func makeFakeTrailerHeavyBody(paragraphs int) string {
 
 // Avoid compiler optimizations that could remove the actual call we are benchmarking during benchmarks.
 var (
-	benchParseResult conventionalcommits.Message
-	errBenchParse    error
+	benchParseResult      conventionalcommits.Message
+	errBenchParse         error
+	benchInvalidUTF8Index int
 )
+
+const utf8BenchmarkInputSize = 4 * 1024
 
 type benchCase struct {
 	input []byte
 	label string
+}
+
+type utf8BenchmarkCase struct {
+	input          []byte
+	label          string
+	expectedOffset int
+}
+
+// malformedUTF8BenchmarkCases keeps total input size fixed so ns/op isolates
+// the cost of reaching the invalid byte instead of also varying buffer length.
+func malformedUTF8BenchmarkCases() []utf8BenchmarkCase {
+	tests := []struct {
+		label  string
+		offset int
+	}{
+		{label: "4 KiB/invalid at start", offset: 0},
+		{label: "4 KiB/invalid at midpoint", offset: utf8BenchmarkInputSize / 2},
+		{label: "4 KiB/invalid at end", offset: utf8BenchmarkInputSize - 1},
+	}
+
+	cases := make([]utf8BenchmarkCase, 0, len(tests))
+	for _, tt := range tests {
+		input := []byte(strings.Repeat("x", utf8BenchmarkInputSize))
+		input[tt.offset] = 0xff
+		cases = append(cases, utf8BenchmarkCase{
+			label:          tt.label,
+			input:          input,
+			expectedOffset: tt.offset,
+		})
+	}
+
+	return cases
 }
 
 var benchCases = []benchCase{
@@ -210,29 +245,7 @@ func benchmarkUTF8Validation(b *testing.B, input []byte, strict bool) {
 }
 
 func BenchmarkStrictUTF8MalformedInput(b *testing.B) {
-	tests := []struct {
-		label          string
-		input          []byte
-		expectedOffset int
-	}{
-		{
-			label:          "invalid first byte",
-			input:          []byte{0xff},
-			expectedOffset: 0,
-		},
-		{
-			label:          "invalid after minimal message",
-			input:          append([]byte("fix: x"), 0xff),
-			expectedOffset: len("fix: x"),
-		},
-		{
-			label:          "invalid after 4 KiB ASCII body",
-			input:          append([]byte("fix: x\n\n"+strings.Repeat("x", 4096)), 0xff),
-			expectedOffset: len("fix: x\n\n") + 4096,
-		},
-	}
-
-	for _, tt := range tests {
+	for _, tt := range malformedUTF8BenchmarkCases() {
 		tt := tt
 		b.Run(tt.label, func(b *testing.B) {
 			benchmarkStrictUTF8Rejection(b, tt.input, tt.expectedOffset)
@@ -255,16 +268,64 @@ func benchmarkStrictUTF8Rejection(b *testing.B, input []byte, expectedOffset int
 		b.Fatalf("expected byte offset %d, got %d", expectedOffset, invalidUTF8Error.ByteOffset)
 	}
 
+	// Report the inspected prefix, not the full buffer, so early exits do not
+	// claim throughput for bytes the validator never visits.
+	bytesScanned := expectedOffset + 1
 	b.ReportAllocs()
-	b.SetBytes(int64(len(input)))
+	b.SetBytes(int64(bytesScanned))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		benchParseResult, errBenchParse = machine.Parse(input)
 	}
+	b.StopTimer()
+	b.ReportMetric(float64(bytesScanned), "B/scanned")
 	if benchParseResult != nil {
 		b.Fatalf("expected a nil message, got %T", benchParseResult)
 	}
 	if !errors.Is(errBenchParse, ErrInvalidUTF8) {
 		b.Fatalf("expected ErrInvalidUTF8, got %v", errBenchParse)
+	}
+}
+
+func BenchmarkFirstInvalidUTF8Index(b *testing.B) {
+	tests := []utf8BenchmarkCase{
+		{
+			label:          "4 KiB/valid ASCII",
+			input:          []byte(strings.Repeat("x", utf8BenchmarkInputSize)),
+			expectedOffset: -1,
+		},
+		{
+			label:          "4 KiB/valid multibyte UTF-8",
+			input:          []byte(strings.Repeat("é", utf8BenchmarkInputSize/len("é"))),
+			expectedOffset: -1,
+		},
+	}
+	tests = append(tests, malformedUTF8BenchmarkCases()...)
+
+	for _, tt := range tests {
+		tt := tt
+		b.Run(tt.label, func(b *testing.B) {
+			if offset := firstInvalidUTF8Index(tt.input); offset != tt.expectedOffset {
+				b.Fatalf("expected byte offset %d, got %d", tt.expectedOffset, offset)
+			}
+
+			// Valid input requires a full scan; malformed input stops immediately
+			// after the first invalid byte.
+			bytesScanned := len(tt.input)
+			if tt.expectedOffset >= 0 {
+				bytesScanned = tt.expectedOffset + 1
+			}
+			b.ReportAllocs()
+			b.SetBytes(int64(bytesScanned))
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				benchInvalidUTF8Index = firstInvalidUTF8Index(tt.input)
+			}
+			b.StopTimer()
+			b.ReportMetric(float64(bytesScanned), "B/scanned")
+			if benchInvalidUTF8Index != tt.expectedOffset {
+				b.Fatalf("expected byte offset %d, got %d", tt.expectedOffset, benchInvalidUTF8Index)
+			}
+		})
 	}
 }
