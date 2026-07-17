@@ -75,11 +75,11 @@ assert_contains "$classify_job" "gh api --paginate --slurp" "changed-files pagin
 # shellcheck disable=SC2016 # Assert literal Actions expressions.
 assert_contains "$classify_job" 'labels: ${{ steps.classify.outputs.labels }}' "classifier output"
 
-assert_contains "$apply_job" "issues: write" "apply permissions"
+assert_contains "$apply_job" "pull-requests: write" "apply permissions"
 apply_write_permissions=$(awk '/^[[:space:]]+[a-z-]+: write$/ { count++ } END { print count + 0 }' <<<"$apply_job")
 assert_eq "$apply_write_permissions" "1" "apply has exactly one write permission"
 assert_not_contains "$apply_job" "contents:" "apply permissions"
-assert_not_contains "$apply_job" "pull-requests:" "apply permissions"
+assert_not_contains "$apply_job" "issues:" "apply permissions"
 assert_not_contains "$apply_job" "uses:" "apply execution boundary"
 assert_not_contains "$apply_job" "actions/" "apply execution boundary"
 assert_not_contains "$apply_job" "checkout" "apply execution boundary"
