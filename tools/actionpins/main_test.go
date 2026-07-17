@@ -249,6 +249,7 @@ jobs:
 				if err != nil {
 					t.Fatalf("checkWorkflows() error = %v", err)
 				}
+
 				return
 			}
 
