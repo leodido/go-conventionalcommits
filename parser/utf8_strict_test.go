@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	cc "github.com/leodido/go-conventionalcommits"
+	"github.com/sirupsen/logrus"
+	logrustest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -124,6 +126,24 @@ func TestStrictUTF8ReportsFirstMalformedByte(t *testing.T) {
 	var invalidUTF8Error *InvalidUTF8Error
 	require.True(t, errors.As(err, &invalidUTF8Error))
 	assert.Equal(t, len(prefix), invalidUTF8Error.ByteOffset)
+}
+
+func TestStrictUTF8LogsTypedErrorAtOriginalByteOffset(t *testing.T) {
+	logger, hook := logrustest.NewNullLogger()
+	logger.SetLevel(logrus.ErrorLevel)
+	prefix := "feat: café "
+	input := malformedUTF8(prefix, []byte{0xff}, "")
+
+	message, err := newStrictUTF8Machine(WithLogger(logger)).Parse(input)
+
+	assert.Nil(t, message)
+	require.ErrorIs(t, err, ErrInvalidUTF8)
+	var invalidUTF8Error *InvalidUTF8Error
+	require.ErrorAs(t, err, &invalidUTF8Error)
+	assert.Equal(t, len(prefix), invalidUTF8Error.ByteOffset)
+	require.Len(t, hook.Entries, 1)
+	assert.Equal(t, logrus.ErrorLevel, hook.LastEntry().Level)
+	assert.Equal(t, strictUTF8ErrorAt(len(prefix)), hook.LastEntry().Message)
 }
 
 func TestStrictUTF8PrecedesGrammarValidation(t *testing.T) {
