@@ -46,8 +46,13 @@ func TestParseTerminalLineEndings(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name:    "trailing tab is not normalized",
+			input:   header + "\t\n",
+			wantErr: true,
+		},
+		{
 			name:    "non-empty trailing line is not normalized",
-			input:   header + "\nnot a body",
+			input:   header + "\nnot a body\n",
 			wantErr: true,
 		},
 	}
@@ -88,13 +93,18 @@ func TestParseTerminalLineEndings(t *testing.T) {
 	}
 }
 
-func TestParsePreservesTerminalCarriageReturn(t *testing.T) {
-	message, err := NewMachine().Parse([]byte("feat: description\r"))
+func TestParsePreservesCarriageReturnContent(t *testing.T) {
+	for _, input := range []string{
+		"feat: description\r",
+		"feat: description\r\r\n",
+	} {
+		message, err := NewMachine().Parse([]byte(input))
 
-	require.NoError(t, err)
-	commit, ok := message.(*conventionalcommits.ConventionalCommit)
-	require.True(t, ok)
-	assert.Equal(t, "description\r", commit.Description)
+		require.NoError(t, err)
+		commit, ok := message.(*conventionalcommits.ConventionalCommit)
+		require.True(t, ok)
+		assert.Equal(t, "description\r", commit.Description)
+	}
 }
 
 func TestMachineParseWithFalcoTypes(t *testing.T) {
