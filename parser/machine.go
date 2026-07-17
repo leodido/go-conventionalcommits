@@ -257,6 +257,8 @@ func (m *machine) Parse(input []byte) (conventionalcommits.Message, error) {
 		}
 	}
 
+	input = trimTerminalLineEndings(input)
+
 	m.data = input
 	m.p = 0
 	m.pb = 0
