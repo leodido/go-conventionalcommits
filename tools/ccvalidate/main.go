@@ -24,7 +24,7 @@
 // canonicalised key=value lines to stdout:
 //
 //	type=feat
-//	scope=API
+//	scope=api
 //	breaking=true
 //
 // "type" is always lowercased — even if the parser accepted "FEAT" via
@@ -113,9 +113,8 @@ func validate(header string, describe bool, w io.Writer) error {
 		return fmt.Errorf("empty header")
 	}
 
-	m := parser.NewMachine(
-		parser.WithTypes(cc.TypesConventional),
-	)
+	m := parser.NewMachine(parser.WithTypes(cc.TypesConventional))
+	m.WithStrictUTF8()
 	msg, perr := m.Parse([]byte(header))
 	if perr != nil {
 		return fmt.Errorf("invalid Conventional Commits header %q: %w", header, perr)
