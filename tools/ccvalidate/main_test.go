@@ -50,6 +50,7 @@ func TestValidate(t *testing.T) {
 		{name: "type with empty description", header: "feat: ", wantErr: true},
 		{name: "space before colon", header: "feat : x", wantErr: true},
 		{name: "unknown type", header: "wip: draft", wantErr: true},
+		{name: "malformed UTF-8", header: string(append([]byte("feat: invalid "), 0xff)), wantErr: true},
 	}
 
 	for _, tc := range cases {
